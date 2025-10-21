@@ -9,67 +9,46 @@ class BaseAppException(HTTPException):
         super().__init__(status_code=self.status_code, detail=self.detail)
 
 
+class UserNotFoundException(BaseAppException):
+    status_code = status.HTTP_404_NOT_FOUND
+    detail = "User not found"
 
-class UserAlreadyExists(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "User Already Exists"
 
-
-class IncorrectEmailOrPassword(BaseAppException):
+class InvalidSignatureException(BaseAppException):
     status_code = status.HTTP_401_UNAUTHORIZED
-    detail = "Incorrect Email Or Password"
+    detail = "Invalid signature"
 
 
-class TokenExpired(BaseAppException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    detail = "Token Expired"
-
-
-class TokenAbsent(BaseAppException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    detail = "Token Absent"
-
-
-class IncorrectTokenFormat(BaseAppException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    detail = "Incorrect Token Format"
-
-
-class UserAbsent(BaseAppException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    detail = "User Absent"
-
-
-class IncorrectTransaction(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "Incorrect Transaction"
-
-
-class CanNotUpdateBalance(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "Can Not Update Balance"
-
-class WrongSignature(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "Wrong Signature"
-
-class CanNotCreateAccount(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "Can Not Create Account"
-
-class Unauthorized(BaseAppException):
+class UnauthorizedException(BaseAppException):
     status_code = status.HTTP_401_UNAUTHORIZED
     detail = "Unauthorized"
 
 
-class Deleted(BaseAppException):
+class ResourceDeletedException(BaseAppException):
     status_code = status.HTTP_204_NO_CONTENT
-    detail = "Deleted"
+    detail = "Resource deleted"
 
-class IncorrectTransactionId(BaseAppException):
-    status_code = status.HTTP_409_CONFLICT
-    detail = "Incorrect Transaction Id"
 
-class NotFound(BaseAppException):
+class ResourceNotFoundException(BaseAppException):
     status_code = status.HTTP_404_NOT_FOUND
-    detail = "Not Found"
+    detail = "Resource not found"
+
+
+class NotAllowedException(BaseAppException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = "Operation not allowed"
+
+
+class InvalidDataException(BaseAppException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    detail = "Invalid data provided"
+
+
+class AuthenticationFailedException(BaseAppException):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    detail = "Authentication failed"
+
+
+class UsernameGenerationFailedException(BaseAppException):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    detail = "Failed to generate unique username"

@@ -3,75 +3,102 @@ import hmac
 import json
 import logging
 import time
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 from urllib.parse import parse_qsl, unquote
+
+from jose import JWTError, jwt
+
 from app.config import settings
+from app.exceptions import (AuthenticationFailedException,
+                            InvalidDataException, InvalidSignatureException)
 
 logger = logging.getLogger(__name__)
 
+
 def validate_telegram_data(init_data: str) -> dict:
-    """
-    Проверяет подлинность данных от Telegram Login Widget.
-    Ожидает строку в формате query string.
-    """
-    logger.debug(f"Raw init data: {init_data}")
+    try:
+        pairs = parse_qsl(init_data, keep_blank_values=True)
+        hash_val = None
+        filtered = []
 
-    # Парсим строку как query string
-    pairs = parse_qsl(init_data, keep_blank_values=True)
-    hash_val = None
-    filtered = []
+        for k, v in pairs:
+            if k == "hash":
+                hash_val = v
+            else:
+                filtered.append((k, v))
 
-    for k, v in pairs:
-        if k == "hash":
-            hash_val = v
-        else:
-            filtered.append((k, v))
+        if not hash_val:
+            logger.error("Hash is missing in init data")
+            raise InvalidSignatureException()
 
-    if not hash_val:
-        logger.warning("Hash is missing in init data")
-        raise ValueError("hash missing")
+        filtered.sort(key=lambda kv: kv[0])
+        data_check_string = "\n".join(f"{k}={v}" for k, v in filtered)
 
-    # Сортируем данные и формируем строку для проверки
-    filtered.sort(key=lambda kv: kv[0])
-    data_check_string = "\n".join(f"{k}={v}" for k, v in filtered)
-    logger.debug(f"Data check string: {data_check_string}")
+        secret_key = hmac.new(
+            b"WebAppData", settings.TELEGRAM_BOT_TOKEN.encode("utf-8"), hashlib.sha256
+        ).digest()
+        calc_hash = hmac.new(
+            secret_key, data_check_string.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
 
-    # Вычисляем хеш с использованием секретного ключа
-    secret_key = hmac.new(b"WebAppData", settings.TELEGRAM_BOT_TOKEN.encode("utf-8"), hashlib.sha256).digest()
-    calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-    logger.debug(f"Calculated hash: {calc_hash}")
-    logger.debug(f"Received hash: {hash_val}")
+        if not hmac.compare_digest(calc_hash, hash_val):
+            logger.error(
+                f"Hash mismatch. Calculated: {calc_hash}, Received: {hash_val}"
+            )
+            raise InvalidSignatureException()
 
-    if not hmac.compare_digest(calc_hash, hash_val):
-        logger.warning("Hash verification failed")
-        raise ValueError("invalid signature")
+        auth_date = None
+        for k, v in filtered:
+            if k == "auth_date":
+                try:
+                    auth_date = int(v)
+                except ValueError:
+                    continue
 
-    # Проверяем auth_date
-    auth_date = None
-    for k, v in filtered:
-        if k == "auth_date":
+        if not auth_date:
+            logger.error("auth_date is missing or invalid")
+            raise InvalidSignatureException()
+
+        now = int(time.time())
+        if abs(now - auth_date) > 3600:
+            logger.error(f"Init data expired. Current: {now}, Auth: {auth_date}")
+            raise AuthenticationFailedException()
+
+        result = {k: v for k, v in filtered}
+        if "user" in result:
             try:
-                auth_date = int(v)
-            except:
-                pass
+                result["user"] = json.loads(unquote(result["user"]))
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse user JSON: {e}")
+                raise InvalidDataException()
 
-    if auth_date is None:
-        logger.warning("auth_date is missing")
-        raise ValueError("auth_date missing")
+        return result
+    except Exception as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise AuthenticationFailedException()
 
-    now = int(time.time())
-    if abs(now - auth_date) > 3600:  # 1 час
-        logger.warning(f"Init data expired. Current time: {now}, auth_date: {auth_date}")
-        raise ValueError("init data expired")
 
-    # Преобразуем результат в словарь
-    result = {k: v for k, v in filtered}
+def create_access_token(data: Dict[str, Any]) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-    # Парсим поле user если оно есть
-    if "user" in result:
-        try:
-            result["user"] = json.loads(unquote(result["user"]))
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse user JSON: {e}")
-            raise ValueError("invalid user data")
 
-    return result
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        # Проверяем время истечения токена
+        if payload.get("exp") and payload["exp"] < time.time():
+            logger.debug("Token expired")
+            return None
+        return payload
+    except jwt.ExpiredSignatureError:
+        logger.debug("Token expired")
+        return None
+    except JWTError:
+        logger.debug("Invalid token")
+        return None

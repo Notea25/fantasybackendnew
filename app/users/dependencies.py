@@ -1,50 +1,71 @@
+import logging
+
+from fastapi import Request
+
+from app.exceptions import AuthenticationFailedException, InvalidDataException
+from app.users.services import UserService
+from app.users.utils import validate_telegram_data, verify_token
+
 logger = logging.getLogger(__name__)
 
-async def get_current_user(request: Request) -> User:
+
+async def get_current_user(request: Request):
     """
-    Зависимость для получения текущего пользователя.
-    Ожидает данные в теле запроса в формате query string.
+    Основная функция для получения текущего пользователя.
+    Сначала проверяет токен в куках, затем init_data.
     """
     try:
-        # Получаем сырые данные из тела запроса
+        # Проверяем токен в куках
+        token = request.cookies.get("access_token")
+        if token:
+            logger.debug("Found token in cookies, attempting to verify")
+            try:
+                if token.startswith("Bearer "):
+                    token = token[7:]
+
+                payload = verify_token(token)
+                if payload:
+                    user_id = payload.get("sub")
+                    if user_id:
+                        user = await UserService.get_by_telegram_id(int(user_id))
+                        if user:
+                            logger.debug(f"User authenticated via token: {user.id}")
+                            return user
+                        logger.warning(
+                            f"User not found for valid token (ID: {user_id})"
+                        )
+            except Exception as e:
+                logger.warning(f"Token verification failed: {str(e)}")
+
+        # Если токен невалиден или пользователь не найден, используем init_data
+        logger.debug("Token invalid or missing, falling back to init_data")
         init_data = await request.body()
         init_data_str = init_data.decode("utf-8")
 
-        logger.debug(f"Received init data for current user: {init_data_str}")
-
-        # Валидируем данные
         data = validate_telegram_data(init_data_str)
+
         user_data = data.get("user", {})
 
         if not user_data or "id" not in user_data:
-            logger.warning("User data is missing or invalid")
-            raise ValueError("invalid user data")
+            logger.error("Invalid user data in init_data")
+            raise InvalidDataException()
 
-        # Ищем пользователя в базе
-        user = await UserService.find_one_or_none(id=int(user_data["id"]))
+        telegram_id = int(user_data["id"])
+        user = await UserService.get_by_telegram_id(telegram_id)
 
-        # Если пользователь не найден, создаём его
         if not user:
-            logger.info(f"Creating new user: {user_data['id']}")
-            user = await UserService.add_one(
-                id=int(user_data["id"]),
-                username=user_data.get("username"),
-                first_name=user_data.get("first_name"),
-                last_name=user_data.get("last_name"),
-                photo_url=user_data.get("photo_url", "").replace("\\/", "/")
-            )
+            logger.info(f"Creating new user with Telegram ID: {telegram_id}")
+            user_create_data = {
+                "id": telegram_id,
+                "photo_url": user_data.get("photo_url", "").replace("\\/", "/"),
+            }
+            user = await UserService.add_one(**user_create_data)
+            logger.info(f"New user created: ID={user.id}")
 
         return user
-
-    except ValueError as e:
-        logger.error(f"Validation failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+    except InvalidDataException as e:
+        logger.error(f"Invalid data: {str(e)}")
+        raise
     except Exception as e:
-        logger.error(f"Failed to get current user: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed"
-        )
+        logger.error(f"Authentication error: {str(e)}", exc_info=True)
+        raise AuthenticationFailedException()

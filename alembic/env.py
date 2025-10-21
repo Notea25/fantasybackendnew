@@ -1,25 +1,25 @@
-from logging.config import fileConfig
 import sys
+from logging.config import fileConfig
 from os.path import abspath, dirname
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
+
+
 from app.config import settings
 from app.database import Base
-from app.clubs.models import Club
-from app.competitions.models import Competition
-from app.matches.models import Match
-from app.players.models import Player
-from app.positions.models import Position
-from app.sport_types.models import SportType
-from app.teams.models import Team
-from app.users.models import User
-
+from app.leagues.models import League
+# from app.clubs.models import Club
+# from app.matches.models import Match
+# from app.players.models import Player
+# from app.positions.models import Position
+# from app.sport_types.models import SportType
+# from app.teams.models import Team
+# from app.users.models import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -82,9 +82,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

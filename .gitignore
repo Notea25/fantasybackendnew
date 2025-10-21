@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Локальные настройки
+.env
+.env-docker
+.env.local
+.env*.local
+
+# Базы данных
+*.db
+*.sqlite
+
+# Логи
+logs/
+*.log
+
+# Кэш
+.cache/
