@@ -7,8 +7,8 @@ from sqladmin import Admin
 # from app.admin.view import (ClubAdmin, CompetitionAdmin, PlayerAdmin,
 #                             PositionAdmin, SportTypeAdmin, TeamAdmin,
 #                             UserAdmin)
-# from app.clubs.router import router as clubs_router
 from app.leagues.router import router as leagues_router
+from app.teams.router import router as teams_router
 from app.config import settings
 from app.database import engine
 # from app.matches.router import router as matches_router
@@ -36,10 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключение роутов
 app.include_router(users_router)
 app.include_router(leagues_router)
-# app.include_router(clubs_router)
+app.include_router(teams_router)
 # app.include_router(matches_router)
 # app.include_router(players_router)
 # # app.include_router(teams_router)

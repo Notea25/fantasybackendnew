@@ -13,7 +13,7 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 from app.config import settings
 from app.database import Base
 from app.leagues.models import League
-# from app.clubs.models import Club
+from app.teams.models import Team
 # from app.matches.models import Match
 # from app.players.models import Player
 # from app.positions.models import Position

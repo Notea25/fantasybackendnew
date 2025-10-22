@@ -12,22 +12,20 @@ async def list_leagues() -> list[LeagueRead]:
     return await LeagueService.find_all()
 
 
-@router.get(
-    "/{league_id}",
-)
-async def get_leagues(league_id: str) -> LeagueRead:
-    res = await LeagueService.find_one_or_none(league_id=league_id)
+@router.get("/id_{league_id}",)
+async def get_leagues(league_id: int) -> LeagueRead:
+    res = await LeagueService.find_one_or_none(id=league_id)
     if not res:
         raise ResourceNotFoundException
     return res
 
 
-# @router.get("/sport_type_{sport_type}/")
-# async def get_leagues_by_sport_type(sport_type: int) -> list[LeagueRead]:
-#     res = await LeagueService.find_filtered(sport_type=sport_type)
-#     if not res:
-#         raise ResourceNotFoundException
-#     return res
+@router.get("/sport_type_{sport}/")
+async def get_leagues_by_sport_type(sport: int) -> list[LeagueRead]:
+    res = await LeagueService.find_filtered(sport=sport)
+    if not res:
+        raise ResourceNotFoundException
+    return res
 
 
 # @router.post("/leagues", response=CompetitionSchema, auth=AuthBearer())
