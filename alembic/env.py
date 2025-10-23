@@ -15,7 +15,7 @@ from app.database import Base
 from app.leagues.models import League
 from app.teams.models import Team
 # from app.matches.models import Match
-# from app.players.models import Player
+from app.players.models import Player
 # from app.positions.models import Position
 # from app.sport_types.models import SportType
 # from app.teams.models import Team
