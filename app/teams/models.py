@@ -13,12 +13,12 @@ class Team(Base):
         ForeignKey("leagues.id"), nullable=False
     )
 
-    # competition: Mapped["Competition"] = relationship(back_populates="clubs")
-    # players: Mapped[list["Player"]] = relationship(back_populates="club")
-    #
-    # first_club_matches: Mapped[list["Match"]] = relationship(foreign_keys="Match.first_club_id", back_populates="first_club")
-    # second_club_matches: Mapped[list["Match"]] = relationship(foreign_keys="Match.second_club_id", back_populates="second_club")
-    # winner_matches: Mapped[list["Match"]] = relationship(foreign_keys="Match.winner_id", back_populates="winner")
+    home_matches: Mapped[list["Match"]] = relationship(
+        "Match", foreign_keys="Match.home_team_id", back_populates="home_team"
+    )
+    away_matches: Mapped[list["Match"]] = relationship(
+        "Match", foreign_keys="Match.away_team_id", back_populates="away_team"
+    )
 
     def __repr__(self):
         return self.name

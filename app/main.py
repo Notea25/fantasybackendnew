@@ -11,7 +11,7 @@ from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
 from app.config import settings
 from app.database import engine
-# from app.matches.router import router as matches_router
+from app.matches.router import router as matches_router
 from app.players.router import router as players_router
 # from app.positions.router import router as positions_router
 # from app.sport_types.router import router as sport_types_router
@@ -39,7 +39,7 @@ app.add_middleware(
 app.include_router(users_router)
 app.include_router(leagues_router)
 app.include_router(teams_router)
-# app.include_router(matches_router)
+app.include_router(matches_router)
 app.include_router(players_router)
 # # app.include_router(teams_router)
 # app.include_router(positions_router)
