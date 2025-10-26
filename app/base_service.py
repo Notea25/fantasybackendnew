@@ -1,5 +1,5 @@
-from sqlalchemy import delete, insert, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 
 from app.database import async_session_maker
 from app.exceptions import ResourceNotFoundException

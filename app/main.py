@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import engine
 from app.matches.router import router as matches_router
 from app.players.router import router as players_router
+from app.player_match_stats.router import router as player_match_stats_router
 # from app.positions.router import router as positions_router
 # from app.sport_types.router import router as sport_types_router
 # from app.teams.router import router as teams_router
@@ -41,6 +42,7 @@ app.include_router(leagues_router)
 app.include_router(teams_router)
 app.include_router(matches_router)
 app.include_router(players_router)
+app.include_router(player_match_stats_router)
 # # app.include_router(teams_router)
 # app.include_router(positions_router)
 # app.include_router(sport_types_router)

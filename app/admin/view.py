@@ -1,6 +1,6 @@
 # from sqladmin import ModelView
 #
-# from app.clubs.models import Club
+# from app.player_match_stats.models import Club
 # from app.leagues.models import Competition
 # from app.matches.models import Match
 # from app.players.models import Player
