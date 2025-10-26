@@ -10,12 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_current_user(request: Request):
-    """
-    Основная функция для получения текущего пользователя.
-    Сначала проверяет токен в куках, затем init_data.
-    """
     try:
-        # Проверяем токен в куках
         token = request.cookies.get("access_token")
         if token:
             logger.debug("Found token in cookies, attempting to verify")
@@ -37,7 +32,6 @@ async def get_current_user(request: Request):
             except Exception as e:
                 logger.warning(f"Token verification failed: {str(e)}")
 
-        # Если токен невалиден или пользователь не найден, используем init_data
         logger.debug("Token invalid or missing, falling back to init_data")
         init_data = await request.body()
         init_data_str = init_data.decode("utf-8")
