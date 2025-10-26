@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.config import settings
 from app.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.dependencies import get_current_user
-from app.users.schemas import User
+from app.users.schemas import UserSchema
 from app.users.services import UserService
 from app.users.utils import create_access_token
 
@@ -20,7 +20,6 @@ async def login(request: Request, response: Response):
         logger.debug("Login attempt started")
         user = await get_current_user(request)
 
-        # Всегда обновляем токен при логине
         access_token = create_access_token(data={"sub": str(user.id)})
 
         response.set_cookie(
@@ -33,7 +32,7 @@ async def login(request: Request, response: Response):
         )
 
         logger.debug(f"User authenticated: {user.id}, token refreshed")
-        return {"status": "ok", "user": User.model_validate(user)}
+        return {"status": "ok", "user": UserSchema.model_validate(user)}
     except (InvalidDataException, AuthenticationFailedException) as e:
         raise e
     except Exception as e:
@@ -61,7 +60,7 @@ async def refresh(request: Request, response: Response):
             key="access_token",
             value=f"Bearer {access_token}",
             httponly=True,
-            secure=False,  # В разработке
+            secure=False,
             samesite="lax",
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )

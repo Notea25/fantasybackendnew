@@ -1,13 +1,11 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import ForeignKey,  DateTime
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.database import Base
 
 class Match(Base):
     __tablename__ = "matches"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str]
@@ -20,7 +18,7 @@ class Match(Base):
     home_team_penalties: Mapped[Optional[int]]
     away_team_penalties: Mapped[Optional[int]]
 
-
-    league = relationship("League", back_populates="matches")
-    home_team = relationship("Team", foreign_keys=[home_team_id], back_populates="home_matches")
-    away_team = relationship("Team", foreign_keys=[away_team_id], back_populates="away_matches")
+    league: Mapped["League"] = relationship(back_populates="matches")
+    home_team: Mapped["Team"] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
+    away_team: Mapped["Team"] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
+    player_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="match")

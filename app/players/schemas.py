@@ -1,7 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
-
-class PlayerBase(BaseModel):
+class PlayerSchema(BaseModel):
     id: int
     name: str
     age: int
@@ -13,13 +12,5 @@ class PlayerBase(BaseModel):
     sport: int
     league_id: int
 
-
-class PlayerCreate(PlayerBase):
-    pass
-
-
-class PlayerRead(PlayerBase):
-    pass
-
-
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

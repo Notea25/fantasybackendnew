@@ -1,16 +1,9 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
-
-class LeagueBase(BaseModel):
-    name: str
-
-
-class LeagueCreate(LeagueBase):
-    pass
-
-
-class LeagueRead(LeagueBase):
+class LeagueSchema(BaseModel):
     id: int
+    name: str
     sport: int
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
