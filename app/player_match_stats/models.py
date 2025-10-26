@@ -10,7 +10,7 @@ class PlayerMatchStats(Base):
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
-    position: Mapped[str] = mapped_column(String(1))  # G, D, M, F
+    position: Mapped[str]
     minutes_played: Mapped[int] = mapped_column(Integer, default=0)
     is_substitute: Mapped[bool] = mapped_column(Boolean, default=False)
     yellow_cards: Mapped[int] = mapped_column(Integer, default=0)
