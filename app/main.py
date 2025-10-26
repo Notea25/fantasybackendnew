@@ -2,15 +2,14 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqladmin import Admin
 
+from sqladmin import Admin
 # from app.admin.view import (ClubAdmin, CompetitionAdmin, PlayerAdmin,
 #                             PositionAdmin, SportTypeAdmin, TeamAdmin,
 #                             UserAdmin)
+
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
-from app.config import settings
-from app.database import engine
 from app.matches.router import router as matches_router
 from app.players.router import router as players_router
 from app.player_match_stats.router import router as player_match_stats_router
@@ -27,7 +26,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене замените на конкретные домены
+    allow_origins=["*"], #dev mode
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

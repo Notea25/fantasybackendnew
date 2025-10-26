@@ -1,45 +1,41 @@
-# from fastapi import APIRouter, Depends
-#
-# from app.teams.schemas import TeamCreate, TeamRead, TeamSchema
-# from app.teams.services import TeamService
-# from app.users.dependencies import get_current_user
-# from app.users.models import User
-#
-# router = APIRouter(prefix="/teams", tags=["Teams"])
-#
-#
-# @router.get("/list_teams")
-# async def list_teams() -> list[TeamRead]:
-#     return await TeamService.find_all()
-#
-#
-# @router.post("/create")
-# async def create_team(
-#     team: TeamSchema, user: User = Depends(get_current_user)
-# ) -> TeamCreate:
-#     team.user_id = user.id
-#     return await TeamService.add_one(data=team)
-#
-#
-# @router.get("/my_teams")
-# async def list_users_teams(user: User = Depends(get_current_user)) -> list[TeamRead]:
-#     return await TeamService.find_filtered(user=user)
-#
-#
-# @router.get("/{team_id}")
-# async def get_team(team_id: int, user: User = Depends(get_current_user)) -> TeamRead:
-#     return await TeamService.find_filtered(id=team_id, user_id=user.id)
-#
-#
-# @router.put("/{team_id}")
-# async def update_team(
-#     team_id: int, team: TeamSchema, user: User = Depends(get_current_user)
-# ) -> TeamCreate:
-#     team.user_id = user.id
-#     return await TeamService.update(team_id, data=team)
-#
-#
-# @router.delete("/{team_id}")
-# async def delete_team(team_id: int, user: User = Depends(get_current_user)):
-#     await TeamService.delete(id=team_id)
-#     return "deleted"
+from fastapi import APIRouter, Depends, HTTPException
+from app.squads.schemas import SquadCreate, SquadRead, SquadSchema
+from app.squads.services import SquadService
+from app.users.dependencies import get_current_user
+from app.users.models import User
+
+router = APIRouter(prefix="/squads", tags=["Squads"])
+
+@router.get("/list_squads")
+async def list_squads() -> list[SquadRead]:
+    return await SquadService.find_all()
+
+@router.post("/create")
+async def create_squad(
+    squad: SquadSchema, user: User = Depends(get_current_user)
+) -> SquadRead:
+    squad.user_id = user.id
+    return await SquadService.add_one(data=squad.model_dump())
+
+@router.get("/my_squads")
+async def list_users_squads(user: User = Depends(get_current_user)) -> list[SquadRead]:
+    return await SquadService.find_filtered(user_id=user.id)
+
+@router.get("/{squad_id}")
+async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> SquadRead:
+    squad = await SquadService.find_one_or_none(id=squad_id, user_id=user.id)
+    if not squad:
+        raise HTTPException(status_code=404, detail="Squad not found")
+    return squad
+
+@router.put("/{squad_id}")
+async def update_squad(
+    squad_id: int, squad: SquadSchema, user: User = Depends(get_current_user)
+) -> SquadRead:
+    squad.user_id = user.id
+    return await SquadService.update(squad_id, data=squad.model_dump())
+
+@router.delete("/{squad_id}")
+async def delete_squad(squad_id: int, user: User = Depends(get_current_user)):
+    await SquadService.delete(id=squad_id, user_id=user.id)
+    return {"status": "deleted"}
