@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from sqladmin import Admin
-# from app.admin.view import (ClubAdmin, CompetitionAdmin, PlayerAdmin,
-#                             PositionAdmin, SportTypeAdmin, TeamAdmin,
-#                             UserAdmin)
+
+from app.database import engine
+from app.admin.view import UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin, SquadAdmin, TeamAdmin, PlayerMatchStatsAdmin
 
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
@@ -41,11 +41,11 @@ app.include_router(player_match_stats_router)
 app.include_router(squads_router)
 
 
-# admin = Admin(app, engine)
-# admin.add_view(PositionAdmin)
-# admin.add_view(SportTypeAdmin)
-# admin.add_view(UserAdmin)
-# admin.add_view(ClubAdmin)
-# admin.add_view(CompetitionAdmin)
-# admin.add_view(PlayerAdmin)
-# admin.add_view(TeamAdmin)
+admin = Admin(app, engine)
+admin.add_view(UserAdmin)
+admin.add_view(LeagueAdmin)
+admin.add_view(MatchAdmin)
+admin.add_view(PlayerAdmin)
+admin.add_view(SquadAdmin)
+admin.add_view(TeamAdmin)
+admin.add_view(PlayerMatchStatsAdmin)
