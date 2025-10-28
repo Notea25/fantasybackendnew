@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
-    FOOTBALL_SPORT_ID: int = 1
-    LEAGUE_ID: int
-    SEASON: int
+    EXTERNAL_API_BASE_URL: str
+    EXTERNAL_API_KEY: str
+    EXTERNAL_API_SEASON: int
 
     model_config = SettingsConfigDict(
         env_file=".env",

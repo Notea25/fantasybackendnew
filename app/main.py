@@ -15,6 +15,7 @@ from app.players.router import router as players_router
 from app.player_match_stats.router import router as player_match_stats_router
 from app.squads.router import router as squads_router
 from app.users.router import router as users_router
+from app.utils.router import router as utils_router
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -32,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(utils_router)
 app.include_router(users_router)
 app.include_router(leagues_router)
 app.include_router(teams_router)

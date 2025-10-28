@@ -1,3 +1,5 @@
+import httpx
+from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
 
@@ -6,6 +8,8 @@ from app.database import async_session_maker
 from app.player_match_stats.models import PlayerMatchStats
 from app.player_match_stats.schemas import PlayerTotalStats
 from app.exceptions import ResourceNotFoundException
+from app.utils.external_api import external_api
+
 
 class PlayerMatchStatsService(BaseService):
     model = PlayerMatchStats
@@ -54,3 +58,21 @@ class PlayerMatchStatsService(BaseService):
             )
 
             return total_stats
+
+    @classmethod
+    async def add_player_match_stats(cls, match_id: int):
+        try:
+            stats_data = await external_api.fetch_player_match_stats(match_id)
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=500, detail=f"External API error: {e}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch player match stats data: {e}")
+
+        try:
+            async with async_session_maker() as session:
+                for stat_data in stats_data:
+                    stat = cls.model(**stat_data)
+                    session.add(stat)
+                await session.commit()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to add player match stats to database: {e}")
