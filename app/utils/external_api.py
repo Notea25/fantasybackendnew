@@ -33,18 +33,18 @@ class ExternalAPIClient:
                 raise ValueError("No teams found")
             return data["response"]
 
-    async def fetch_players(self, team_id: int, season: str) -> List[Dict]:
+    async def fetch_players(self, team_id: int) -> List[Dict]:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.base_url}/players",
-                params={"team": team_id, "season": season},
+                f"{self.base_url}/players/squads",
+                params={"team": team_id},
                 headers={"x-apisports-key": self.api_key}
             )
             response.raise_for_status()
             data = response.json()
             if data["results"] == 0:
                 raise ValueError("No players found")
-            return data["response"]
+            return data["response"][0]["players"]
 
     async def fetch_matches(self, league_id: int, season: str) -> List[Dict]:
         async with httpx.AsyncClient() as client:
