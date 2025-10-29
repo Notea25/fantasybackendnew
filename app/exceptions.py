@@ -3,8 +3,22 @@ from fastapi import HTTPException, status
 class BaseAppException(HTTPException):
     status_code = 500
     detail = ""
-    def __init__(self):
+    def __init__(self, msg=None):
+        if msg:
+            self.detail = msg
         super().__init__(status_code=self.status_code, detail=self.detail)
+
+class AlreadyExistsException(BaseAppException):
+    status_code = status.HTTP_409_CONFLICT
+    detail = "Resource already exists in database"
+
+class ExternalAPIErrorException(BaseAppException):
+    status_code = status.HTTP_502_BAD_GATEWAY
+    detail = "External API error"
+
+class FailedOperationException(BaseAppException):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    detail = "Operation failed"
 
 class UserNotFoundException(BaseAppException):
     status_code = status.HTTP_404_NOT_FOUND
@@ -41,15 +55,3 @@ class AuthenticationFailedException(BaseAppException):
 class UsernameGenerationFailedException(BaseAppException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     detail = "Failed to generate unique username"
-
-class ExternalAPIErrorException(BaseAppException):
-    status_code = status.HTTP_502_BAD_GATEWAY
-    detail = "External API error"
-
-class LeagueNotFoundException(BaseAppException):
-    status_code = status.HTTP_404_NOT_FOUND
-    detail = "League not found"
-
-class FailedToAddLeagueException(BaseAppException):
-    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    detail = "Failed to add league to database"

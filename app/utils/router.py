@@ -1,21 +1,30 @@
-import httpx
-from fastapi import APIRouter, HTTPException, status
-
+from fastapi import APIRouter
 from app.leagues.services import LeagueService
-from app.utils.external_api import external_api
-from app.config import settings
+from app.teams.services import TeamService
+from app.exceptions import AlreadyExistsException, ExternalAPIErrorException, FailedOperationException
 
 router = APIRouter(prefix="/utils", tags=["Utils"])
 
-@router.post("/{league_id}/add")
+@router.post("/add_league_{league_id}")
 async def add_league(league_id: int):
     try:
         league = await LeagueService.add_league(league_id)
         return {"status": "success", "league_id": league.id, "league_name": league.name}
-    except HTTPException as e:
-        raise e
+    except AlreadyExistsException:
+        raise
+    except ExternalAPIErrorException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add league: {e}"
-        )
+        raise FailedOperationException(msg=f"Failed to add league: {e}")
+
+@router.post("/add_teams_{league_id}")
+async def add_teams(league_id: int):
+    try:
+        await TeamService.add_teams(league_id)
+        return {"status": "success", "league_id": league_id}
+    except AlreadyExistsException:
+        raise
+    except ExternalAPIErrorException:
+        raise
+    except Exception as e:
+        raise FailedOperationException(msg=f"Failed to add teams: {e}")
