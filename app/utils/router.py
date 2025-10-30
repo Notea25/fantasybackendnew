@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.leagues.services import LeagueService
+from app.matches.services import MatchService
 from app.players.services import PlayerService
 from app.teams.services import TeamService
 from app.exceptions import AlreadyExistsException, ExternalAPIErrorException, FailedOperationException
@@ -41,3 +42,14 @@ async def add_players(league_id: int):
         raise
     except Exception as e:
         raise FailedOperationException(msg=f"Failed to add players: {e}")
+
+
+@router.post("/add_matches_{league_id}")
+async def add_matches(league_id: int):
+    try:
+        await MatchService.add_matches_for_league(league_id)
+        return {"status": "success", "league_id": league_id}
+    except ExternalAPIErrorException:
+        raise
+    except Exception as e:
+        raise FailedOperationException(msg=f"Failed to add matches: {e}")
