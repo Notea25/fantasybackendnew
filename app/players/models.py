@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Table
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -17,7 +17,7 @@ class Player(Base):
 
     team: Mapped["Team"] = relationship(back_populates="players")
     league: Mapped["League"] = relationship(back_populates="players")
-    match_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="player")
+    stats: Mapped[list["PlayerStats"]] = relationship(back_populates="player")
     main_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_players_association", back_populates="players"
     )

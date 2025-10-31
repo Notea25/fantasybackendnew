@@ -5,7 +5,7 @@ from app.matches.models import Match
 from app.players.models import Player
 from app.squads.models import Squad
 from app.teams.models import Team
-from app.player_match_stats.models import PlayerMatchStats
+from app.player_stats.models import PlayerStats
 
 class UserAdmin(ModelView, model=User):
     column_list = [
@@ -87,27 +87,23 @@ class TeamAdmin(ModelView, model=Team):
     name_plural = "Teams"
     icon = "fa-solid fa-people-line"
 
-class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
+class PlayerStatsAdmin(ModelView, model=PlayerStats):
     column_list = [
-        PlayerMatchStats.id,
-        PlayerMatchStats.player_id,
-        PlayerMatchStats.match_id,
-        PlayerMatchStats.league_id,
-        PlayerMatchStats.team_id,
-        PlayerMatchStats.position,
-        PlayerMatchStats.minutes_played,
-        PlayerMatchStats.is_substitute,
-        PlayerMatchStats.yellow_cards,
-        PlayerMatchStats.yellow_red_cards,
-        PlayerMatchStats.red_cards,
-        PlayerMatchStats.goals_total,
-        PlayerMatchStats.assists,
-        PlayerMatchStats.goals_conceded,
-        PlayerMatchStats.saves,
-        PlayerMatchStats.penalty_saved,
-        PlayerMatchStats.penalty_missed,
-        PlayerMatchStats.points,
+        PlayerStats.id,
+        PlayerStats.player_id,
+        PlayerStats.league_id,
+        PlayerStats.team_id,
+        PlayerStats.season,
+        PlayerStats.appearances,
+        PlayerStats.lineups,
+        PlayerStats.minutes_played,
+        PlayerStats.position,
+        PlayerStats.goals_total,
+        PlayerStats.assists,
+        PlayerStats.yellow_cards,
+        PlayerStats.yellow_red_cards,
+        PlayerStats.red_cards,
     ]
-    name = "Player Match Stats"
-    name_plural = "Player Match Stats"
+    name = "Player Stats"
+    name_plural = "Player Stats"
     icon = "fa-solid fa-chart-simple"
