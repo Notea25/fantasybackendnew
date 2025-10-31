@@ -20,7 +20,7 @@ services:
     build: .
     container_name: sp_app
     env_file:
-      -  ~/.env-docker
+      -  .env-docker
     depends_on:
       db:
         condition: service_healthy

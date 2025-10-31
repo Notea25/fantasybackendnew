@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 from app.players.schemas import PlayerSchema
 from app.players.services import PlayerService
 

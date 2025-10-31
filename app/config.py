@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     EXTERNAL_API_KEY: str
     EXTERNAL_API_SEASON: int
 
+    MODE: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

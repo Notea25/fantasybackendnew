@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.teams.schemas import TeamSchema
 from app.teams.services import TeamService
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
 

@@ -4,14 +4,14 @@ import json
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from urllib.parse import parse_qsl, unquote
 
 from jose import JWTError, jwt
 
 from app.config import settings
-from app.exceptions import (AuthenticationFailedException,
-                            InvalidDataException, InvalidSignatureException)
+from app.utils.exceptions import (AuthenticationFailedException,
+                                  InvalidDataException, InvalidSignatureException)
 
 logger = logging.getLogger(__name__)
 

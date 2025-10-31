@@ -3,10 +3,9 @@ import logging
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.config import settings
-from app.exceptions import AuthenticationFailedException, InvalidDataException
+from app.utils.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.dependencies import get_current_user
 from app.users.schemas import UserSchema
-from app.users.services import UserService
 from app.users.utils import create_access_token
 
 logger = logging.getLogger(__name__)

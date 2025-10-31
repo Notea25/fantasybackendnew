@@ -4,9 +4,8 @@ import random
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.base_service import BaseService
-from app.exceptions import (UsernameGenerationFailedException,
-                            UserNotFoundException)
+from app.utils.base_service import BaseService
+from app.utils.exceptions import (UsernameGenerationFailedException)
 from app.users.models import User
 
 logger = logging.getLogger(__name__)

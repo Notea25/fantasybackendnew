@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.matches.schemas import MatchSchema
 from app.matches.services import MatchService
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/matches", tags=["Matches"])
 

@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from app.database import async_session_maker
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 
 class BaseService:
     model = None

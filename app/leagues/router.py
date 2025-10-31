@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.leagues.schemas import LeagueSchema
 from app.leagues.services import LeagueService
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/leagues", tags=["Leagues"])
 

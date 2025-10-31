@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.player_stats.schemas import PlayerStats
 from app.player_stats.services import PlayerStatsService
-from app.exceptions import ResourceNotFoundException
+from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/player_stats", tags=["Player Stats"])
 

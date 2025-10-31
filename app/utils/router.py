@@ -5,7 +5,7 @@ from app.matches.services import MatchService
 from app.player_stats.services import PlayerStatsService
 from app.players.services import PlayerService
 from app.teams.services import TeamService
-from app.exceptions import AlreadyExistsException, ExternalAPIErrorException, FailedOperationException
+from app.utils.exceptions import AlreadyExistsException, ExternalAPIErrorException, FailedOperationException
 
 
 logger = logging.getLogger(__name__)

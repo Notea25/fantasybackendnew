@@ -24,3 +24,11 @@ class SquadRead(BaseModel):
     bench_players: List[PlayerInSquadSchema] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class PlayerInSquadUpdateSchema(BaseModel):
+    player_id: int
+    is_bench: bool = False
+
+class UpdateSquadPlayersSchema(BaseModel):
+    main_player_ids: List[int]
+    bench_player_ids: List[int]

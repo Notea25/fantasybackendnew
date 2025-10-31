@@ -5,10 +5,10 @@ from fastapi import HTTPException
 from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 
-from app.base_service import BaseService
+from app.utils.base_service import BaseService
 from app.config import settings
 from app.database import async_session_maker
-from app.exceptions import ExternalAPIErrorException, FailedOperationException
+from app.utils.exceptions import ExternalAPIErrorException, FailedOperationException
 from app.matches.models import Match
 from app.utils.external_api import external_api
 

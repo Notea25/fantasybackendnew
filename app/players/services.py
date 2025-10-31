@@ -2,8 +2,8 @@ from sqlalchemy.future import select
 from app.players.models import Player
 from app.database import async_session_maker
 from app.utils.external_api import external_api
-from app.base_service import BaseService
-from app.exceptions import ExternalAPIErrorException, FailedOperationException
+from app.utils.base_service import BaseService
+from app.utils.exceptions import ExternalAPIErrorException, FailedOperationException
 from app.teams.services import TeamService
 import httpx
 

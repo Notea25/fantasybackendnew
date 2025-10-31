@@ -3,8 +3,8 @@ from app.leagues.models import League
 from app.database import async_session_maker
 from app.utils.external_api import external_api
 from app.config import settings
-from app.base_service import BaseService
-from app.exceptions import ExternalAPIErrorException, AlreadyExistsException, FailedOperationException
+from app.utils.base_service import BaseService
+from app.utils.exceptions import ExternalAPIErrorException, AlreadyExistsException, FailedOperationException
 import httpx
 
 class LeagueService(BaseService):
