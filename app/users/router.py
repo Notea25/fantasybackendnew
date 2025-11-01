@@ -25,7 +25,7 @@ async def login(request: Request, response: Response):
             key="access_token",
             value=f"Bearer {access_token}",
             httponly=True,
-            secure=False,  # В разработке. В продакшене: True
+            secure=False,
             samesite="lax",
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
