@@ -15,12 +15,10 @@ router = APIRouter(prefix="/utils", tags=["Utils"])
 @router.post("/add_league_{league_id}")
 async def add_league(league_id: int):
     try:
-        league = await LeagueService.add_league(league_id)
-        return {"status": "success", "league_id": league.id, "league_name": league.name}
-    except AlreadyExistsException:
-        raise
-    except ExternalAPIErrorException:
-        raise
+        await LeagueService.add_league(league_id)
+        return {"status": "success", "league_id": league_id}
+    except ExternalAPIErrorException as e:
+        raise e
     except Exception as e:
         raise FailedOperationException(msg=f"Failed to add league: {e}")
 

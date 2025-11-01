@@ -11,30 +11,35 @@ class ExternalAPIClient:
     def __init__(self):
         self.base_url = settings.EXTERNAL_API_BASE_URL
         self.api_key = settings.EXTERNAL_API_KEY
+        self.season = settings.EXTERNAL_API_SEASON
 
     async def fetch_league(self, league_id: int) -> Dict:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}/leagues",
-                params={"id": league_id, "season": settings.EXTERNAL_API_SEASON},
+                params={"id": league_id, "season": self.season},
                 headers={"x-apisports-key": self.api_key}
             )
             response.raise_for_status()
             data = response.json()
+            logger.debug(f"API response for league {league_id}: {data}")
             if data["results"] == 0:
+                logger.error(f"League {league_id} not found in API response")
                 raise ValueError("League not found")
-            return data["response"][0]["league"]
+            return data["response"][0]
 
     async def fetch_teams(self, league_id: int) -> List[Dict]:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}/teams",
-                params={"league": league_id, "season": settings.EXTERNAL_API_SEASON},
+                params={"league": league_id, "season": self.season},
                 headers={"x-apisports-key": self.api_key}
             )
             response.raise_for_status()
             data = response.json()
+            logger.debug(f"API response for teams in league {league_id}: {data}")
             if data["results"] == 0:
+                logger.error(f"No teams found for league {league_id}")
                 raise ValueError("No teams found")
             return data["response"]
 
@@ -55,12 +60,14 @@ class ExternalAPIClient:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}/fixtures",
-                params={"league": league_id, "season": settings.EXTERNAL_API_SEASON},
+                params={"league": league_id, "season": self.season},
                 headers={"x-apisports-key": self.api_key}
             )
             response.raise_for_status()
             data = response.json()
+            logger.debug(f"API response for matches in league {league_id}: {data}")
             if data["results"] == 0:
+                logger.error(f"No matches found for league {league_id}")
                 raise ValueError("No matches found")
             return data["response"]
 

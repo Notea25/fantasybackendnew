@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import httpx
@@ -12,6 +13,8 @@ from app.utils.exceptions import ExternalAPIErrorException, FailedOperationExcep
 from app.matches.models import Match
 from app.utils.external_api import external_api
 
+
+logger = logging.getLogger(__name__)
 
 class MatchService(BaseService):
     model=Match
@@ -56,43 +59,61 @@ class MatchService(BaseService):
     @classmethod
     async def add_matches_for_league(cls, league_id: int):
         try:
-            matches_data = await external_api.fetch_matches(league_id, settings.EXTERNAL_API_SEASON)
-        except httpx.HTTPStatusError:
+            logger.debug(f"Fetching matches for league {league_id} from external API")
+            matches_data = await external_api.fetch_matches(league_id)
+            logger.debug(f"Matches data received: {matches_data}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error fetching matches for league {league_id}: {e}")
             raise ExternalAPIErrorException()
-        except Exception:
+        except ValueError as e:
+            logger.error(f"No matches found for league {league_id}: {e}")
+            raise ExternalAPIErrorException(msg=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error fetching matches for league {league_id}: {e}")
             raise ExternalAPIErrorException()
 
         async with async_session_maker() as session:
             for match_data in matches_data:
                 try:
-                    fixture = match_data["fixture"]
-                    teams = match_data["teams"]
-                    goals = match_data["goals"]
+                    fixture = match_data.get("fixture", {})
+                    teams = match_data.get("teams", {})
+                    goals = match_data.get("goals", {})
+                    score = match_data.get("score", {})
+
+                    if not fixture or not teams or not goals:
+                        logger.warning(f"Missing required data in match: {match_data}")
+                        continue
 
                     match = cls.model(
-                        id=fixture["id"],
+                        id=fixture.get("id"),
                         date=datetime.fromisoformat(fixture["date"].replace('Z', '+00:00')),
-                        status=fixture["status"]["long"],
-                        duration=fixture["status"].get("elapsed"),
+                        status=fixture.get("status", {}).get("long", "Not Started"),
+                        duration=fixture.get("status", {}).get("elapsed"),
                         league_id=league_id,
-                        home_team_id=teams["home"]["id"],
-                        away_team_id=teams["away"]["id"],
-                        home_team_score=goals["home"],
-                        away_team_score=goals["away"],
-                        home_team_penalties=match_data["score"].get("penalty", {}).get("home") if match_data[
-                            "score"].get("penalty") else None,
-                        away_team_penalties=match_data["score"].get("penalty", {}).get("away") if match_data[
-                            "score"].get("penalty") else None
+                        home_team_id=teams.get("home", {}).get("id"),
+                        away_team_id=teams.get("away", {}).get("id"),
+                        home_team_score=goals.get("home"),
+                        away_team_score=goals.get("away"),
+                        home_team_penalties=score.get("penalty", {}).get("home") if score.get("penalty") else None,
+                        away_team_penalties=score.get("penalty", {}).get("away") if score.get("penalty") else None
                     )
                     session.add(match)
-                except Exception as e:
+                    logger.debug(f"Added match {match.id} to session")
+                except KeyError as e:
+                    logger.error(f"Missing key in match data: {e}")
                     await session.rollback()
-                    raise FailedOperationException(msg=f"Failed to add match: {e}")
+                    raise FailedOperationException(msg=f"Missing key in match data: {e}")
+                except Exception as e:
+                    logger.error(f"Error processing match: {e}")
+                    await session.rollback()
+                    raise FailedOperationException(msg=f"Error processing match: {e}")
 
             try:
                 await session.commit()
+                logger.info(f"Successfully committed matches for league {league_id}")
             except Exception as e:
                 await session.rollback()
+                logger.error(f"Failed to commit matches for league {league_id}: {e}")
                 raise FailedOperationException(msg=f"Failed to commit matches: {e}")
 
     @classmethod
