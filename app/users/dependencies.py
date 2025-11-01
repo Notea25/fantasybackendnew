@@ -1,6 +1,7 @@
 import logging
 from fastapi import Request
 from app.config import settings
+from app.database import async_session_maker
 from app.utils.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.services import UserService
 from app.users.utils import validate_telegram_data, verify_token
@@ -8,10 +9,13 @@ from app.users.utils import validate_telegram_data, verify_token
 logger = logging.getLogger(__name__)
 
 async def get_dev_user():
-    dev_user = await UserService.find_one_or_none(id=1)
+    dev_user = await UserService.get_by_id(1)
     if not dev_user:
-        dev_user = await UserService.add_one(id=1, username="dev_user")
+        dev_user = await UserService.add_one(id=1)
     return dev_user
+
+async def get_by_id(user_id: int):
+    return await UserService.find_one_or_none(id=user_id)
 
 async def get_current_user(request: Request):
     if settings.MODE == "DEV":
