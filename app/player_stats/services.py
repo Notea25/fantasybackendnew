@@ -32,7 +32,6 @@ class PlayerStatsService(BaseService):
                     team_id = player_data["statistics"][0]["team"]["id"]
                     statistics = player_data["statistics"][0]
 
-                    # Проверка существования игрока в базе данных
                     player_stmt = select(Player).where(Player.id == player_id)
                     player_result = await session.execute(player_stmt)
                     player_exists = player_result.scalar_one_or_none()

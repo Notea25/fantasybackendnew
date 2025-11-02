@@ -16,9 +16,7 @@ class TeamService(BaseService):
     @classmethod
     async def add_teams(cls, league_id: int):
         try:
-            logger.debug(f"Fetching teams for league {league_id} from external API")
             teams_data = await external_api.fetch_teams(league_id)
-            logger.debug(f"Teams data received: {teams_data}")
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching teams for league {league_id}: {e}")
             raise ExternalAPIErrorException()
@@ -50,7 +48,6 @@ class TeamService(BaseService):
                         league_id=league_id
                     )
                     session.add(team)
-                    logger.debug(f"Added team {team_data['name']} to session")
                 except KeyError as e:
                     logger.error(f"Missing key in team data: {e}")
                     await session.rollback()
@@ -62,7 +59,6 @@ class TeamService(BaseService):
 
             try:
                 await session.commit()
-                logger.info(f"Successfully committed teams for league {league_id}")
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Failed to commit teams for league {league_id}: {e}")

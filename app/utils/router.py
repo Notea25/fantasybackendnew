@@ -69,3 +69,24 @@ async def add_player_stats(league_id: int):
         raise
     except Exception as e:
         raise FailedOperationException(msg=f"Failed to add player stats: {e}")
+
+
+@router.post("/add_all")
+async def add_all():
+    league_id = 116
+    try:
+        await LeagueService.add_league(league_id)
+        await TeamService.add_teams(league_id)
+        await PlayerService.add_players_for_league(league_id)
+        await MatchService.add_matches_for_league(league_id)
+        await PlayerStatsService.add_player_stats_for_league(league_id)
+        return {"status": "success", "league_id": league_id}
+    except AlreadyExistsException as e:
+        logger.warning(f"Some entities already exist for league {league_id}: {e}")
+        raise
+    except ExternalAPIErrorException as e:
+        logger.error(f"External API error for league {league_id}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add all entities for league {league_id}: {e}")
+        raise FailedOperationException(msg=f"Failed to add all entities: {e}")
