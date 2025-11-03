@@ -16,6 +16,9 @@ class Settings(BaseSettings):
 
     MODE: str
 
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

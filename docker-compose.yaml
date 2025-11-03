@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   db:
     image: postgres:15-alpine
@@ -16,18 +18,52 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:alpine
+    container_name: sp_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
   app:
     build: .
     container_name: sp_app
     env_file:
-      -  .env-docker
+      - .env-docker
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     command: ["sh", "-c", "poetry run alembic upgrade head && poetry run uvicorn app.main:app --workers 4 --host 0.0.0.0 --port 8000 --reload"]
-
     expose:
       - "8000"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    container_name: sp_celery_worker
+    env_file:
+      - .env-docker
+    command: ["sh", "-c", "poetry run celery -A app.tasks.celery_app worker --loglevel=info"]
+    depends_on:
+      - redis
+      - app
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    container_name: sp_celery_beat
+    env_file:
+      - .env-docker
+    command: ["sh", "-c", "poetry run celery -A app.tasks.celery_app beat --loglevel=info"]
+    depends_on:
+      - redis
+      - app
     volumes:
       - .:/app
     restart: unless-stopped
