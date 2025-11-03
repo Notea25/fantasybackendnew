@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-
 from app.player_stats.schemas import PlayerStats
 from app.player_stats.services import PlayerStatsService
 from app.utils.exceptions import ResourceNotFoundException
@@ -12,5 +11,3 @@ async def get_player_stats(player_id: int) -> PlayerStats:
     if not stats:
         raise ResourceNotFoundException
     return stats
-
-

@@ -4,24 +4,43 @@ from app.database import Base
 
 class PlayerStats(Base):
     __tablename__ = "player_stats"
-
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
     season: Mapped[int]
-
     appearances: Mapped[int] = mapped_column(default=0, nullable=True)
     lineups: Mapped[int] = mapped_column(default=0, nullable=True)
     minutes_played: Mapped[int] = mapped_column(default=0, nullable=True)
     position: Mapped[str] = mapped_column(default="Unknown", nullable=True)
-
     goals_total: Mapped[int] = mapped_column(default=0, nullable=True)
     assists: Mapped[int] = mapped_column(default=0, nullable=True)
     yellow_cards: Mapped[int] = mapped_column(default=0, nullable=True)
     yellow_red_cards: Mapped[int] = mapped_column(default=0, nullable=True)
     red_cards: Mapped[int] = mapped_column(default=0, nullable=True)
-
+    shots_total: Mapped[int] = mapped_column(default=0, nullable=True)
+    shots_on: Mapped[int] = mapped_column(default=0, nullable=True)
+    passes_total: Mapped[int] = mapped_column(default=0, nullable=True)
+    passes_key: Mapped[int] = mapped_column(default=0, nullable=True)
+    passes_accuracy: Mapped[int] = mapped_column(default=0, nullable=True)
+    tackles_total: Mapped[int] = mapped_column(default=0, nullable=True)
+    tackles_blocks: Mapped[int] = mapped_column(default=0, nullable=True)
+    tackles_interceptions: Mapped[int] = mapped_column(default=0, nullable=True)
+    duels_total: Mapped[int] = mapped_column(default=0, nullable=True)
+    duels_won: Mapped[int] = mapped_column(default=0, nullable=True)
+    dribbles_attempts: Mapped[int] = mapped_column(default=0, nullable=True)
+    dribbles_success: Mapped[int] = mapped_column(default=0, nullable=True)
+    dribbles_past: Mapped[int] = mapped_column(default=0, nullable=True)
+    fouls_drawn: Mapped[int] = mapped_column(default=0, nullable=True)
+    fouls_committed: Mapped[int] = mapped_column(default=0, nullable=True)
+    penalty_won: Mapped[int] = mapped_column(default=0, nullable=True)
+    penalty_committed: Mapped[int] = mapped_column(default=0, nullable=True)
+    penalty_scored: Mapped[int] = mapped_column(default=0, nullable=True)
+    penalty_missed: Mapped[int] = mapped_column(default=0, nullable=True)
+    penalty_saved: Mapped[int] = mapped_column(default=0, nullable=True)
+    substitutes_in: Mapped[int] = mapped_column(default=0, nullable=True)
+    substitutes_out: Mapped[int] = mapped_column(default=0, nullable=True)
+    substitutes_bench: Mapped[int] = mapped_column(default=0, nullable=True)
     player: Mapped["Player"] = relationship(back_populates="stats")
     league: Mapped["League"] = relationship()
     team: Mapped["Team"] = relationship()

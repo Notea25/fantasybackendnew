@@ -4,11 +4,11 @@ class PlayerSchema(BaseModel):
     id: int
     name: str
     age: int
-    number: int
-    position: str
-    photo: str
+    number: int | None = None
+    position: str | None = None
+    photo: str | None = None
     team_id: int
-    market_value: int
+    market_value: int | None = None
     sport: int
     league_id: int
 
