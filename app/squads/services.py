@@ -1,6 +1,6 @@
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
-from sqlalchemy import delete, insert
+from sqlalchemy import delete
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -54,41 +54,6 @@ class SquadService(BaseService):
             except Exception as e:
                 await session.rollback()
                 raise FailedOperationException(msg=f"Failed to remove player from squad: {e}")
-
-    @classmethod
-    async def update_squad_players(cls, squad_id: int, main_player_ids: list[int], bench_player_ids: list[int]):
-        async with async_session_maker() as session:
-            squad = await cls.find_one_or_none(id=squad_id)
-            if not squad:
-                raise ResourceNotFoundException("Squad not found")
-
-            try:
-                stmt = delete(squad_players_association).where(
-                    squad_players_association.c.squad_id == squad_id
-                )
-                await session.execute(stmt)
-
-                stmt = delete(squad_bench_players_association).where(
-                    squad_bench_players_association.c.squad_id == squad_id
-                )
-                await session.execute(stmt)
-
-                for player_id in main_player_ids:
-                    stmt = insert(squad_players_association).values(
-                        squad_id=squad_id, player_id=player_id
-                    )
-                    await session.execute(stmt)
-
-                for player_id in bench_player_ids:
-                    stmt = insert(squad_bench_players_association).values(
-                        squad_id=squad_id, player_id=player_id
-                    )
-                    await session.execute(stmt)
-
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                raise FailedOperationException(msg=f"Failed to update squad players: {e}")
 
 
     @classmethod

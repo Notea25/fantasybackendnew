@@ -1,4 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+class PlayerStatsCreateSchema(BaseModel):
+    player_id: int
+    league_id: int
+    team_id: int
+    season: int
+    appearances: int | None = None
+    lineups: int | None = None
+    minutes_played: int | None = None
+    position: str | None = None
+    goals_total: int | None = None
+    assists: int | None = None
+    yellow_cards: int | None = None
+    yellow_red_cards: int | None = None
+    red_cards: int | None = None
+    penalty_scored: int | None = None
+    penalty_missed: int | None = None
+    penalty_saved: int | None = None
+    points: int | None = None
+
+    @field_validator('position', mode='before')
+    def set_default_position(cls, value):
+        return value if value else "Unknown"
+
+    @field_validator('minutes_played', 'appearances', 'lineups', 'goals_total', 'assists',
+                     'yellow_cards', 'yellow_red_cards', 'red_cards', 'penalty_scored',
+                     'penalty_missed', 'penalty_saved', mode='before')
+    def set_default_zero(cls, value):
+        return value if value is not None else 0
 
 class PlayerStats(BaseModel):
     id: int
@@ -15,29 +44,10 @@ class PlayerStats(BaseModel):
     yellow_cards: int | None = None
     yellow_red_cards: int | None = None
     red_cards: int | None = None
-    shots_total: int | None = None
-    shots_on: int | None = None
-    passes_total: int | None = None
-    passes_key: int | None = None
-    passes_accuracy: int | None = None
-    tackles_total: int | None = None
-    tackles_blocks: int | None = None
-    tackles_interceptions: int | None = None
-    duels_total: int | None = None
-    duels_won: int | None = None
-    dribbles_attempts: int | None = None
-    dribbles_success: int | None = None
-    dribbles_past: int | None = None
-    fouls_drawn: int | None = None
-    fouls_committed: int | None = None
-    penalty_won: int | None = None
-    penalty_committed: int | None = None
     penalty_scored: int | None = None
     penalty_missed: int | None = None
     penalty_saved: int | None = None
-    substitutes_in: int | None = None
-    substitutes_out: int | None = None
-    substitutes_bench: int | None = None
+    points: int | None = None
     player_name: str | None = None
     league_name: str | None = None
     team_name: str | None = None

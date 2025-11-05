@@ -1,9 +1,11 @@
 from sqlalchemy.future import select
 from sqlalchemy import update as sql_update
 from app.player_stats.models import PlayerStats
+from app.player_stats.schemas import PlayerStatsCreateSchema
 from app.players.models import Player
 from app.teams.models import Team
 from app.database import async_session_maker
+from app.utils.count_points import calculate_points
 from app.utils.external_api import external_api
 from app.config import settings
 from app.utils.base_service import BaseService
@@ -47,15 +49,6 @@ class PlayerStatsService(BaseService):
                         logger.warning(f"Team {team_id} not found in database, skipping...")
                         continue
 
-                    stmt = select(PlayerStats).where(
-                        PlayerStats.player_id == player_id,
-                        PlayerStats.league_id == league_id,
-                        PlayerStats.season == settings.EXTERNAL_API_SEASON
-                    )
-                    result = await session.execute(stmt)
-                    existing_stats = result.scalar_one_or_none()
-
-                    substitutes = statistics.get("substitutes", {})
                     player_stats_data = {
                         "player_id": player_id,
                         "league_id": league_id,
@@ -64,47 +57,39 @@ class PlayerStatsService(BaseService):
                         "appearances": statistics["games"].get("appearances"),
                         "lineups": statistics["games"].get("lineups"),
                         "minutes_played": statistics["games"].get("minutes"),
-                        "position": statistics["games"].get("position", "Unknown"),
+                        "position": statistics["games"].get("position"),
                         "goals_total": statistics["goals"].get("total"),
                         "assists": statistics["goals"].get("assists"),
                         "yellow_cards": statistics["cards"].get("yellow"),
                         "yellow_red_cards": statistics["cards"].get("yellowred"),
                         "red_cards": statistics["cards"].get("red"),
-                        "shots_total": statistics["shots"].get("total"),
-                        "shots_on": statistics["shots"].get("on"),
-                        "passes_total": statistics["passes"].get("total"),
-                        "passes_key": statistics["passes"].get("key"),
-                        "passes_accuracy": statistics["passes"].get("accuracy"),
-                        "tackles_total": statistics["tackles"].get("total"),
-                        "tackles_blocks": statistics["tackles"].get("blocks"),
-                        "tackles_interceptions": statistics["tackles"].get("interceptions"),
-                        "duels_total": statistics["duels"].get("total"),
-                        "duels_won": statistics["duels"].get("won"),
-                        "dribbles_attempts": statistics["dribbles"].get("attempts"),
-                        "dribbles_success": statistics["dribbles"].get("success"),
-                        "dribbles_past": statistics["dribbles"].get("past"),
-                        "fouls_drawn": statistics["fouls"].get("drawn"),
-                        "fouls_committed": statistics["fouls"].get("committed"),
-                        "penalty_won": statistics["penalty"].get("won"),
-                        "penalty_committed": statistics["penalty"].get("commited"),
                         "penalty_scored": statistics["penalty"].get("scored"),
                         "penalty_missed": statistics["penalty"].get("missed"),
                         "penalty_saved": statistics["penalty"].get("saved"),
-                        "substitutes_in": substitutes.get("in"),
-                        "substitutes_out": substitutes.get("out"),
-                        "substitutes_bench": substitutes.get("bench"),
+                        "points": calculate_points(statistics)
                     }
+
+                    stats_schema = PlayerStatsCreateSchema(**player_stats_data)
+                    stats_dict = stats_schema.model_dump(exclude_none=True)
+
+                    stmt = select(PlayerStats).where(
+                        PlayerStats.player_id == player_id,
+                        PlayerStats.league_id == league_id,
+                        PlayerStats.season == settings.EXTERNAL_API_SEASON
+                    )
+                    result = await session.execute(stmt)
+                    existing_stats = result.scalar_one_or_none()
 
                     if existing_stats:
                         update_stmt = (
                             sql_update(PlayerStats)
                             .where(PlayerStats.id == existing_stats.id)
-                            .values(**{k: v for k, v in player_stats_data.items() if v is not None})
+                            .values(**stats_dict)
                         )
                         await session.execute(update_stmt)
                         logger.info(f"Updated stats for player {player_id} in league {league_id}")
                     else:
-                        player_stats = cls.model(**{k: v for k, v in player_stats_data.items() if v is not None})
+                        player_stats = cls.model(**stats_dict)
                         session.add(player_stats)
                         logger.info(f"Added stats for player {player_id} in league {league_id}")
                 except Exception as e:

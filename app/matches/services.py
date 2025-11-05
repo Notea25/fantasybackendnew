@@ -3,9 +3,10 @@ from datetime import datetime
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, exc
 from sqlalchemy.orm import selectinload
 
+from app.matches.schemas import MatchCreateSchema
 from app.utils.base_service import BaseService
 from app.config import settings
 from app.database import async_session_maker
@@ -61,7 +62,7 @@ class MatchService(BaseService):
         try:
             logger.debug(f"Fetching matches for league {league_id} from external API")
             matches_data = await external_api.fetch_matches(league_id)
-            logger.debug(f"Matches data received: {matches_data}")
+            logger.debug(f"Matches data received: {len(matches_data)} matches")
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching matches for league {league_id}: {e}")
             raise ExternalAPIErrorException()
@@ -79,12 +80,11 @@ class MatchService(BaseService):
                     teams = match_data.get("teams", {})
                     goals = match_data.get("goals", {})
                     score = match_data.get("score", {})
-
                     if not fixture or not teams or not goals:
                         logger.warning(f"Missing required data in match: {match_data}")
                         continue
 
-                    match = cls.model(
+                    match_schema = MatchCreateSchema(
                         id=fixture.get("id"),
                         date=datetime.fromisoformat(fixture["date"].replace('Z', '+00:00')),
                         status=fixture.get("status", {}).get("long", "Not Started"),
@@ -97,8 +97,19 @@ class MatchService(BaseService):
                         home_team_penalties=score.get("penalty", {}).get("home") if score.get("penalty") else None,
                         away_team_penalties=score.get("penalty", {}).get("away") if score.get("penalty") else None
                     )
-                    session.add(match)
-                    logger.debug(f"Added match {match.id} to session")
+
+                    match_dict = match_schema.model_dump(exclude_none=True)
+
+                    stmt = select(cls.model).where(cls.model.id == match_dict["id"])
+                    result = await session.execute(stmt)
+                    existing_match = result.scalar_one_or_none()
+
+                    if not existing_match:
+                        match = cls.model(**match_dict)
+                        session.add(match)
+                        logger.debug(f"Added match {match.id} to session")
+                    else:
+                        logger.debug(f"Match {match_dict['id']} already exists, skipping")
                 except KeyError as e:
                     logger.error(f"Missing key in match data: {e}")
                     await session.rollback()
@@ -111,7 +122,7 @@ class MatchService(BaseService):
             try:
                 await session.commit()
                 logger.info(f"Successfully committed matches for league {league_id}")
-            except Exception as e:
+            except exc.SQLAlchemyError as e:
                 await session.rollback()
                 logger.error(f"Failed to commit matches for league {league_id}: {e}")
                 raise FailedOperationException(msg=f"Failed to commit matches: {e}")

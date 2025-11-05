@@ -45,14 +45,3 @@ async def remove_player_from_squad(squad_id: int, player_data: PlayerInSquadUpda
         return {"status": "success", "message": "Player removed from squad"}
     except Exception as e:
         raise FailedOperationException(msg=str(e))
-
-@router.patch("/update_players_{squad_id}")
-async def update_squad_players(squad_id: int, players_data: UpdateSquadPlayersSchema, user: User = Depends(get_current_user)):
-    squad = await SquadService.find_one_or_none(id=squad_id, user_id=user.id)
-    if not squad:
-        raise ResourceNotFoundException()
-    try:
-        await SquadService.update_squad_players(squad_id, players_data.main_player_ids, players_data.bench_player_ids)
-        return {"status": "success", "message": "Squad players updated"}
-    except Exception as e:
-        raise FailedOperationException(msg=str(e))

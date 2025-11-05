@@ -4,7 +4,6 @@ from sqlalchemy.future import select
 from app.leagues.models import League
 from app.database import async_session_maker
 from app.utils.external_api import external_api
-from app.config import settings
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ExternalAPIErrorException, AlreadyExistsException, FailedOperationException
 import httpx
@@ -39,13 +38,11 @@ class LeagueService(BaseService):
                 raise AlreadyExistsException()
 
             try:
-                # Извлекаем данные из правильной структуры ответа
                 league_info = league_data["league"]
 
                 league = cls.model(
                     id=league_info["id"],
                     name=league_info["name"]
-                    # sport будет установлен по умолчанию (default=1)
                 )
                 session.add(league)
                 await session.commit()
