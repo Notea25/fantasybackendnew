@@ -1,7 +1,6 @@
 import logging
 from fastapi import Request
 from app.config import settings
-from app.database import async_session_maker
 from app.utils.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.services import UserService
 from app.users.utils import validate_telegram_data, verify_token

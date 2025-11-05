@@ -91,7 +91,6 @@ def verify_token(token: str):
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        # Проверяем время истечения токена
         if payload.get("exp") and payload["exp"] < time.time():
             logger.debug("Token expired")
             return None
