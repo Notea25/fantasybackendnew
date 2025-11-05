@@ -12,6 +12,7 @@ class PlayerInSquadSchema(BaseModel):
     market_value: int
     sport: int
     league_id: int
+    points: int
 
 class SquadRead(BaseModel):
     id: int
@@ -20,9 +21,9 @@ class SquadRead(BaseModel):
     replacements: int
     user_id: int
     league_id: int
+    points: int = 0
     players: List[PlayerInSquadSchema] = []
     bench_players: List[PlayerInSquadSchema] = []
-
     model_config = ConfigDict(from_attributes=True)
 
 class PlayerInSquadUpdateSchema(BaseModel):

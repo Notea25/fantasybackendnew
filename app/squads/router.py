@@ -31,7 +31,7 @@ async def add_player_to_squad(squad_id: int, player_data: PlayerInSquadUpdateSch
         raise ResourceNotFoundException()
     try:
         await SquadService.add_player_to_squad(squad_id, player_data.player_id, player_data.is_bench)
-        return {"status": "success", "message": "Player added to squad"}
+        return {"status": "success", "message": "Player added to squad", "squad": await SquadService.find_one_or_none_with_relations(id=squad_id)}
     except Exception as e:
         raise FailedOperationException(msg=str(e))
 
@@ -42,6 +42,6 @@ async def remove_player_from_squad(squad_id: int, player_data: PlayerInSquadUpda
         raise ResourceNotFoundException()
     try:
         await SquadService.remove_player_from_squad(squad_id, player_data.player_id, player_data.is_bench)
-        return {"status": "success", "message": "Player removed from squad"}
+        return {"status": "success", "message": "Player removed from squad", "squad": await SquadService.find_one_or_none_with_relations(id=squad_id)}
     except Exception as e:
         raise FailedOperationException(msg=str(e))

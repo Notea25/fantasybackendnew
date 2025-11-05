@@ -1,11 +1,12 @@
 import logging
+from random import randint
+
 from sqlalchemy.future import select
 from app.players.models import Player
 from app.database import async_session_maker
 from app.utils.external_api import external_api
 from app.utils.base_service import BaseService
 from app.utils.exceptions import FailedOperationException
-from app.teams.services import TeamService
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class PlayerService(BaseService):
                         photo=player_data.get("photo"),
                         team_id=team_id,
                         league_id=league_id,
-                        market_value=100000,
+                        market_value=randint(5000,10000),
                         sport=1
                     )
                     session.add(player)
