@@ -16,12 +16,20 @@ class Player(Base):
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     team: Mapped["Team"] = relationship(back_populates="players")
     league: Mapped["League"] = relationship(back_populates="players")
-    stats: Mapped[list["PlayerStats"]] = relationship(back_populates="player")
+    stats: Mapped[list["PlayerStats"]] = relationship(back_populates="player", lazy="selectin")
     main_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_players_association", back_populates="players"
     )
     bench_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_bench_players_association", back_populates="bench_players"
     )
+
+    @property
+    def points(self) -> int:
+        if self.stats:
+            # Возвращаем очки из последней статистики игрока
+            return self.stats[-1].points if self.stats else 0
+        return 0
+
     def __repr__(self):
         return self.name

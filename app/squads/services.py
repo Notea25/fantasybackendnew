@@ -1,6 +1,9 @@
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy import delete
+
+from app.players.models import Player
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -11,13 +14,30 @@ class SquadService(BaseService):
     model = Squad
 
     @classmethod
+    async def create_squad(cls, name: str, user_id: int, league_id: int):
+        async with async_session_maker() as session:
+            squad = cls.model(name=name, user_id=user_id, league_id=league_id)
+            session.add(squad)
+            await session.commit()
+            await session.refresh(squad)
+            return squad
+
+    @classmethod
     async def add_player_to_squad(cls, squad_id: int, player_id: int, is_bench: bool = False):
         async with async_session_maker() as session:
-            squad = await cls.find_one_or_none(id=squad_id)
+            squad = await session.execute(
+                select(cls.model)
+                .where(cls.model.id == squad_id)
+                .options(
+                    selectinload(cls.model.players),
+                    selectinload(cls.model.bench_players),
+                )
+            )
+            squad = squad.scalars().first()
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            player = await PlayerService.find_one_or_none(id=player_id)
+            player = await session.get(PlayerService.model, player_id)
             if not player:
                 raise ResourceNotFoundException("Player not found")
 
@@ -36,25 +56,33 @@ class SquadService(BaseService):
                 stmt = squad_bench_players_association.insert().values(squad_id=squad_id, player_id=player_id)
             else:
                 stmt = squad_players_association.insert().values(squad_id=squad_id, player_id=player_id)
+
             await session.execute(stmt)
-
-            # Пересчёт очков команды
-            squad.calculate_points()
-
             await session.commit()
+
+            # Обновляем объект squad после коммита
+            await session.refresh(squad)
+            return squad
 
     @classmethod
     async def remove_player_from_squad(cls, squad_id: int, player_id: int, is_bench: bool = False):
         async with async_session_maker() as session:
-            squad = await cls.find_one_or_none(id=squad_id)
+            squad = await session.execute(
+                select(cls.model)
+                .where(cls.model.id == squad_id)
+                .options(
+                    selectinload(cls.model.players),
+                    selectinload(cls.model.bench_players),
+                )
+            )
+            squad = squad.scalars().first()
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            player = await PlayerService.find_one_or_none(id=player_id)
+            player = await session.get(PlayerService.model, player_id)
             if not player:
                 raise ResourceNotFoundException("Player not found")
 
-            # Удаление игрока
             if is_bench:
                 stmt = delete(squad_bench_players_association).where(
                     squad_bench_players_association.c.squad_id == squad_id,
@@ -68,12 +96,13 @@ class SquadService(BaseService):
                 )
 
             await session.execute(stmt)
-
             squad.budget += player.market_value
-
             squad.calculate_points()
-
             await session.commit()
+
+            # Обновляем объект squad после коммита
+            await session.refresh(squad)
+            return squad
 
     @classmethod
     async def find_all_with_relations(cls):
@@ -100,8 +129,8 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.players),
-                    selectinload(cls.model.bench_players),
+                    selectinload(cls.model.players).joinedload(Player.stats),
+                    selectinload(cls.model.bench_players).joinedload(Player.stats),
                 )
             )
             result = await session.execute(stmt)
@@ -117,8 +146,8 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.players),
-                    selectinload(cls.model.bench_players),
+                    selectinload(cls.model.players).selectinload(Player.stats),
+                    selectinload(cls.model.bench_players).selectinload(Player.stats),
                 )
             )
             result = await session.execute(stmt)

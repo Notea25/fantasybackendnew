@@ -21,3 +21,6 @@ class Match(Base):
     league: Mapped["League"] = relationship(back_populates="matches")
     home_team: Mapped["Team"] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
     away_team: Mapped["Team"] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
+
+    def __repr__(self):
+        return f'{self.home_team_id} vs {self.away_team_id}'

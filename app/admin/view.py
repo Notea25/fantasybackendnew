@@ -103,6 +103,7 @@ class PlayerStatsAdmin(ModelView, model=PlayerStats):
         PlayerStats.yellow_cards,
         PlayerStats.yellow_red_cards,
         PlayerStats.red_cards,
+        PlayerStats.points,
     ]
     name = "Player Stats"
     name_plural = "Player Stats"

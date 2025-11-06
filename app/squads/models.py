@@ -42,4 +42,4 @@ class Squad(Base):
         self.points = int(main_points + bench_points)
 
     def __repr__(self):
-        return f"<Squad {self.name}>"
+        return self.name

@@ -25,3 +25,6 @@ class PlayerStats(Base):
     player: Mapped["Player"] = relationship(back_populates="stats")
     league: Mapped["League"] = relationship()
     team: Mapped["Team"] = relationship()
+
+    def __repr__(self):
+        return f'{self.player_id} {self.points}'
