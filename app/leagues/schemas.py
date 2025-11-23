@@ -1,9 +1,11 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 class LeagueSchema(BaseModel):
     id: int
     name: str
-    logo: str = None
+    logo: Optional[str] = None
     sport: int
 
     class Config:
