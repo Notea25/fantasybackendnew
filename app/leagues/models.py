@@ -5,6 +5,7 @@ class League(Base):
     __tablename__ = "leagues"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
+    logo: Mapped[str] = mapped_column(nullable=True)
     sport: Mapped[int] = mapped_column(default=1)
 
     matches: Mapped[list["Match"]] = relationship(back_populates="league")

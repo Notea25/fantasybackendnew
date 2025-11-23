@@ -23,6 +23,7 @@ class LeagueAdmin(ModelView, model=League):
     column_list = [
         League.id,
         League.name,
+        League.logo,
         League.sport,
     ]
     name = "League"
