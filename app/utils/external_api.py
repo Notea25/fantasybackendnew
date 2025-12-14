@@ -27,68 +27,38 @@ class ExternalAPIClient:
             return data["response"][0]
 
     async def fetch_teams(self, league_id: int) -> List[Dict]:
-        all_teams = []
-        page = 1
-        while True:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.base_url}/teams",
-                    params={"league": league_id, "season": self.season, "page": page},
-                    headers={"x-apisports-key": self.api_key}
-                )
-                response.raise_for_status()
-                data = response.json()
-                if data["results"] == 0:
-                    break
-                all_teams.extend(data["response"])
-                if page >= data["paging"]["total"]:
-                    break
-                page += 1
-        return all_teams
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.base_url}/teams",
+                params={"league": league_id, "season": self.season},  # Уберите "page": page
+                headers={"x-apisports-key": self.api_key}
+            )
+            response.raise_for_status()
+            data = response.json()
+            logger.debug(f"Full API response: {data}")
+            return data.get("response", [])
 
-    async def fetch_players(self, team_id: int) -> List[Dict]:
-        all_players = []
-        page = 1
-        while True:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.base_url}/players/squads",
-                    params={"team": team_id, "page": page},
-                    headers={"x-apisports-key": self.api_key}
-                )
-                response.raise_for_status()
-                data = response.json()
-                if data["results"] == 0:
-                    break
-                all_players.extend(data["response"][0]["players"])
-                if page >= data["paging"]["total"]:
-                    break
-                page += 1
-        return all_players
 
     async def fetch_matches(self, league_id: int) -> List[Dict]:
-        all_matches = []
-        page = 1
-        while True:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.base_url}/fixtures",
-                    params={"league": league_id, "season": self.season, "page": page},
-                    headers={"x-apisports-key": self.api_key}
-                )
-                response.raise_for_status()
-                data = response.json()
-                if data["results"] == 0:
-                    break
-                all_matches.extend(data["response"])
-                if page >= data["paging"]["total"]:
-                    break
-                page += 1
-        return all_matches
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.base_url}/fixtures",
+                params={"league": league_id, "season": self.season},
+                headers={"x-apisports-key": self.api_key}
+            )
+            response.raise_for_status()
+            data = response.json()
+            logger.debug(f"Full API response for matches: {data}")
+            if data.get("errors"):
+                logger.error(f"API errors for matches: {data['errors']}")
+                return []
+            return data.get("response", [])
 
     async def fetch_players_in_league(self, league_id: int) -> list:
         all_players = []
+        seen_player_ids = set()
         page = 1
+
         while True:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
@@ -98,12 +68,27 @@ class ExternalAPIClient:
                 )
                 response.raise_for_status()
                 data = response.json()
+                logger.debug(f"API response for players (page {page}): {data}")
+
+                if data.get("errors"):
+                    logger.error(f"API errors for players: {data['errors']}")
+                    break
+
                 if data["results"] == 0:
                     break
-                all_players.extend(data["response"])
+
+                for player in data["response"]:
+                    player_id = player["player"]["id"]
+                    if player_id not in seen_player_ids:
+                        seen_player_ids.add(player_id)
+                        all_players.append(player)
+
                 if page >= data["paging"]["total"]:
                     break
                 page += 1
+
+        logger.debug(f"Total unique players fetched: {len(all_players)}")
         return all_players
+
 
 external_api = ExternalAPIClient()

@@ -6,7 +6,7 @@ class League(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     logo: Mapped[str] = mapped_column(nullable=True)
-    sport: Mapped[int] = mapped_column(default=1)
+    sport: Mapped[str] = mapped_column(default='football')
 
     matches: Mapped[list["Match"]] = relationship(back_populates="league")
     squads: Mapped[list["Squad"]] = relationship(back_populates="league")
