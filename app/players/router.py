@@ -17,8 +17,15 @@ async def get_player(player_id: int) -> PlayerSchema:
     return res
 
 @router.get("/team_{team_id}")
-async def get_player_by_team_id(team_id: int) -> list[PlayerSchema]:
+async def get_players_by_team_id(team_id: int) -> list[PlayerSchema]:
     res = await PlayerService.find_filtered(team_id=team_id)
+    if not res:
+        raise ResourceNotFoundException
+    return res
+
+@router.get("/league_{league_id}")
+async def get_players_by_league_id(league_id: int) -> list[PlayerSchema]:
+    res = await PlayerService.find_filtered(league_id=league_id)
     if not res:
         raise ResourceNotFoundException
     return res
