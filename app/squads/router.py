@@ -9,7 +9,9 @@ router = APIRouter(prefix="/squads", tags=["Squads"])
 
 @router.post("/create")
 async def create_squad(squad_data: SquadCreate, user: User = Depends(get_current_user)) -> SquadRead:
-    squad = await SquadService.create_squad(name=squad_data.name, user_id=user.id, league_id=squad_data.league_id)
+    squad = await SquadService.create_squad(name=squad_data.name, user_id=user.id, league_id=squad_data.league_id,
+                                            fav_team_id=squad_data.fav_team_id)
+
     squad = await SquadService.find_one_or_none_with_relations(id=squad.id)
     return squad
 

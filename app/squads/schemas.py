@@ -24,6 +24,7 @@ class SquadRead(BaseModel):
     user_id: int
     league_id: int
     points: int = 0
+    fav_team_id: int
     players: list[PlayerInSquadSchema] = []
     bench_players: list[PlayerInSquadSchema] = []
     model_config = ConfigDict(from_attributes=True)
@@ -33,6 +34,7 @@ class SquadRead(BaseModel):
 class SquadCreate(BaseModel):
     name: str
     league_id: int
+    fav_team_id: int
 
 class PlayerInSquadUpdateSchema(BaseModel):
     player_id: int
