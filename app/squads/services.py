@@ -16,6 +16,16 @@ class SquadService(BaseService):
     @classmethod
     async def create_squad(cls, name: str, user_id: int, league_id: int):
         async with async_session_maker() as session:
+
+            existing_squad = await session.execute(
+                select(cls.model)
+                .where(cls.model.user_id == user_id, cls.model.league_id == league_id)
+            )
+            existing_squad = existing_squad.scalars().first()
+
+            if existing_squad:
+                raise FailedOperationException("User already has a squad in this league")
+
             squad = cls.model(name=name, user_id=user_id, league_id=league_id)
             session.add(squad)
             await session.commit()

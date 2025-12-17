@@ -67,8 +67,8 @@ async def add_player_stats(league_id: int):
         raise FailedOperationException(msg=f"Failed to add player stats: {e}")
 
 @router.post("/add_all")
-async def add_all():
-    league_id = 116
+async def add_all(league_id: int = 116):
+
     try:
         await LeagueService.add_league(league_id)
         await TeamService.add_teams(league_id)

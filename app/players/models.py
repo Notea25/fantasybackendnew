@@ -6,7 +6,7 @@ class Player(Base):
     __tablename__ = "players"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    age: Mapped[int]
+    age: Mapped[int] = mapped_column(nullable=True)
     number: Mapped[int] = mapped_column(nullable=True)
     position: Mapped[str] = mapped_column(nullable=True)
     photo: Mapped[str] = mapped_column(nullable=True)
