@@ -16,6 +16,7 @@ from app.player_stats.router import router as player_stats_router
 from app.squads.router import router as squads_router
 from app.users.router import router as users_router
 from app.utils.router import router as utils_router
+from app.tours.router import router as tours_router
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -37,6 +38,7 @@ app.include_router(utils_router)
 app.include_router(users_router)
 app.include_router(leagues_router)
 app.include_router(teams_router)
+app.include_router(tours_router)
 app.include_router(matches_router)
 app.include_router(players_router)
 app.include_router(player_stats_router)

@@ -19,6 +19,7 @@ from app.players.models import Player
 from app.player_stats.models import PlayerStats
 from app.squads.models import Squad
 from app.users.models import User
+from app.tours.models import Tour
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

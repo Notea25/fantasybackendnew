@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.squads.schemas import SquadRead, PlayerInSquadUpdateSchema, UpdateSquadPlayersSchema, SquadCreate
+from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
 from app.users.models import User
