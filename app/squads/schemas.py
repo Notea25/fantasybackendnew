@@ -36,9 +36,6 @@ class SquadCreate(BaseModel):
     league_id: int
     fav_team_id: int
 
-class PlayerInSquadUpdateSchema(BaseModel):
-    player_id: int
-    is_bench: bool = False
 
 class UpdateSquadPlayersSchema(BaseModel):
     main_player_ids: list[int]

@@ -32,18 +32,15 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Sq
         raise ResourceNotFoundException()
     return squad
 
-@router.post("/add_player")
-async def add_player_to_squad(squad_id: int, player_data: PlayerInSquadUpdateSchema, user: User = Depends(get_current_user)):
+@router.put("/update_players/{squad_id}")
+async def update_squad_players(
+    squad_id: int, players_data: UpdateSquadPlayersSchema,  user: User = Depends(get_current_user)):
     try:
-        squad = await SquadService.add_player_to_squad(squad_id, player_data.player_id, player_data.is_bench)
-        return {"status": "success", "message": "Player added to squad", "squad": squad}
-    except Exception as e:
-        raise FailedOperationException(msg=str(e))
-
-@router.delete("/remove_player")
-async def remove_player_from_squad(squad_id: int, player_data: PlayerInSquadUpdateSchema, user: User = Depends(get_current_user)):
-    try:
-        squad = await SquadService.remove_player_from_squad(squad_id, player_data.player_id, player_data.is_bench)
-        return {"status": "success", "message": "Player removed from squad", "squad": squad}
+        squad = await SquadService.update_squad_players(
+            squad_id=squad_id,
+            main_player_ids=players_data.main_player_ids,
+            bench_player_ids=players_data.bench_player_ids
+        )
+        return {"status": "success", "message": "Squad players updated", "squad": squad}
     except Exception as e:
         raise FailedOperationException(msg=str(e))

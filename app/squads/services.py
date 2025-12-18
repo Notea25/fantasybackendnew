@@ -1,4 +1,3 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy import delete
@@ -8,7 +7,6 @@ from app.squads.models import Squad, squad_players_association, squad_bench_play
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
-from app.players.services import PlayerService
 
 class SquadService(BaseService):
     model = Squad
@@ -33,8 +31,9 @@ class SquadService(BaseService):
             return squad
 
     @classmethod
-    async def add_player_to_squad(cls, squad_id: int, player_id: int, is_bench: bool = False):
+    async def update_squad_players(cls, squad_id: int, main_player_ids: list[int], bench_player_ids: list[int]):
         async with async_session_maker() as session:
+            # Получаем сквад с текущими игроками
             squad = await session.execute(
                 select(cls.model)
                 .where(cls.model.id == squad_id)
@@ -47,70 +46,48 @@ class SquadService(BaseService):
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            player = await session.get(PlayerService.model, player_id)
-            if not player:
-                raise ResourceNotFoundException("Player not found")
+            players = await session.execute(select(Player).where(Player.id.in_(main_player_ids + bench_player_ids)))
+            players = players.scalars().all()
+            player_by_id = {player.id: player for player in players}
 
-            club_players_count = len([p for p in (squad.players + squad.bench_players) if p.team_id == player.team_id])
-            if club_players_count >= 3:
-                raise FailedOperationException("Cannot add more than 3 players from the same club")
+            if len(players) != len(main_player_ids) + len(bench_player_ids):
+                raise ResourceNotFoundException("One or more players not found")
 
-            if not is_bench and len(squad.players) >= 11:
+            club_counts = {}
+            for player_id in main_player_ids + bench_player_ids:
+                player = player_by_id[player_id]
+                club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
+                if club_counts[player.team_id] > 3:
+                    raise FailedOperationException("Cannot add more than 3 players from the same club")
+
+            if len(main_player_ids) > 11:
                 raise FailedOperationException("Cannot add more than 11 players to the main squad")
-            if is_bench and len(squad.bench_players) >= 4:
+            if len(bench_player_ids) > 4:
                 raise FailedOperationException("Cannot add more than 4 players to the bench")
 
-            squad.budget -= player.market_value
-
-            if is_bench:
-                stmt = squad_bench_players_association.insert().values(squad_id=squad_id, player_id=player_id)
-            else:
-                stmt = squad_players_association.insert().values(squad_id=squad_id, player_id=player_id)
-
-            await session.execute(stmt)
-            await session.commit()
-
-            # Обновляем объект squad после коммита
-            await session.refresh(squad)
-            return squad
-
-    @classmethod
-    async def remove_player_from_squad(cls, squad_id: int, player_id: int, is_bench: bool = False):
-        async with async_session_maker() as session:
-            squad = await session.execute(
-                select(cls.model)
-                .where(cls.model.id == squad_id)
-                .options(
-                    selectinload(cls.model.players),
-                    selectinload(cls.model.bench_players),
-                )
+            await session.execute(
+                delete(squad_players_association)
+                .where(squad_players_association.c.squad_id == squad_id)
             )
-            squad = squad.scalars().first()
-            if not squad:
-                raise ResourceNotFoundException("Squad not found")
+            await session.execute(
+                delete(squad_bench_players_association)
+                .where(squad_bench_players_association.c.squad_id == squad_id)
+            )
 
-            player = await session.get(PlayerService.model, player_id)
-            if not player:
-                raise ResourceNotFoundException("Player not found")
+            for player_id in main_player_ids:
+                player = player_by_id[player_id]
+                squad.budget -= player.market_value
+                stmt = squad_players_association.insert().values(squad_id=squad_id, player_id=player_id)
+                await session.execute(stmt)
 
-            if is_bench:
-                stmt = delete(squad_bench_players_association).where(
-                    squad_bench_players_association.c.squad_id == squad_id,
-                    squad_bench_players_association.c.player_id == player_id
-                )
-                squad.replacements -= 1
-            else:
-                stmt = delete(squad_players_association).where(
-                    squad_players_association.c.squad_id == squad_id,
-                    squad_players_association.c.player_id == player_id
-                )
+            for player_id in bench_player_ids:
+                player = player_by_id[player_id]
+                squad.budget -= player.market_value
+                stmt = squad_bench_players_association.insert().values(squad_id=squad_id, player_id=player_id)
+                await session.execute(stmt)
 
-            await session.execute(stmt)
-            squad.budget += player.market_value
             squad.calculate_points()
             await session.commit()
-
-            # Обновляем объект squad после коммита
             await session.refresh(squad)
             return squad
 
