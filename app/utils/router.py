@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter
 from app.leagues.services import LeagueService
 from app.matches.services import MatchService
-from app.player_stats.services import PlayerStatsService
+from app.player_match_stats.services import PlayerMatchStatsService
 from app.players.services import PlayerService
 from app.teams.services import TeamService
 from app.utils.exceptions import AlreadyExistsException, ExternalAPIErrorException, FailedOperationException
@@ -54,26 +54,13 @@ async def add_matches(league_id: int):
     except Exception as e:
         raise FailedOperationException(msg=f"Failed to add matches: {e}")
 
-@router.post("/add_player_stats_{league_id}")
-async def add_player_stats(league_id: int):
-    try:
-        await PlayerStatsService.add_player_stats_for_league(league_id)
-        return {"status": "success", "league_id": league_id}
-    except FailedOperationException:
-        raise
-    except ExternalAPIErrorException:
-        raise
-    except Exception as e:
-        raise FailedOperationException(msg=f"Failed to add player stats: {e}")
-
+# Убрали эндпоинт для добавления статистики игроков, так как он не нужен
 @router.post("/add_all")
 async def add_all(league_id: int = 116):
-
     try:
         await LeagueService.add_league(league_id)
         await TeamService.add_teams(league_id)
         await PlayerService.add_players_for_league(league_id)
-        await PlayerStatsService.add_player_stats_for_league(league_id)
         await MatchService.add_matches_for_league(league_id)
         return {"status": "success", "league_id": league_id}
     except AlreadyExistsException as e:
@@ -85,3 +72,13 @@ async def add_all(league_id: int = 116):
     except Exception as e:
         logger.error(f"Failed to add all entities for league {league_id}: {e}")
         raise FailedOperationException(msg=f"Failed to add all entities: {e}")
+
+@router.post("/add_empty_for_match_{match_id}")
+async def add_empty_stats_for_match(match_id: int):
+    count = await PlayerMatchStatsService.add_empty_stats_for_match(match_id)
+    return {"status": "success", "count": count}
+
+@router.post("/add_empty_for_all_matches")
+async def add_empty_stats_for_all_matches():
+    count = await PlayerMatchStatsService.add_empty_stats_for_all_matches()
+    return {"status": "success", "count": count}

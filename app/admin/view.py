@@ -1,5 +1,4 @@
 from sqladmin import ModelView
-from sqlalchemy.orm import selectinload
 
 from app.users.models import User
 from app.leagues.models import League
@@ -7,7 +6,7 @@ from app.matches.models import Match
 from app.players.models import Player
 from app.squads.models import Squad
 from app.teams.models import Team
-from app.player_stats.models import PlayerStats
+from app.player_match_stats.models import PlayerMatchStats
 from app.tours.models import Tour
 
 class UserAdmin(ModelView, model=User):
@@ -104,26 +103,23 @@ class TeamAdmin(ModelView, model=Team):
     name_plural = "Teams"
     icon = "fa-solid fa-people-line"
 
-class PlayerStatsAdmin(ModelView, model=PlayerStats):
+class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
     column_list = [
-        PlayerStats.id,
-        PlayerStats.player_id,
-        PlayerStats.league_id,
-        PlayerStats.team_id,
-        PlayerStats.season,
-        PlayerStats.appearances,
-        PlayerStats.lineups,
-        PlayerStats.minutes_played,
-        PlayerStats.position,
-        PlayerStats.goals_total,
-        PlayerStats.assists,
-        PlayerStats.yellow_cards,
-        PlayerStats.yellow_red_cards,
-        PlayerStats.red_cards,
-        PlayerStats.points,
+        PlayerMatchStats.id,
+        PlayerMatchStats.player_id,
+        PlayerMatchStats.match_id,
+        PlayerMatchStats.team_id,
+        PlayerMatchStats.league_id,
+        PlayerMatchStats.position,
+        PlayerMatchStats.goals_total,
+        PlayerMatchStats.assists,
+        PlayerMatchStats.yellow_cards,
+        PlayerMatchStats.red_cards,
+        PlayerMatchStats.minutes_played,
+        PlayerMatchStats.points,
     ]
-    name = "Player Stats"
-    name_plural = "Player Stats"
+    name = "Player Match Stats"
+    name_plural = "Player Match Stats"
     icon = "fa-solid fa-chart-simple"
 
 

@@ -1,5 +1,5 @@
 # from celery import current_app as celery_app
-# from app.player_stats.services import PlayerStatsService
+# from app.player_match_stats.services import PlayerStatsService
 # import logging
 # from asgiref.sync import sync_to_async
 #

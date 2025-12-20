@@ -16,7 +16,7 @@ class Player(Base):
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     team: Mapped["Team"] = relationship(back_populates="players")
     league: Mapped["League"] = relationship(back_populates="players")
-    stats: Mapped[list["PlayerStats"]] = relationship(back_populates="player", lazy="selectin")
+    match_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="player")
     main_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_players_association", back_populates="players"
     )
@@ -27,7 +27,6 @@ class Player(Base):
     @property
     def points(self) -> int:
         if self.stats:
-            # Возвращаем очки из последней статистики игрока
             return self.stats[-1].points if self.stats else 0
         return 0
 

@@ -20,6 +20,7 @@ class Match(Base):
     home_team_penalties: Mapped[Optional[int]]
     away_team_penalties: Mapped[Optional[int]]
 
+    player_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="match")
     league: Mapped["League"] = relationship(back_populates="matches")
     home_team: Mapped["Team"] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
     away_team: Mapped["Team"] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
