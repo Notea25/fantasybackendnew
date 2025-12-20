@@ -36,6 +36,7 @@ class Squad(Base):
     bench_players: Mapped[list["Player"]] = relationship(
         secondary=squad_bench_players_association, back_populates="bench_squads"
     )
+    custom_leagues = relationship("CustomLeague", secondary="custom_league_squads", back_populates="squads")
 
     def calculate_points(self):
         main_points = sum(player.points for player in self.players)

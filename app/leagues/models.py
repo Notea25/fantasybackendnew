@@ -14,6 +14,7 @@ class League(Base):
     players: Mapped[list["Player"]] = relationship(back_populates="league")
     teams: Mapped[list["Team"]] = relationship(back_populates="league")
     tours: Mapped[list["Tour"]] = relationship(back_populates="league")
+    custom_leagues = relationship("CustomLeague", back_populates="league")
 
     def __repr__(self):
         return self.name

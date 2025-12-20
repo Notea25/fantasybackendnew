@@ -1,5 +1,6 @@
 from sqladmin import ModelView
 
+from app.custom_leagues.models import CustomLeague
 from app.users.models import User
 from app.leagues.models import League
 from app.matches.models import Match
@@ -138,3 +139,25 @@ class TourAdmin(ModelView, model=Tour):
     name = "Tour"
     name_plural = "Tours"
     icon = "fa-solid fa-calendar"
+
+class CustomLeagueAdmin(ModelView, model=CustomLeague):
+    column_list = [
+        CustomLeague.id,
+        CustomLeague.name,
+        CustomLeague.description,
+        CustomLeague.league_id,
+        CustomLeague.type,
+        CustomLeague.is_public,
+        CustomLeague.invitation_only,
+    ]
+
+    column_labels = {
+        'league_id': 'League ID',
+        'type': 'Type',
+        'is_public': 'Public',
+        'invitation_only': 'Invitation Only',
+    }
+
+    name = "Custom League"
+    name_plural = "Custom Leagues"
+    icon = "fa-solid fa-flag"
