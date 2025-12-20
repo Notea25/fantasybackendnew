@@ -29,6 +29,4 @@ class Match(Base):
         back_populates="matches"
     )
     def __str__(self):
-        home_team_name = getattr(self.home_team, 'name', 'Unknown')
-        away_team_name = getattr(self.away_team, 'name', 'Unknown')
-        return f"{home_team_name} vs {away_team_name} ({self.date})"
+        return f"{self.home_team_id} vs {self.away_team_id} ({self.date})"

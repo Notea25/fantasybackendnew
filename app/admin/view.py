@@ -132,23 +132,11 @@ class TourAdmin(ModelView, model=Tour):
         Tour.id,
         Tour.number,
         Tour.league_id,
+        Tour.matches,
     ]
 
     column_labels = {
-        Tour.league_id: 'League ID',
-    }
-
-    column_formatter = {
-        Tour.matches: lambda tour, matches: ", ".join(
-            f"{match.home_team.name} vs {match.away_team.name} ({match.date})"
-            for match in matches
-        ) if matches else "No matches"
-    }
-
-    form_args = {
-        'matches': {
-            'label': 'Matches',
-        }
+        'matches': 'Matches',
     }
 
     name = "Tour"

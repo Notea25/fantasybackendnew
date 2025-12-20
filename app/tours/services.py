@@ -70,45 +70,15 @@ class TourService(BaseService):
     @classmethod
     async def find_all_with_relations(cls):
         async with async_session_maker() as session:
-            stmt = (
-                select(cls.model)
-                .options(
-                    selectinload(cls.model.matches)
-                    .joinedload(Match.home_team),
-                    selectinload(cls.model.matches)
-                    .joinedload(Match.away_team),
-                )
-            )
+            stmt = select(cls.model)
             result = await session.execute(stmt)
             tours = result.unique().scalars().all()
-
-            for tour in tours:
-                if tour.matches:
-                    tour.start_date = min(match.date for match in tour.matches)
-                    tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
-                    tour.deadline = tour.start_date - timedelta(hours=2)
-
             return tours
 
     @classmethod
     async def find_one_or_none_with_relations(cls, tour_id: int):
         async with async_session_maker() as session:
-            stmt = (
-                select(cls.model)
-                .where(cls.model.id == tour_id)
-                .options(
-                    selectinload(cls.model.matches)
-                    .joinedload(Match.home_team),
-                    selectinload(cls.model.matches)
-                    .joinedload(Match.away_team),
-                )
-            )
+            stmt = select(cls.model).where(cls.model.id == tour_id)
             result = await session.execute(stmt)
             tour = result.unique().scalars().first()
-
-            if tour and tour.matches:
-                tour.start_date = min(match.date for match in tour.matches)
-                tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
-                tour.deadline = tour.start_date - timedelta(hours=2)
-
             return tour
