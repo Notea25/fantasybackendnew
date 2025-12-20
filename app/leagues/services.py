@@ -1,10 +1,12 @@
 import logging
+from datetime import timedelta
 
 from sqlalchemy import func
 from sqlalchemy.future import select
 from app.leagues.models import League
 from app.database import async_session_maker
 from app.squads.models import Squad
+from app.tours.services import TourService
 from app.utils.external_api import external_api
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ExternalAPIErrorException, AlreadyExistsException, FailedOperationException
@@ -70,13 +72,12 @@ class LeagueService(BaseService):
 
             squads_count_query = select(func.count()).select_from(Squad).filter_by(league_id=league_id)
             squads_count_res = await session.execute(squads_count_query)
-            all_squads_quantity = squads_count_res.scalar()
+            league.all_squads_quantity = squads_count_res.scalar()
 
             user_squad_query = select(Squad).filter_by(league_id=league_id, user_id=user_id)
             user_squad_res = await session.execute(user_squad_query)
             user_squad = user_squad_res.scalar_one_or_none()
 
-            your_place = None
             if user_squad:
                 all_squads_query = (
                     select(Squad)
@@ -86,14 +87,15 @@ class LeagueService(BaseService):
                 all_squads_res = await session.execute(all_squads_query)
                 all_squads = all_squads_res.scalars().all()
 
-
-                your_place = next(
+                league.your_place = next(
                     (i + 1 for i, squad in enumerate(all_squads) if squad.id == user_squad.id),
                     None
                 )
+            else:
+                league.your_place = None
 
-            league.all_squads_quantity = all_squads_quantity
-            league.your_place = your_place
+            league.deadline = await TourService.get_deadline_for_current_tour()
+
             return league
 
     @classmethod
@@ -103,11 +105,17 @@ class LeagueService(BaseService):
             leagues_res = await session.execute(leagues_query)
             leagues = leagues_res.scalars().all()
 
+            # Получаем текущий тур и его дедлайн (если есть)
+            current_tour, _ = await TourService.get_current_and_next_tour()
+            deadline = current_tour.start_date - timedelta(hours=2) if current_tour else None
+
             for league in leagues:
+                # Количество сквадов в лиге
                 squads_count_query = select(func.count()).select_from(Squad).filter_by(league_id=league.id)
                 squads_count_res = await session.execute(squads_count_query)
                 league.all_squads_quantity = squads_count_res.scalar()
 
+                # Место пользователя в лиге
                 user_squad_query = select(Squad).filter_by(league_id=league.id, user_id=user_id)
                 user_squad_res = await session.execute(user_squad_query)
                 user_squad = user_squad_res.scalar_one_or_none()
@@ -128,4 +136,7 @@ class LeagueService(BaseService):
                 else:
                     league.your_place = None
 
+                league.deadline = deadline
+
             return leagues
+
