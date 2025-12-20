@@ -1,4 +1,6 @@
 from sqladmin import ModelView
+from sqlalchemy.orm import selectinload
+
 from app.users.models import User
 from app.leagues.models import League
 from app.matches.models import Match
@@ -6,6 +8,7 @@ from app.players.models import Player
 from app.squads.models import Squad
 from app.teams.models import Team
 from app.player_stats.models import PlayerStats
+from app.tours.models import Tour
 
 class UserAdmin(ModelView, model=User):
     column_list = [
@@ -37,13 +40,26 @@ class MatchAdmin(ModelView, model=Match):
         Match.status,
         Match.duration,
         Match.league_id,
-        Match.home_team_id,
-        Match.away_team_id,
+        Match.home_team,
+        Match.away_team,
         Match.home_team_score,
         Match.away_team_score,
-        Match.home_team_penalties,
+        Match.home_team_penalties,  # Исправлено название атрибута
         Match.away_team_penalties,
     ]
+
+    column_labels = {
+        'home_team': 'Home Team',
+        'away_team': 'Away Team',
+        'home_team_penalties': 'Home Team Penalties',
+        'away_team_penalties': 'Away Team Penalties',
+    }
+
+    def format(self, attr, value):
+        if attr in ('home_team', 'away_team') and value is not None:
+            return value.name
+        return super().format(attr, value)
+
     name = "Match"
     name_plural = "Matches"
     icon = "fa-solid fa-futbol"
@@ -109,3 +125,32 @@ class PlayerStatsAdmin(ModelView, model=PlayerStats):
     name = "Player Stats"
     name_plural = "Player Stats"
     icon = "fa-solid fa-chart-simple"
+
+
+class TourAdmin(ModelView, model=Tour):
+    column_list = [
+        Tour.id,
+        Tour.number,
+        Tour.league_id,
+    ]
+
+    column_labels = {
+        Tour.league_id: 'League ID',
+    }
+
+    column_formatter = {
+        Tour.matches: lambda tour, matches: ", ".join(
+            f"{match.home_team.name} vs {match.away_team.name} ({match.date})"
+            for match in matches
+        ) if matches else "No matches"
+    }
+
+    form_args = {
+        'matches': {
+            'label': 'Matches',
+        }
+    }
+
+    name = "Tour"
+    name_plural = "Tours"
+    icon = "fa-solid fa-calendar"

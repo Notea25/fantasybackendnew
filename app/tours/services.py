@@ -1,6 +1,8 @@
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from datetime import timedelta
+
+from app.matches.models import Match
+from app.teams.models import Team
 from app.tours.models import Tour
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -47,3 +49,66 @@ class TourService(BaseService):
             return current_tour.start_date - timedelta(hours=2)
         return None
 
+    @classmethod
+    async def find_one_by_number(cls, number: int, league_id: int):
+        async with async_session_maker() as session:
+            stmt = (
+                select(cls.model)
+                .where(cls.model.number == number, cls.model.league_id == league_id)
+                .options(selectinload(cls.model.matches))
+            )
+            result = await session.execute(stmt)
+            tour = result.unique().scalars().first()
+
+            if tour and tour.matches:
+                tour.start_date = min(match.date for match in tour.matches)
+                tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
+                tour.deadline = tour.start_date - timedelta(hours=2)
+
+            return tour
+
+    @classmethod
+    async def find_all_with_relations(cls):
+        async with async_session_maker() as session:
+            stmt = (
+                select(cls.model)
+                .options(
+                    selectinload(cls.model.matches)
+                    .joinedload(Match.home_team),
+                    selectinload(cls.model.matches)
+                    .joinedload(Match.away_team),
+                )
+            )
+            result = await session.execute(stmt)
+            tours = result.unique().scalars().all()
+
+            for tour in tours:
+                if tour.matches:
+                    tour.start_date = min(match.date for match in tour.matches)
+                    tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
+                    tour.deadline = tour.start_date - timedelta(hours=2)
+
+            return tours
+
+    @classmethod
+    async def find_one_or_none_with_relations(cls, tour_id: int):
+        async with async_session_maker() as session:
+            stmt = (
+                select(cls.model)
+                .where(cls.model.id == tour_id)
+                .options(
+                    selectinload(cls.model.matches)
+                    .joinedload(Match.home_team),
+                    selectinload(cls.model.matches)
+                    .joinedload(Match.away_team),
+                )
+            )
+            result = await session.execute(stmt)
+            tour = result.unique().scalars().first()
+
+            if tour and tour.matches:
+                tour.start_date = min(match.date for match in tour.matches)
+                tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
+                tour.deadline = tour.start_date - timedelta(hours=2)
+
+            return tour

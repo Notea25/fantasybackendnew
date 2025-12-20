@@ -18,3 +18,11 @@ async def get_tour(tour_id: int, user: User = Depends(get_current_user)) -> Tour
 async def list_tours(user: User = Depends(get_current_user)) -> list[TourRead]:
     tours = await TourService.find_all_with_relations()
     return tours
+
+@router.get("/get_tour_by_number/{league_id}/{number}", response_model=TourRead)
+async def get_tour_by_number(league_id: int, number: int, user: User = Depends(get_current_user)) -> TourRead:
+    tour = await TourService.find_one_by_number(number=number, league_id=league_id)
+    if not tour:
+        raise ResourceNotFoundException()
+    return tour
+
