@@ -30,4 +30,4 @@ class Match(Base):
         back_populates="matches"
     )
     def __str__(self):
-        return f"{self.home_team_id} vs {self.away_team_id} ({self.date})"
+        return f"{self.home_team_id} vs {self.away_team_id} ({self.date.strftime('%d-%m-%Y %H:%M')})"

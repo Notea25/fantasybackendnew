@@ -39,7 +39,7 @@ class PlayerMatchStatsService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            match = result.scalars().first()
+            match = result.unique().scalars().first()  # Добавили вызов unique()
 
             if not match:
                 logger.error(f"Match with id {match_id} not found")
