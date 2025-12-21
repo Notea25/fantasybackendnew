@@ -1,6 +1,7 @@
-from sqlalchemy import Column, ForeignKey, Table, Integer
+from sqlalchemy import Column, ForeignKey, Table, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.custom_leagues.models import custom_league_squads
 
 squad_players_association = Table(
     "squad_players_association",
@@ -20,6 +21,10 @@ squad_bench_players_association = Table(
 
 class Squad(Base):
     __tablename__ = "squads"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'league_id', name='unique_squad_per_league_per_user'),
+    )
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -28,6 +33,7 @@ class Squad(Base):
     replacements: Mapped[int] = mapped_column(default=3)
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
+
     user: Mapped["User"] = relationship(back_populates="squads")
     league: Mapped["League"] = relationship(back_populates="squads")
     players: Mapped[list["Player"]] = relationship(
@@ -36,7 +42,9 @@ class Squad(Base):
     bench_players: Mapped[list["Player"]] = relationship(
         secondary=squad_bench_players_association, back_populates="bench_squads"
     )
-    custom_leagues = relationship("CustomLeague", secondary="custom_league_squads", back_populates="squads")
+    custom_leagues: Mapped[list["CustomLeague"]] = relationship(
+        secondary=custom_league_squads, back_populates="squads"
+    )
 
     def calculate_points(self):
         main_points = sum(player.points for player in self.players)

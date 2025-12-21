@@ -1,29 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
 from enum import Enum as PyEnum
-
-class CustomLeagueType(PyEnum):
-    COMMERCIAL = "Commercial"
-    USER = "User"
-    CLUB = "Club"
-
-class CustomLeague(Base):
-    __tablename__ = "custom_leagues"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    description = Column(String, nullable=True)
-    league_id = Column(Integer, ForeignKey("leagues.id"))
-    type = Column(Enum(CustomLeagueType))
-    is_public = Column(Boolean, default=False)
-    invitation_only = Column(Boolean, default=False)
-
-    league = relationship("League", back_populates="custom_leagues")
-    tours = relationship("Tour", secondary="custom_league_tours", back_populates="custom_leagues")
-    squads = relationship("Squad", secondary="custom_league_squads", back_populates="custom_leagues")
-
-    def __repr__(self):
-        return f"{self.name} ({self.type.value})"
 
 # Ассоциативные таблицы
 custom_league_tours = Table(
@@ -39,3 +17,27 @@ custom_league_squads = Table(
     Column("custom_league_id", Integer, ForeignKey("custom_leagues.id"), primary_key=True),
     Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
 )
+
+class CustomLeagueType(PyEnum):
+    COMMERCIAL = "Commercial"
+    USER = "User"
+    CLUB = "Club"
+
+class CustomLeague(Base):
+    __tablename__ = "custom_leagues"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    description: Mapped[str] = mapped_column(nullable=True)
+    league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
+    type: Mapped[CustomLeagueType]
+    is_public: Mapped[bool] = mapped_column(default=False)
+    invitation_only: Mapped[bool] = mapped_column(default=False)
+    creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    league: Mapped["League"] = relationship(back_populates="custom_leagues")
+    creator: Mapped["User"] = relationship(back_populates="custom_leagues")
+    tours: Mapped[list["Tour"]] = relationship(secondary=custom_league_tours, back_populates="custom_leagues")
+    squads: Mapped[list["Squad"]] = relationship(secondary=custom_league_squads, back_populates="custom_leagues")
+
+    def __repr__(self):
+        return f"{self.name} ({self.type.value})"

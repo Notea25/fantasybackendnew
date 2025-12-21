@@ -20,6 +20,7 @@ from app.player_match_stats.models import PlayerMatchStats
 from app.squads.models import Squad
 from app.users.models import User
 from app.tours.models import Tour
+from app.custom_leagues.models import CustomLeague
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

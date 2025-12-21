@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin
 
 from app.database import engine
-from app.admin.view import UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin, SquadAdmin, TeamAdmin, PlayerMatchStatsAdmin, \
-    TourAdmin
+from app.admin.view import UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin, SquadAdmin, TeamAdmin, \
+    PlayerMatchStatsAdmin, \
+    TourAdmin, CustomLeagueAdmin
 
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
@@ -18,6 +19,7 @@ from app.squads.router import router as squads_router
 from app.users.router import router as users_router
 from app.utils.router import router as utils_router
 from app.tours.router import router as tours_router
+from app.custom_leagues.router import router as custom_leagues_router
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -44,6 +46,7 @@ app.include_router(matches_router)
 app.include_router(players_router)
 app.include_router(player_stats_router)
 app.include_router(squads_router)
+app.include_router(custom_leagues_router)
 
 
 admin = Admin(app, engine)
@@ -55,3 +58,4 @@ admin.add_view(SquadAdmin)
 admin.add_view(TeamAdmin)
 admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)
+admin.add_view(CustomLeagueAdmin)

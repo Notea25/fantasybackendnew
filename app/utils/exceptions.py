@@ -56,3 +56,10 @@ class UsernameGenerationFailedException(BaseAppException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     detail = "Failed to generate unique username"
 
+class ForbiddenException(BaseAppException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = "Forbidden"
+
+class CustomLeagueException(BaseAppException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = "User can create only one USER custom league"
