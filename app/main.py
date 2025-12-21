@@ -8,7 +8,7 @@ from sqladmin import Admin
 from app.database import engine
 from app.admin.view import UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin, SquadAdmin, TeamAdmin, \
     PlayerMatchStatsAdmin, \
-    TourAdmin, CustomLeagueAdmin
+    TourAdmin, CustomLeagueAdmin, SquadTourAdmin, BoostAdmin
 
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
@@ -55,6 +55,8 @@ admin.add_view(LeagueAdmin)
 admin.add_view(MatchAdmin)
 admin.add_view(PlayerAdmin)
 admin.add_view(SquadAdmin)
+admin.add_view(SquadTourAdmin)
+admin.add_view(BoostAdmin)
 admin.add_view(TeamAdmin)
 admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)

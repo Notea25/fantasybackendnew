@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate
+from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate, BoostType, AvailableBoostsSchema
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
 from app.users.models import User
@@ -8,12 +8,17 @@ from app.utils.exceptions import ResourceNotFoundException, FailedOperationExcep
 router = APIRouter(prefix="/squads", tags=["Squads"])
 
 @router.post("/create")
-async def create_squad(squad_data: SquadCreate, user: User = Depends(get_current_user)) -> SquadRead:
-    squad = await SquadService.create_squad(name=squad_data.name, user_id=user.id, league_id=squad_data.league_id,
-                                            fav_team_id=squad_data.fav_team_id)
-
-    squad = await SquadService.find_one_or_none_with_relations(id=squad.id)
-    return squad
+async def create_squad(
+    squad_data: SquadCreate,
+    user: User = Depends(get_current_user)
+) -> SquadRead:
+    squad = await SquadService.create_squad(
+        name=squad_data.name,
+        user_id=user.id,
+        league_id=squad_data.league_id,
+        fav_team_id=squad_data.fav_team_id
+    )
+    return await SquadService.find_one_or_none_with_relations(id=squad.id)
 
 @router.get("/list_squads")
 async def list_squads() -> list[SquadRead]:
@@ -34,7 +39,10 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Sq
 
 @router.put("/update_players/{squad_id}")
 async def update_squad_players(
-    squad_id: int, players_data: UpdateSquadPlayersSchema,  user: User = Depends(get_current_user)):
+    squad_id: int,
+    players_data: UpdateSquadPlayersSchema,
+    user: User = Depends(get_current_user)
+):
     try:
         squad = await SquadService.update_squad_players(
             squad_id=squad_id,
@@ -44,3 +52,40 @@ async def update_squad_players(
         return {"status": "success", "message": "Squad players updated", "squad": squad}
     except Exception as e:
         raise FailedOperationException(msg=str(e))
+
+@router.post("/{squad_id}/apply_boost")
+async def apply_boost(
+    squad_id: int,
+    boost_type: BoostType,
+    user: User = Depends(get_current_user)
+):
+    squad = await SquadService.apply_boost(squad_id, boost_type)
+    return {"status": "success", "message": "Boost applied", "available_boosts": squad.available_boosts}
+
+@router.get("/{squad_id}/boosts")
+async def get_available_boosts(
+    squad_id: int,
+    user: User = Depends(get_current_user)
+) -> AvailableBoostsSchema:
+    return await SquadService.get_available_boosts(squad_id)
+
+@router.get("/{squad_id}/history")
+async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)):
+    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
+    if not squad:
+        raise ResourceNotFoundException()
+    return squad.tour_history
+
+@router.post("/{squad_id}/apply_boost/{tour_id}")
+async def apply_boost_to_squad(
+        squad_id: int,
+        tour_id: int,
+        boost_type: BoostType,
+        user: User = Depends(get_current_user)
+):
+    squad = await SquadService.apply_boost_to_squad(squad_id, boost_type, tour_id)
+    return {
+        "status": "success",
+        "message": "Boost applied",
+        "available_boosts": squad.available_boosts
+}

@@ -6,7 +6,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
-    is_admin: Mapped[bool] = mapped_column(default=False)
+    # is_admin: Mapped[bool] = mapped_column(default=False)
     photo_url: Mapped[Optional[str]] = mapped_column(nullable=True)
     emblem_url: Mapped[Optional[str]] = mapped_column(nullable=True)
 

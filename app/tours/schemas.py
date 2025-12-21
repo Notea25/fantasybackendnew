@@ -1,6 +1,15 @@
 from pydantic import BaseModel, ConfigDict, field_serializer
 from datetime import datetime
 
+
+class TourBase(BaseModel):
+    number: int
+    league_id: int
+    start_date: datetime
+    end_date: datetime
+    deadline: datetime
+
+
 class TourRead(BaseModel):
     id: int
     name: str

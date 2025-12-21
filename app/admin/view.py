@@ -86,13 +86,69 @@ class SquadAdmin(ModelView, model=Squad):
         Squad.id,
         Squad.name,
         Squad.user_id,
+        Squad.fav_team_id,
         Squad.budget,
         Squad.replacements,
         Squad.league_id,
+        Squad.points,
+        Squad.available_boosts,
+        Squad.current_tour_id,
     ]
+
+    column_labels = {
+        'user_id': 'User ID',
+        'fav_team_id': 'Favorite Team ID',
+        'league_id': 'League ID',
+        'current_tour_id': 'Current Tour ID',
+    }
+
+    column_details_exclude_list = [
+        'current_main_players',
+        'current_bench_players',
+        'tour_history',
+        'used_boosts'
+    ]
+
     name = "Squad"
     name_plural = "Squads"
     icon = "fa-solid fa-people-group"
+
+class SquadTourAdmin(ModelView, model=SquadTour):
+    column_list = [
+        SquadTour.id,
+        SquadTour.squad_id,
+        SquadTour.tour_id,
+        SquadTour.is_current,
+        SquadTour.used_boost,
+        SquadTour.points,
+    ]
+
+    column_labels = {
+        'squad_id': 'Squad ID',
+        'tour_id': 'Tour ID',
+    }
+
+    name = "Squad Tour"
+    name_plural = "Squad Tours"
+    icon = "fa-solid fa-calendar"
+
+class BoostAdmin(ModelView, model=Boost):
+    column_list = [
+        Boost.id,
+        Boost.squad_id,
+        Boost.tour_id,
+        Boost.type,
+        Boost.used_at,
+    ]
+
+    column_labels = {
+        'squad_id': 'Squad ID',
+        'tour_id': 'Tour ID',
+    }
+
+    name = "Boost"
+    name_plural = "Boosts"
+    icon = "fa-solid fa-bolt"
 
 class TeamAdmin(ModelView, model=Team):
     column_list = [
