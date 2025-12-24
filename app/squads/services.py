@@ -1,14 +1,11 @@
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
-from sqlalchemy import delete, and_, or_
+from sqlalchemy import delete
 from datetime import datetime
 
 from app.players.models import Player
-from app.squads.models import (
-    Squad, squad_players_association, squad_bench_players_association,
-    SquadTour, Boost, BoostType
-)
+from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
 from app.tours.models import Tour
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -148,64 +145,6 @@ class SquadService(BaseService):
             return squad
 
     @classmethod
-    async def apply_boost(cls, squad_id: int, boost_type: BoostType):
-        async with async_session_maker() as session:
-            squad = await cls._get_squad_with_tour(squad_id)
-
-            # Проверка доступности бустов
-            if squad.available_boosts <= 0:
-                raise FailedOperationException("No boosts available")
-
-            # Проверка, что буст не использован в этом туре
-            if await cls._is_boost_used_in_tour(squad_id, squad.current_tour_id):
-                raise FailedOperationException("Boost already used in this tour")
-
-            # Создание записи о бусте
-            boost = Boost(
-                squad_id=squad_id,
-                tour_id=squad.current_tour_id,
-                type=boost_type
-            )
-            session.add(boost)
-
-            # Обновление SquadTour
-            stmt = select(SquadTour).where(
-                SquadTour.squad_id == squad_id,
-                SquadTour.tour_id == squad.current_tour_id
-            )
-            result = await session.execute(stmt)
-            squad_tour = result.scalars().first()
-
-            if squad_tour:
-                squad_tour.used_boost = boost_type
-
-            squad.available_boosts -= 1
-            await session.commit()
-            return squad
-
-    @classmethod
-    async def get_available_boosts(cls, squad_id: int):
-        """Возвращает информацию о доступных бустах"""
-        squad = await cls._get_squad_with_tour(squad_id)
-
-        used_in_tour = await cls._is_boost_used_in_tour(squad_id, squad.current_tour_id)
-
-        boosts_info = [
-            {
-                "type": boost.value,
-                "description": cls._get_boost_description(boost),
-                "available": squad.available_boosts > 0 and not used_in_tour
-            }
-            for boost in BoostType
-        ]
-
-        return {
-            "available_boosts": squad.available_boosts,
-            "used_in_current_tour": used_in_tour,
-            "boosts": boosts_info
-        }
-
-    @classmethod
     async def find_all_with_relations(cls):
         async with async_session_maker() as session:
             stmt = (
@@ -259,37 +198,6 @@ class SquadService(BaseService):
             return squad
 
     @classmethod
-    async def _get_squad_with_tour(cls, squad_id: int):
-        async with async_session_maker() as session:
-            stmt = (
-                select(cls.model)
-                .where(cls.model.id == squad_id)
-                .options(
-                    joinedload(cls.model.current_tour),
-                    joinedload(cls.model.used_boosts),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.tour),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.main_players),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.bench_players),
-                )
-            )
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-            if not squad:
-                raise ResourceNotFoundException("Squad not found")
-            return squad
-
-    @classmethod
-    async def _is_boost_used_in_tour(cls, squad_id: int, tour_id: int) -> bool:
-        """Проверяет, использован ли буст в текущем туре"""
-        async with async_session_maker() as session:
-            stmt = select(Boost).where(
-                Boost.squad_id == squad_id,
-                Boost.tour_id == tour_id
-            )
-            result = await session.execute(stmt)
-            return result.scalars().first() is not None
-
-    @classmethod
     async def _save_current_squad(cls, squad_id: int):
         """Сохраняет текущий состав для текущего тура"""
         async with async_session_maker() as session:
@@ -319,18 +227,6 @@ class SquadService(BaseService):
                 squad_tour.bench_players = squad.current_bench_players
                 squad_tour.points = squad.calculate_points()
                 await session.commit()
-
-    @classmethod
-    def _get_boost_description(cls, boost_type: BoostType) -> str:
-        """Возвращает описание буста"""
-        descriptions = {
-            BoostType.BENCH_BOOST: "Удваивает очки запасных игроков",
-            BoostType.TRIPLE_CAPTAIN: "Троит очки капитана",
-            BoostType.TRANSFERS_PLUS: "Дополнительные трансферы",
-            BoostType.GOLD_TOUR: "Бонусные очки за тур",
-            BoostType.DOUBLE_BET: "Удваивает ставку"
-        }
-        return descriptions.get(boost_type, "")
 
     @classmethod
     async def get_squad_history(cls, squad_id: int) -> list[SquadTour]:
@@ -425,76 +321,3 @@ class SquadService(BaseService):
                 }
                 for i, tour in enumerate(tours)
             ]
-
-@classmethod
-async def get_squad_boosts(cls, squad_id: int):
-    """Возвращает информацию о бустах сквада"""
-    async with async_session_maker() as session:
-        stmt = (
-            select(cls.model)
-            .where(cls.model.id == squad_id)
-            .options(joinedload(cls.model.used_boosts))
-        )
-        result = await session.execute(stmt)
-        squad = result.scalars().first()
-
-        if not squad:
-            raise ResourceNotFoundException("Squad not found")
-
-        return {
-            "available_boosts": squad.available_boosts,
-            "used_boosts": [
-                {
-                    "type": boost.type.value,
-                    "tour_id": boost.tour_id,
-                    "used_at": boost.used_at
-                }
-                for boost in squad.used_boosts
-            ]
-        }
-
-@classmethod
-async def apply_boost_to_squad(cls, squad_id: int, boost_type: BoostType, tour_id: int):
-    """Применяет буст к скваду для определенного тура"""
-    async with async_session_maker() as session:
-        squad = await cls._get_squad_with_tour(squad_id)
-
-        if squad.available_boosts <= 0:
-            raise FailedOperationException("No boosts available")
-
-        # Проверяем, что буст не использован в этом туре
-        existing_boost = await session.execute(
-            select(Boost).where(
-                Boost.squad_id == squad_id,
-                Boost.tour_id == tour_id
-            )
-        )
-
-        if existing_boost.scalars().first():
-            raise FailedOperationException("Boost already used in this tour")
-
-        # Создаем новый буст
-        boost = Boost(
-            squad_id=squad_id,
-            tour_id=tour_id,
-            type=boost_type,
-            used_at=datetime.now()
-        )
-        session.add(boost)
-
-        # Обновляем SquadTour
-        stmt = select(SquadTour).where(
-            SquadTour.squad_id == squad_id,
-            SquadTour.tour_id == tour_id
-        )
-        result = await session.execute(stmt)
-        squad_tour = result.scalars().first()
-
-        if squad_tour:
-            squad_tour.used_boost = boost_type
-
-        squad.available_boosts -= 1
-        await session.commit()
-        return squad
-
-

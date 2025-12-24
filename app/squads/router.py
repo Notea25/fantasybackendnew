@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate, BoostType, AvailableBoostsSchema
+from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
 from app.users.models import User
@@ -53,22 +53,6 @@ async def update_squad_players(
     except Exception as e:
         raise FailedOperationException(msg=str(e))
 
-@router.post("/{squad_id}/apply_boost")
-async def apply_boost(
-    squad_id: int,
-    boost_type: BoostType,
-    user: User = Depends(get_current_user)
-):
-    squad = await SquadService.apply_boost(squad_id, boost_type)
-    return {"status": "success", "message": "Boost applied", "available_boosts": squad.available_boosts}
-
-@router.get("/{squad_id}/boosts")
-async def get_available_boosts(
-    squad_id: int,
-    user: User = Depends(get_current_user)
-) -> AvailableBoostsSchema:
-    return await SquadService.get_available_boosts(squad_id)
-
 @router.get("/{squad_id}/history")
 async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)):
     squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
@@ -76,16 +60,6 @@ async def get_squad_history(squad_id: int, user: User = Depends(get_current_user
         raise ResourceNotFoundException()
     return squad.tour_history
 
-@router.post("/{squad_id}/apply_boost/{tour_id}")
-async def apply_boost_to_squad(
-        squad_id: int,
-        tour_id: int,
-        boost_type: BoostType,
-        user: User = Depends(get_current_user)
-):
-    squad = await SquadService.apply_boost_to_squad(squad_id, boost_type, tour_id)
-    return {
-        "status": "success",
-        "message": "Boost applied",
-        "available_boosts": squad.available_boosts
-}
+@router.get("/leaderboard/{tour_id}")
+async def get_leaderboard(tour_id: int):
+    return await SquadService.get_leaderboard(tour_id)

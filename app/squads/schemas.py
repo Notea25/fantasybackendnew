@@ -1,13 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
 from enum import Enum
-
-class BoostType(str, Enum):
-    BENCH_BOOST = "bench_boost"
-    TRIPLE_CAPTAIN = "triple_captain"
-    TRANSFERS_PLUS = "transfers_plus"
-    GOLD_TOUR = "gold_tour"
-    DOUBLE_BET = "double_bet"
 
 class PlayerInSquadSchema(BaseModel):
     id: int
@@ -42,7 +36,7 @@ class SquadTourSchema(BaseModel):
     id: int
     tour_id: int
     is_current: bool
-    used_boost: Optional[BoostType] = None
+    used_boost: Optional[str] = None
     points: int
     main_players: list[PlayerInSquadSchema] = []
     bench_players: list[PlayerInSquadSchema] = []
@@ -50,7 +44,6 @@ class SquadTourSchema(BaseModel):
 
 class SquadWithHistorySchema(SquadRead):
     tour_history: list[SquadTourSchema] = []
-    used_boosts: list[BoostType] = []
 
 class SquadCreate(BaseModel):
     name: str
@@ -60,18 +53,3 @@ class SquadCreate(BaseModel):
 class UpdateSquadPlayersSchema(BaseModel):
     main_player_ids: list[int]
     bench_player_ids: list[int]
-
-class BoostInfoSchema(BaseModel):
-    type: BoostType
-    description: str
-    available: bool
-
-class AvailableBoostsSchema(BaseModel):
-    available_boosts: int
-    used_in_current_tour: bool
-    boosts: list[BoostInfoSchema]
-
-class SquadWithBoostsSchema(SquadRead):
-    used_boosts: list[dict] = []
-    available_boosts: int
-    tour_history: list[SquadTourSchema] = []
