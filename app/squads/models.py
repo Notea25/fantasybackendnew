@@ -1,8 +1,11 @@
+from typing import Optional
+
 from sqlalchemy import Column, ForeignKey, Table, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-from app.boosts.models import Boost
+from app.boosts.models import Boost, BoostType
 from app.tours.models import Tour
+from app.utils.exceptions import FailedOperationException
 
 # Ассоциативные таблицы для текущих составов
 squad_players_association = Table(
@@ -67,10 +70,42 @@ class Squad(Base):
     tour_history: Mapped[list["SquadTour"]] = relationship(back_populates="squad")
     used_boosts: Mapped[list["Boost"]] = relationship(back_populates="squad")
 
-    def calculate_points(self):
-        main_points = sum(player.points for player in self.current_main_players)
-        bench_points = sum(player.points for player in self.current_bench_players) / 2
-        return int(main_points + bench_points)
+    def calculate_players_cost(self):
+        """Рассчитывает общую стоимость игроков в скваде"""
+        return sum(p.market_value for p in self.current_main_players) + \
+            sum(p.market_value for p in self.current_bench_players)
+
+    def validate_players(self, main_players, bench_players):
+        """Валидация игроков по всем правилам"""
+        # Проверка количества игроков
+        if len(main_players) != 11:
+            raise ValueError("Main squad must have exactly 11 players")
+        if len(bench_players) != 4:
+            raise ValueError("Bench must have exactly 4 players")
+
+        # Проверка бюджета
+        total_cost = sum(p.market_value for p in main_players + bench_players)
+        if total_cost > self.budget:
+            raise ValueError("Total players cost exceeds squad budget")
+
+        # Проверка лиги
+        for player in main_players + bench_players:
+            if player.league_id != self.league_id:
+                raise ValueError("All players must be from the same league")
+
+        # Проверка количества игроков от одного клуба
+        club_counts = {}
+        for player in main_players + bench_players:
+            club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
+            if club_counts[player.team_id] > 3:
+                raise ValueError("Cannot have more than 3 players from the same club")
+
+    def count_different_players(self, new_main_ids, new_bench_ids):
+        """Считает количество отличающихся игроков"""
+        current_main_ids = {p.id for p in self.current_main_players}
+        current_bench_ids = {p.id for p in self.current_bench_players}
+        return len(current_main_ids - set(new_main_ids)) + \
+               len(current_bench_ids - set(new_bench_ids))
 
     def __repr__(self):
         return f"{self.name} (User: {self.user_id})"

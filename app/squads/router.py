@@ -63,3 +63,37 @@ async def get_squad_history(squad_id: int, user: User = Depends(get_current_user
 @router.get("/leaderboard/{tour_id}")
 async def get_leaderboard(tour_id: int):
     return await SquadService.get_leaderboard(tour_id)
+
+@router.post("/{squad_id}/replace_players")
+async def replace_players(
+    squad_id: int,
+    players_data: UpdateSquadPlayersSchema,
+    user: User = Depends(get_current_user)
+):
+    """
+    Заменяет игроков в скваде с учетом ограничений на количество замен и бюджет
+    """
+    try:
+        squad = await SquadService.replace_players(
+            squad_id=squad_id,
+            new_main_players=players_data.main_player_ids,
+            new_bench_players=players_data.bench_player_ids
+        )
+        return {
+            "status": "success",
+            "message": "Players replaced successfully",
+            "remaining_replacements": squad.replacements,
+            "squad": squad
+        }
+    except FailedOperationException as e:
+        raise e
+
+@router.get("/{squad_id}/replacement_info")
+async def get_replacement_info(
+    squad_id: int,
+    user: User = Depends(get_current_user)
+):
+    """
+    Возвращает информацию о доступных заменах и бюджете
+    """
+    return await SquadService.get_replacement_info(squad_id)

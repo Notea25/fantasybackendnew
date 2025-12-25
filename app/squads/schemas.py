@@ -53,3 +53,12 @@ class SquadCreate(BaseModel):
 class UpdateSquadPlayersSchema(BaseModel):
     main_player_ids: list[int]
     bench_player_ids: list[int]
+
+
+class ReplacementInfo(BaseModel):
+    available_replacements: int
+    budget: int
+    current_players_cost: int
+
+    class Config:
+        from_attributes = True

@@ -321,3 +321,128 @@ class SquadService(BaseService):
                 }
                 for i, tour in enumerate(tours)
             ]
+
+    @classmethod
+    async def replace_players(cls, squad_id: int, new_main_players: list[int], new_bench_players: list[int]):
+        """
+        Заменяет игроков в скваде с учетом ограничений на количество замен и бюджет
+        """
+        async with async_session_maker() as session:
+            # Получаем текущий сквад с игроками
+            stmt = (
+                select(cls.model)
+                .where(cls.model.id == squad_id)
+                .options(
+                    selectinload(cls.model.current_main_players),
+                    selectinload(cls.model.current_bench_players),
+                    selectinload(cls.model.league)
+                )
+            )
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Получаем текущих игроков
+            current_main_ids = {p.id for p in squad.current_main_players}
+            current_bench_ids = {p.id for p in squad.current_bench_players}
+
+            # Преобразуем новые списки в множества для сравнения
+            new_main_set = set(new_main_players)
+            new_bench_set = set(new_bench_players)
+
+            # Находим отличающихся игроков
+            main_diff = len(current_main_ids - new_main_set)
+            bench_diff = len(current_bench_ids - new_bench_set)
+
+            # Проверяем количество замен
+            if (main_diff + bench_diff) > squad.replacements:
+                raise FailedOperationException(
+                    f"Not enough replacements. Available: {squad.replacements}, "
+                    f"Required: {main_diff + bench_diff}"
+                )
+
+            # Получаем всех игроков для проверки бюджета и лиги
+            all_player_ids = new_main_players + new_bench_players
+            stmt = select(Player).where(Player.id.in_(all_player_ids))
+            result = await session.execute(stmt)
+            new_players = result.scalars().all()
+            player_by_id = {p.id: p for p in new_players}
+
+            # Проверяем, что все игроки из одной лиги
+            league_ids = {p.league_id for p in new_players}
+            if len(league_ids) > 1 or league_ids.pop() != squad.league_id:
+                raise FailedOperationException("All players must be from the same league")
+
+            # Проверяем бюджет
+            total_cost = sum(p.market_value for p in new_players)
+            if total_cost > squad.budget:
+                raise FailedOperationException("Total players cost exceeds squad budget")
+
+            # Проверяем количество игроков от одного клуба (не более 3)
+            club_counts = {}
+            for player_id in all_player_ids:
+                player = player_by_id[player_id]
+                club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
+                if club_counts[player.team_id] > 3:
+                    raise FailedOperationException("Cannot have more than 3 players from the same club")
+
+            # Проверяем количество игроков в командах
+            if len(new_main_players) > 11:
+                raise FailedOperationException("Main squad cannot have more than 11 players")
+            if len(new_bench_players) > 4:
+                raise FailedOperationException("Bench cannot have more than 4 players")
+
+            # Очищаем текущие составы
+            await session.execute(
+                delete(squad_players_association)
+                .where(squad_players_association.c.squad_id == squad_id)
+            )
+            await session.execute(
+                delete(squad_bench_players_association)
+                .where(squad_bench_players_association.c.squad_id == squad_id)
+            )
+
+            # Добавляем новых игроков
+            for player_id in new_main_players:
+                stmt = squad_players_association.insert().values(
+                    squad_id=squad_id, player_id=player_id
+                )
+                await session.execute(stmt)
+
+            for player_id in new_bench_players:
+                stmt = squad_bench_players_association.insert().values(
+                    squad_id=squad_id, player_id=player_id
+                )
+                await session.execute(stmt)
+
+            # Обновляем количество доступных замен
+            squad.replacements -= (main_diff + bench_diff)
+
+            # Обновляем очки сквада
+            squad.points = squad.calculate_points()
+
+            await session.commit()
+            await session.refresh(squad)
+            return squad
+
+    @classmethod
+    async def get_replacement_info(cls, squad_id: int) -> dict:
+        """
+        Возвращает информацию о доступных заменах и бюджете
+        """
+        async with async_session_maker() as session:
+            stmt = select(cls.model).where(cls.model.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            return {
+                "available_replacements": squad.replacements,
+                "budget": squad.budget,
+                "current_players_cost": sum(p.market_value for p in squad.current_main_players) +
+                                      sum(p.market_value for p in squad.current_bench_players)
+            }
