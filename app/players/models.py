@@ -55,3 +55,6 @@ class Player(Base):
         secondary=player_bench_squad_tours,
         back_populates="bench_players"
     )
+
+    def __str__(self):
+        return self.name

@@ -11,3 +11,6 @@ class User(Base):
 
     squads: Mapped[list["Squad"]] = relationship(back_populates="user")
     custom_leagues: Mapped[list["CustomLeague"]] = relationship(back_populates="creator")
+
+    def __repr__(self):
+        return f"User {self.username}"

@@ -18,6 +18,7 @@ class UserAdmin(ModelView, model=User):
         User.photo_url,
         User.emblem_url,
     ]
+    column_searchable_list = ["username"]
     can_delete = False
     name = "User"
     name_plural = "Users"
@@ -30,6 +31,7 @@ class LeagueAdmin(ModelView, model=League):
         League.logo,
         League.sport,
     ]
+    column_searchable_list = ["name"]
     name = "League"
     name_plural = "Leagues"
     icon = "fa-solid fa-trophy"
@@ -45,16 +47,17 @@ class MatchAdmin(ModelView, model=Match):
         Match.away_team,
         Match.home_team_score,
         Match.away_team_score,
-        Match.home_team_penalties,  # Исправлено название атрибута
+        Match.home_team_penalties,
         Match.away_team_penalties,
     ]
-
+    column_searchable_list = ["home_team", "away_team"]
     column_labels = {
         'home_team': 'Home Team',
         'away_team': 'Away Team',
         'home_team_penalties': 'Home Team Penalties',
         'away_team_penalties': 'Away Team Penalties',
     }
+    page_size = 20
 
     def format(self, attr, value):
         if attr in ('home_team', 'away_team') and value is not None:
@@ -78,6 +81,17 @@ class PlayerAdmin(ModelView, model=Player):
         Player.sport,
         Player.league_id,
     ]
+    column_searchable_list = ["name", "position"]
+    column_descriptions = {
+        'market_value': 'Рыночная стоимость игрока',
+        'position': 'Позиция на поле (например, "нападающий")',
+    }
+
+    def format(self, attr, value):
+        if attr == 'team_id' and value is not None:
+            return value.name
+        return super().format(attr, value)
+
     name = "Player"
     name_plural = "Players"
     icon = "fa-solid fa-person-running"
@@ -96,19 +110,42 @@ class SquadAdmin(ModelView, model=Squad):
         Squad.current_tour_id,
     ]
 
-    column_labels = {
-        'user_id': 'User ID',
-        'fav_team_id': 'Favorite Team ID',
-        'league_id': 'League ID',
-        'current_tour_id': 'Current Tour ID',
-    }
+    form_columns = [
+        Squad.name,
+        Squad.user_id,
+        Squad.fav_team_id,  # Явно добавляем в форму
+        Squad.budget,
+        Squad.replacements,
+        Squad.league_id,
+        Squad.points,
+        Squad.available_boosts,
+        Squad.current_tour_id,
+    ]
 
+    column_searchable_list = ["name"]
+    column_labels = {
+        'user_id': 'User',
+        'fav_team_id': 'Favorite Team',
+        'league_id': 'League',
+        'current_tour_id': 'Current Tour',
+    }
     column_details_exclude_list = [
         'current_main_players',
         'current_bench_players',
         'tour_history',
         'used_boosts'
     ]
+
+    def format(self, attr, value):
+        if attr == 'user_id' and value is not None:
+            return value.username
+        if attr == 'fav_team_id' and value is not None:
+            return value.name
+        if attr == 'league_id' and value is not None:
+            return value.name
+        if attr == 'current_tour_id' and value is not None:
+            return f"Tour {value.number}"
+        return super().format(attr, value)
 
     name = "Squad"
     name_plural = "Squads"
@@ -122,12 +159,19 @@ class SquadTourAdmin(ModelView, model=SquadTour):
         SquadTour.is_current,
         SquadTour.used_boost,
         SquadTour.points,
+        SquadTour.points,
     ]
-
     column_labels = {
-        'squad_id': 'Squad ID',
-        'tour_id': 'Tour ID',
+        'squad_id': 'Squad',
+        'tour_id': 'Tour',
     }
+
+    def format(self, attr, value):
+        if attr == 'squad_id' and value is not None:
+            return value.name
+        if attr == 'tour_id' and value is not None:
+            return f"Tour {value.number}"
+        return super().format(attr, value)
 
     name = "Squad Tour"
     name_plural = "Squad Tours"
@@ -141,11 +185,21 @@ class BoostAdmin(ModelView, model=Boost):
         Boost.type,
         Boost.used_at,
     ]
-
     column_labels = {
-        'squad_id': 'Squad ID',
-        'tour_id': 'Tour ID',
+        'squad_id': 'Squad',
+        'tour_id': 'Tour',
     }
+    column_descriptions = {
+        'type': 'Тип буста (например, "double_points")',
+        'used_at': 'Дата и время применения буста',
+    }
+
+    def format(self, attr, value):
+        if attr == 'squad_id' and value is not None:
+            return value.name
+        if attr == 'tour_id' and value is not None:
+            return f"Tour {value.number}"
+        return super().format(attr, value)
 
     name = "Boost"
     name_plural = "Boosts"
@@ -157,6 +211,13 @@ class TeamAdmin(ModelView, model=Team):
         Team.name,
         Team.league_id,
     ]
+    column_searchable_list = ["name"]
+
+    def format(self, attr, value):
+        if attr == 'league_id' and value is not None:
+            return value.name
+        return super().format(attr, value)
+
     name = "Team"
     name_plural = "Teams"
     icon = "fa-solid fa-people-line"
@@ -176,22 +237,38 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
         PlayerMatchStats.minutes_played,
         PlayerMatchStats.points,
     ]
+    column_searchable_list = ["player_id"]
+
+    def format(self, attr, value):
+        if attr == 'player_id' and value is not None:
+            return value.name
+        if attr == 'team_id' and value is not None:
+            return value.name
+        if attr == 'league_id' and value is not None:
+            return value.name
+        if attr == 'match_id' and value is not None:
+            return f"Match {value.id}"
+        return super().format(attr, value)
+
     name = "Player Match Stats"
     name_plural = "Player Match Stats"
     icon = "fa-solid fa-chart-simple"
-
 
 class TourAdmin(ModelView, model=Tour):
     column_list = [
         Tour.id,
         Tour.number,
         Tour.league_id,
-        Tour.matches,
     ]
-
+    column_searchable_list = ["number"]
     column_labels = {
         'matches': 'Matches',
     }
+
+    def format(self, attr, value):
+        if attr == 'league_id' and value is not None:
+            return value.name
+        return super().format(attr, value)
 
     name = "Tour"
     name_plural = "Tours"
@@ -207,13 +284,18 @@ class CustomLeagueAdmin(ModelView, model=CustomLeague):
         CustomLeague.is_public,
         CustomLeague.invitation_only,
     ]
-
+    column_searchable_list = ["name"]
     column_labels = {
-        'league_id': 'League ID',
+        'league_id': 'League',
         'type': 'Type',
         'is_public': 'Public',
         'invitation_only': 'Invitation Only',
     }
+
+    def format(self, attr, value):
+        if attr == 'league_id' and value is not None:
+            return value.name
+        return super().format(attr, value)
 
     name = "Custom League"
     name_plural = "Custom Leagues"

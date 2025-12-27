@@ -27,3 +27,6 @@ class Match(Base):
         secondary=tour_matches_association,
         back_populates="matches"
     )
+
+    def __str__(self):
+        return f'{self.home_team_id}{self.away_team_id}'
