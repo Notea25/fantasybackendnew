@@ -82,3 +82,22 @@ class TourService(BaseService):
             result = await session.execute(stmt)
             tour = result.unique().scalars().first()
             return tour
+
+    @classmethod
+    async def find_all_by_league(cls, league_id: int) -> list[Tour]:
+        async with async_session_maker() as session:
+            stmt = (
+                select(cls.model)
+                .where(cls.model.league_id == league_id)
+                .options(selectinload(cls.model.matches))
+            )
+            result = await session.execute(stmt)
+            tours = result.unique().scalars().all()
+
+            for tour in tours:
+                if tour.matches:
+                    tour.start_date = min(match.date for match in tour.matches)
+                    tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
+                    tour.deadline = tour.start_date - timedelta(hours=2)
+
+            return tours

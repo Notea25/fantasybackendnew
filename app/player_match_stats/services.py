@@ -79,7 +79,7 @@ class PlayerMatchStatsService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            matches = result.scalars().all()
+            matches = result.unique().scalars().all()
 
             total_added = 0
             for match in matches:
