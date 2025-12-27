@@ -46,28 +46,3 @@ class CustomLeague(Base):
 
     def __repr__(self):
         return f"{self.name} ({self.type.value})"
-
-    def is_open(self) -> bool:
-        """Проверяет, открыта ли лига для регистрации"""
-        # Для некоммерческих лиг всегда открыто
-        if self.type != CustomLeagueType.COMMERCIAL:
-            return True
-
-        # Проверяем временные рамки
-        now = datetime.now()
-        if not (self.registration_start <= now <= self.registration_end):
-            return False
-
-        # Проверяем наличие текущего тура
-        if not self.has_current_tour():
-            return False
-
-        return True
-
-    def has_current_tour(self) -> bool:
-        """Проверяет, содержит ли лига текущий тур"""
-        now = datetime.now()
-        for tour in self.tours:
-            if tour.start_date <= now <= tour.end_date:
-                return True
-        return False

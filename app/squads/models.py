@@ -1,11 +1,8 @@
 from typing import Optional
-
 from sqlalchemy import Column, ForeignKey, Table, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-from app.boosts.models import Boost, BoostType
-from app.tours.models import Tour
-from app.utils.exceptions import FailedOperationException
+from app.custom_leagues.models import custom_league_squads
 
 # Ассоциативные таблицы для текущих составов
 squad_players_association = Table(
@@ -30,6 +27,7 @@ squad_tour_players = Table(
     Base.metadata,
     Column("squad_tour_id", Integer, ForeignKey("squad_tours.id"), primary_key=True),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
+    extend_existing=True,
 )
 
 squad_tour_bench_players = Table(
@@ -37,6 +35,7 @@ squad_tour_bench_players = Table(
     Base.metadata,
     Column("squad_tour_id", Integer, ForeignKey("squad_tours.id"), primary_key=True),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
+    extend_existing=True,
 )
 
 class Squad(Base):
@@ -60,40 +59,41 @@ class Squad(Base):
     user: Mapped["User"] = relationship(back_populates="squads")
     league: Mapped["League"] = relationship(back_populates="squads")
     current_main_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_players_association, back_populates="main_squads"
+        secondary=squad_players_association,
+        back_populates="main_squads"
     )
     current_bench_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_bench_players_association, back_populates="bench_squads"
+        secondary=squad_bench_players_association,
+        back_populates="bench_squads"
     )
 
     # История туров
     tour_history: Mapped[list["SquadTour"]] = relationship(back_populates="squad")
     used_boosts: Mapped[list["Boost"]] = relationship(back_populates="squad")
+    custom_leagues: Mapped[list["CustomLeague"]] = relationship(
+        secondary=custom_league_squads, back_populates="squads"
+    )
 
     def calculate_players_cost(self):
         """Рассчитывает общую стоимость игроков в скваде"""
         return sum(p.market_value for p in self.current_main_players) + \
-            sum(p.market_value for p in self.current_bench_players)
+               sum(p.market_value for p in self.current_bench_players)
 
     def validate_players(self, main_players, bench_players):
         """Валидация игроков по всем правилам"""
-        # Проверка количества игроков
         if len(main_players) != 11:
             raise ValueError("Main squad must have exactly 11 players")
         if len(bench_players) != 4:
             raise ValueError("Bench must have exactly 4 players")
 
-        # Проверка бюджета
         total_cost = sum(p.market_value for p in main_players + bench_players)
         if total_cost > self.budget:
             raise ValueError("Total players cost exceeds squad budget")
 
-        # Проверка лиги
         for player in main_players + bench_players:
             if player.league_id != self.league_id:
                 raise ValueError("All players must be from the same league")
 
-        # Проверка количества игроков от одного клуба
         club_counts = {}
         for player in main_players + bench_players:
             club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
@@ -110,23 +110,26 @@ class Squad(Base):
     def __repr__(self):
         return f"{self.name} (User: {self.user_id})"
 
+
 class SquadTour(Base):
     __tablename__ = "squad_tours"
     id: Mapped[int] = mapped_column(primary_key=True)
     squad_id: Mapped[int] = mapped_column(ForeignKey("squads.id"))
     tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id"))
     is_current: Mapped[bool] = mapped_column(default=False)
-    used_boost: Mapped[Optional[BoostType]] = mapped_column(nullable=True)
+    used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)
 
     # Отношения
     squad: Mapped["Squad"] = relationship(back_populates="tour_history")
     tour: Mapped["Tour"] = relationship(back_populates="squads")
     main_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_tour_players, back_populates="squad_tours"
+        secondary=squad_tour_players,
+        back_populates="squad_tours"
     )
     bench_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_tour_bench_players, back_populates="squad_tours"
+        secondary=squad_tour_bench_players,
+        back_populates="bench_squad_tours"
     )
 
     def __repr__(self):

@@ -21,6 +21,3 @@ class PlayerMatchStats(Base):
     match: Mapped["Match"] = relationship()
     team: Mapped["Team"] = relationship()
     league: Mapped["League"] = relationship()
-
-    def __repr__(self):
-        return f'{self.player_id} {self.match_id} {self.points}'

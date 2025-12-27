@@ -24,14 +24,3 @@ class Boost(Base):
 
     def __repr__(self):
         return f"{self.type.value} for squad {self.squad_id} in tour {self.tour_id}"
-
-    @classmethod
-    def get_description(cls, boost_type: BoostType) -> str:
-        descriptions = {
-            BoostType.BENCH_BOOST: "Удваивает очки запасных игроков",
-            BoostType.TRIPLE_CAPTAIN: "Троит очки капитана",
-            BoostType.TRANSFERS_PLUS: "Дополнительные трансферы",
-            BoostType.GOLD_TOUR: "Бонусные очки за тур",
-            BoostType.DOUBLE_BET: "Удваивает ставку"
-        }
-        return descriptions.get(boost_type, "")
