@@ -2,8 +2,10 @@ import datetime
 
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
+
 from app.database import async_session_maker
-from app.custom_leagues.models import CustomLeague, CustomLeagueType, custom_league_squads
+from app.custom_leagues.models import CustomLeague, custom_league_squads
 from app.squads.models import Squad
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, CustomLeagueException, NotAllowedException
@@ -15,20 +17,20 @@ class CustomLeagueService(BaseService):
     async def create_custom_league(cls, data: dict, user_id: int):
         async with async_session_maker() as session:
             # Проверяем, что пользователь может создать только 1 USER лигу
-            if data.get('type') == CustomLeagueType.USER:
+            if data.get('type') == "USERS":
                 stmt = select(cls.model).where(
                     cls.model.creator_id == user_id,
-                    cls.model.type == CustomLeagueType.USER
+                    cls.model.type == "USERS"
                 )
                 result = await session.execute(stmt)
                 existing_league = result.scalars().first()
                 if existing_league:
                     raise CustomLeagueException()
 
-            # Администратор может создавать коммерческие и клубные лиги
-            if data.get('type') in [CustomLeagueType.COMMERCIAL, CustomLeagueType.CLUB]:
-                # В реальном приложении здесь должна быть проверка на админа
-                pass
+            # # Администратор может создавать коммерческие и клубные лиги
+            # if data.get('type') in [CustomLeagueType.COMMERCIAL, CustomLeagueType.CLUB]:
+            #     # В реальном приложении здесь должна быть проверка на админа
+            #     pass
 
             custom_league = cls.model(**data, creator_id=user_id)
             session.add(custom_league)
@@ -67,7 +69,7 @@ class CustomLeagueService(BaseService):
                 raise ResourceNotFoundException("Custom league not found")
 
             # Проверка временных рамок для коммерческих лиг
-            if custom_league.type == CustomLeagueType.COMMERCIAL and not custom_league.is_registration_open():
+            if custom_league.type == "COMMERCIAL" and not custom_league.is_registration_open():
                 raise NotAllowedException("Registration for this league is closed")
 
             stmt = select(Squad).where(Squad.id == squad_id)
@@ -77,7 +79,7 @@ class CustomLeagueService(BaseService):
                 raise ResourceNotFoundException("Squad not found")
 
             # Проверка, что сквад не участвует в другой лиге этого же типа
-            if custom_league.type == CustomLeagueType.COMMERCIAL:
+            if custom_league.type == "COMMERCIAL":
                 stmt = select(custom_league_squads).where(
                     custom_league_squads.c.squad_id == squad_id,
                     custom_league_squads.c.custom_league_id != custom_league_id
@@ -96,7 +98,7 @@ class CustomLeagueService(BaseService):
         Получает все коммерческие лиги
         """
         async with async_session_maker() as session:
-            stmt = select(cls.model).where(cls.model.type == CustomLeagueType.COMMERCIAL)
+            stmt = select(cls.model).where(cls.model.type == "COMMERCIAL")
             result = await session.execute(stmt)
             return result.scalars().all()
 

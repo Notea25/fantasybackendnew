@@ -2,7 +2,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from app.database import async_session_maker
-from app.boosts.models import Boost, BoostType
+from app.boosts.models import Boost
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
 
@@ -10,7 +10,7 @@ class BoostService(BaseService):
     model = Boost
 
     @classmethod
-    async def apply_boost(cls, squad_id: int, tour_id: int, boost_type: BoostType):
+    async def apply_boost(cls, squad_id: int, tour_id: int, boost_type: str):
         async with async_session_maker() as session:
             # Проверяем, что буст не использован в этом туре
             stmt = select(cls.model).where(
@@ -64,7 +64,7 @@ class BoostService(BaseService):
                         "description": cls.model.get_description(boost_type),
                         "available": squad.available_boosts > 0 and not used_in_tour
                     }
-                    for boost_type in BoostType
+                    for boost_type in ["bench_boost", "triple_captain", "transfers_plus", "gold_tour", "double_bet"]
                 ]
             }
 
