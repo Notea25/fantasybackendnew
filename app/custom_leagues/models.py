@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, DateT
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
 from datetime import datetime
-from enum import Enum as PyEnum
 
 # Ассоциативные таблицы
 custom_league_tours = Table(
@@ -19,10 +18,6 @@ custom_league_squads = Table(
     Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
 )
 
-class CustomLeagueType(PyEnum):
-    COMMERCIAL = "Commercial"
-    USER = "User"
-    CLUB = "Club"
 
 class CustomLeague(Base):
     __tablename__ = "custom_leagues"
@@ -30,7 +25,7 @@ class CustomLeague(Base):
     name: Mapped[str]
     description: Mapped[str] = mapped_column(nullable=True)
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
-    type: Mapped[CustomLeagueType]
+    type: Mapped[str] = mapped_column(default='Users')
     is_public: Mapped[bool] = mapped_column(default=False)
     invitation_only: Mapped[bool] = mapped_column(default=False)
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
