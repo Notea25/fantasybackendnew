@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import Base
 
 # Import all models
+from app.admin.models import Admin
 from app.leagues.models import League
 from app.teams.models import Team
 from app.matches.models import Match
