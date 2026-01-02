@@ -32,26 +32,28 @@ logging.basicConfig(
 
 app = FastAPI()
 
-# Middleware для CORS (только для React-приложения)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Замените на домен вашего React-приложения
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Настройка CORS и проверки Origin в зависимости от MODE
+if settings.MODE == "DEVFRONT":
+    # Middleware для CORS (только для React-приложения)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],  # Замените на домен вашего React-приложения
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Middleware для проверки Origin (только для API и /docs)
+    @app.middleware("http")
+    async def check_origin(request: Request, call_next):
+        allowed_origin = "http://localhost:3000"  # Замените на домен вашего React-приложения
+        if (request.url.path.startswith("/api") or request.url.path == "/docs") and request.headers.get("origin") != allowed_origin:
+            raise HTTPException(status_code=403, detail="Forbidden: Access only from React app")
+
+        return await call_next(request)
 
 # Middleware для сессий (для SQLAdmin)
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
-
-# Middleware для проверки Origin (только для API)
-@app.middleware("http")
-async def check_origin(request: Request, call_next):
-    allowed_origin = "http://localhost:3000"  # Замените на домен вашего React-приложения
-    if request.url.path.startswith("/api") and request.headers.get("origin") != allowed_origin:
-        raise HTTPException(status_code=403, detail="Forbidden: Access only from React app")
-
-    return await call_next(request)
 
 # Подключение всех роутеров
 app.include_router(utils_router, prefix="/api")

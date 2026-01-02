@@ -17,7 +17,7 @@ async def get_by_id(user_id: int):
     return await UserService.find_one_or_none(id=user_id)
 
 async def get_current_user(request: Request):
-    if settings.MODE == "DEV":
+    if settings.MODE == "DEV" or settings.MODE == "DEVFRONT" :
         logger.debug("Running in DEV mode, returning dev user")
         return await get_dev_user()
 

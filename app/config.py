@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
 
     # Учетные данные админа
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "your_secure_password"
+    ADMIN_USERNAME: str
+    ADMIN_PASSWORD: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
