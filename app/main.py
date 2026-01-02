@@ -33,21 +33,18 @@ logging.basicConfig(
 
 app = FastAPI()
 
-# Настройка CORS и проверки Origin в зависимости от MODE
 if settings.MODE == "DEVFRONT":
-    # Middleware для CORS (только для React-приложения)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],  # Замените на домен вашего React-приложения
+        allow_origins=["http://localhost:3000", "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # Middleware для проверки Origin (только для API и /docs)
     @app.middleware("http")
     async def check_origin(request: Request, call_next):
-        allowed_origin = "http://localhost:3000"  # Замените на домен вашего React-приложения
+        allowed_origin = "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"
         if (request.url.path.startswith("/api") or request.url.path == "/docs") and request.headers.get("origin") != allowed_origin:
             raise HTTPException(status_code=403, detail="Forbidden: Access only from React app")
 
