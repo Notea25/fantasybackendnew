@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Utils</title>
+</head>
+<body>
+    <h1>Utils</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <form method="POST">
+        <label for="action">Action:</label>
+        <select name="action" id="action">
+            <option value="add_league">Add League</option>
+            <option value="add_teams">Add Teams</option>
+            <option value="add_players">Add Players</option>
+            <option value="add_matches">Add Matches</option>
+            <option value="add_all">Add All</option>
+            <option value="add_empty_stats_for_match">Add Empty Stats for Match</option>
+            <option value="add_empty_stats_for_all_matches">Add Empty Stats for All Matches</option>
+        </select>
+        <label for="league_id">League ID:</label>
+        <input type="text" name="league_id" id="league_id">
+        <label for="match_id">Match ID:</label>
+        <input type="text" name="match_id" id="match_id">
+        <button type="submit">Execute</button>
+    </form>
+</body>
+</html>

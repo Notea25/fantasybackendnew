@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqladmin import Admin
 
+from app.admin.utils_view import UtilsView
 from app.database import engine
 from app.admin.auth import AdminAuth
 from app.admin.view import (
@@ -84,3 +85,4 @@ admin.add_view(TeamAdmin)
 admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)
 admin.add_view(CustomLeagueAdmin)
+admin.add_view(UtilsView)

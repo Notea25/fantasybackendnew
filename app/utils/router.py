@@ -54,7 +54,6 @@ async def add_matches(league_id: int):
     except Exception as e:
         raise FailedOperationException(msg=f"Failed to add matches: {e}")
 
-# Убрали эндпоинт для добавления статистики игроков, так как он не нужен
 @router.post("/add_all")
 async def add_all(league_id: int = 116):
     try:
