@@ -4,14 +4,12 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# Add the parent directory to Python path
 import sys
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from app.config import settings
 from app.database import Base
 
-# Import all models
 from app.admin.models import Admin
 from app.leagues.models import League
 from app.teams.models import Team
@@ -24,16 +22,13 @@ from app.users.models import User
 from app.tours.models import Tour
 from app.custom_leagues.models import CustomLeague
 
-# this is the Alembic Config object
 config = context.config
 
-# Set the database URL
 config.set_main_option(
     "sqlalchemy.url",
     f"{settings.DATABASE_URL}?async_fallback=True"
 )
 
-# Set the target metadata
 target_metadata = Base.metadata
 
 def run_migrations_offline():

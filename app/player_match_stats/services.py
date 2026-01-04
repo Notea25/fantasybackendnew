@@ -29,7 +29,6 @@ class PlayerMatchStatsService(BaseService):
     @classmethod
     async def add_empty_stats_for_match(cls, match_id: int):
         async with async_session_maker() as session:
-            # Получить матч с подгруженными командами и игроками
             stmt = (
                 select(Match)
                 .where(Match.id == match_id)
@@ -39,17 +38,15 @@ class PlayerMatchStatsService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            match = result.unique().scalars().first()  # Добавили вызов unique()
+            match = result.unique().scalars().first()
 
             if not match:
                 logger.error(f"Match with id {match_id} not found")
                 return 0
 
-            # Получить всех игроков обеих команд
             home_players = match.home_team.players if match.home_team else []
             away_players = match.away_team.players if match.away_team else []
 
-            # Создать пустые записи для каждого игрока
             stats_to_add = []
             for player in home_players + away_players:
                 stats = cls.model(
@@ -60,7 +57,6 @@ class PlayerMatchStatsService(BaseService):
                 )
                 stats_to_add.append(stats)
 
-            # Добавить все записи в базу
             session.add_all(stats_to_add)
             await session.commit()
             logger.info(f"Added empty stats for {len(stats_to_add)} players in match {match_id}")
@@ -70,7 +66,6 @@ class PlayerMatchStatsService(BaseService):
     @classmethod
     async def add_empty_stats_for_all_matches(cls):
         async with async_session_maker() as session:
-            # Получить все матчи с подгруженными командами и игроками
             stmt = (
                 select(Match)
                 .options(
@@ -83,11 +78,9 @@ class PlayerMatchStatsService(BaseService):
 
             total_added = 0
             for match in matches:
-                # Получить всех игроков обеих команд
                 home_players = match.home_team.players if match.home_team else []
                 away_players = match.away_team.players if match.away_team else []
 
-                # Создать пустые записи для каждого игрока
                 stats_to_add = []
                 for player in home_players + away_players:
                     # Проверить, есть ли уже статистика для этого игрока в этом матче

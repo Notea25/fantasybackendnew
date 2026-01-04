@@ -2,7 +2,6 @@ from sqlalchemy import ForeignKey, Table, Column, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
-# Ассоциативные таблицы для истории составов
 player_squad_tours = Table(
     "squad_tour_players",
     Base.metadata,
@@ -36,7 +35,6 @@ class Player(Base):
     league: Mapped["League"] = relationship(back_populates="players")
     match_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="player")
 
-    # Отношения для текущих составов
     main_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_players_association",
         back_populates="current_main_players"
@@ -46,7 +44,6 @@ class Player(Base):
         back_populates="current_bench_players"
     )
 
-    # Отношения для истории составов
     squad_tours: Mapped[list["SquadTour"]] = relationship(
         secondary=player_squad_tours,
         back_populates="main_players"

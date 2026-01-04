@@ -32,9 +32,6 @@ async def delete_custom_league(
 
 @router.get("/commercial/registration_status")
 async def get_all_commercial_leagues_registration_status():
-    """
-    Возвращает статус регистрации для всех коммерческих лиг
-    """
     commercial_leagues = await CustomLeagueService.get_all_commercial_leagues()
 
     result = []
@@ -55,9 +52,6 @@ async def get_all_commercial_leagues_registration_status():
 
 @router.get("/{custom_league_id}/registration_status")
 async def get_registration_status(custom_league_id: int):
-    """
-    Возвращает статус регистрации для конкретной лиги
-    """
     custom_league = await CustomLeagueService.get_by_id(custom_league_id)
     if not custom_league:
         raise ResourceNotFoundException("Custom league not found")
@@ -72,24 +66,3 @@ async def get_registration_status(custom_league_id: int):
         "message": "Registration is open" if is_open else "Registration is closed"
     }
 
-@classmethod
-async def get_commercial_league_status(cls, league_id: int):
-    """Возвращает статус коммерческой лиги с учетом текущего тура"""
-    async with async_session_maker() as session:
-        stmt = (
-            select(CustomLeague)
-            .where(CustomLeague.id == league_id)
-            .options(joinedload(CustomLeague.tours))
-        )
-        result = await session.execute(stmt)
-        league = result.scalars().first()
-
-        if not league:
-            raise ResourceNotFoundException("League not found")
-
-        return {
-            "is_open": league.is_open(),
-            "has_current_tour": league.has_current_tour(),
-            "is_in_timeframe": league.registration_start <= datetime.now() <= league.registration_end,
-            "message": "League is open" if league.is_open() else "League is closed"
-        }

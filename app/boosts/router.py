@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
-from app.boosts.schemas import Boost, BoostCreate, BoostInfo
+from app.boosts.schemas import BoostCreate
 from app.boosts.services import BoostService
 from app.users.dependencies import get_current_user
-from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
+from app.utils.exceptions import FailedOperationException
 
 router = APIRouter(prefix="/boosts", tags=["Boosts"])
 

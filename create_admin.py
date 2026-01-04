@@ -16,7 +16,6 @@ async def create_admin():
 
     async with async_session_maker() as session:
         async with session.begin():
-            # Проверяем, существует ли админ
             result = await session.execute(
                 text("SELECT 1 FROM admin WHERE username = :username"),
                 {"username": admin_username}
@@ -25,7 +24,6 @@ async def create_admin():
                 print("Admin already exists")
                 return
 
-            # Добавляем админа
             hashed_password = get_password_hash(admin_password)
             new_admin = Admin(
                 username=admin_username,

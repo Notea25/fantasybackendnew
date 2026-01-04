@@ -16,7 +16,6 @@ class CustomLeagueService(BaseService):
     @classmethod
     async def create_custom_league(cls, data: dict, user_id: int):
         async with async_session_maker() as session:
-            # Проверяем, что пользователь может создать только 1 USER лигу
             if data.get('type') == "USERS":
                 stmt = select(cls.model).where(
                     cls.model.creator_id == user_id,
@@ -26,11 +25,6 @@ class CustomLeagueService(BaseService):
                 existing_league = result.scalars().first()
                 if existing_league:
                     raise CustomLeagueException()
-
-            # # Администратор может создавать коммерческие и клубные лиги
-            # if data.get('type') in [CustomLeagueType.COMMERCIAL, CustomLeagueType.CLUB]:
-            #     # В реальном приложении здесь должна быть проверка на админа
-            #     pass
 
             custom_league = cls.model(**data, creator_id=user_id)
             session.add(custom_league)
@@ -50,7 +44,6 @@ class CustomLeagueService(BaseService):
             if not custom_league:
                 raise ResourceNotFoundException()
 
-            # Только создатель или админ может удалить лигу
             if custom_league.creator_id != user_id:
                 raise NotAllowedException("Only creator can delete this league")
 
@@ -68,7 +61,6 @@ class CustomLeagueService(BaseService):
             if not custom_league:
                 raise ResourceNotFoundException("Custom league not found")
 
-            # Проверка временных рамок для коммерческих лиг
             if custom_league.type == "COMMERCIAL" and not custom_league.is_registration_open():
                 raise NotAllowedException("Registration for this league is closed")
 
@@ -78,7 +70,6 @@ class CustomLeagueService(BaseService):
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что сквад не участвует в другой лиге этого же типа
             if custom_league.type == "COMMERCIAL":
                 stmt = select(custom_league_squads).where(
                     custom_league_squads.c.squad_id == squad_id,
@@ -94,9 +85,6 @@ class CustomLeagueService(BaseService):
 
     @classmethod
     async def get_all_commercial_leagues(cls):
-        """
-        Получает все коммерческие лиги
-        """
         async with async_session_maker() as session:
             stmt = select(cls.model).where(cls.model.type == "COMMERCIAL")
             result = await session.execute(stmt)
@@ -104,7 +92,6 @@ class CustomLeagueService(BaseService):
 
     @classmethod
     async def get_commercial_league_status(cls, league_id: int):
-        """Возвращает статус коммерческой лиги с учетом текущего тура"""
         async with async_session_maker() as session:
             stmt = (
                 select(CustomLeague)

@@ -105,17 +105,14 @@ class LeagueService(BaseService):
             leagues_res = await session.execute(leagues_query)
             leagues = leagues_res.scalars().all()
 
-            # Получаем текущий тур и его дедлайн (если есть)
             current_tour, _ = await TourService.get_current_and_next_tour()
             deadline = current_tour.start_date - timedelta(hours=2) if current_tour else None
 
             for league in leagues:
-                # Количество сквадов в лиге
                 squads_count_query = select(func.count()).select_from(Squad).filter_by(league_id=league.id)
                 squads_count_res = await session.execute(squads_count_query)
                 league.all_squads_quantity = squads_count_res.scalar()
 
-                # Место пользователя в лиге
                 user_squad_query = select(Squad).filter_by(league_id=league.id, user_id=user_id)
                 user_squad_res = await session.execute(user_squad_query)
                 user_squad = user_squad_res.scalar_one_or_none()

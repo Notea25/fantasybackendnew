@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
 from datetime import datetime
 
-# Ассоциативные таблицы
 custom_league_tours = Table(
     "custom_league_tours",
     Base.metadata,
@@ -30,7 +29,6 @@ class CustomLeague(Base):
     invitation_only: Mapped[bool] = mapped_column(default=False)
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
 
-    # Временные рамки для коммерческих лиг
     registration_start: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     registration_end: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 

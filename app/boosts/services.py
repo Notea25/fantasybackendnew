@@ -1,6 +1,5 @@
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from datetime import datetime
 from app.database import async_session_maker
 from app.boosts.models import Boost
 from app.utils.base_service import BaseService
@@ -12,7 +11,6 @@ class BoostService(BaseService):
     @classmethod
     async def apply_boost(cls, squad_id: int, tour_id: int, boost_type: str):
         async with async_session_maker() as session:
-            # Проверяем, что буст не использован в этом туре
             stmt = select(cls.model).where(
                 cls.model.squad_id == squad_id,
                 cls.model.tour_id == tour_id
@@ -32,9 +30,7 @@ class BoostService(BaseService):
 
     @classmethod
     async def get_available_boosts(cls, squad_id: int, tour_id: int):
-        """Возвращает доступные бусты для сквада в текущем туре"""
         async with async_session_maker() as session:
-            # Получаем сквад с информацией о бустах
             from app.squads.models import Squad
             stmt = (
                 select(Squad)
@@ -70,7 +66,6 @@ class BoostService(BaseService):
 
     @classmethod
     async def get_squad_boosts(cls, squad_id: int):
-        """Возвращает все бусты сквада"""
         async with async_session_maker() as session:
             stmt = (
                 select(cls.model)

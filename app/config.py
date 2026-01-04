@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     EXTERNAL_API_BASE_URL: str
     EXTERNAL_API_KEY: str
-    EXTERNAL_API_SEASON: int
+    EXTERNAL_API_SEASON: int = 2025
     MODE: str
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
