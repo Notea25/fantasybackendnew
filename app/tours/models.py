@@ -15,6 +15,12 @@ tour_matches_association = Table(
     extend_existing=True,
 )
 
+class TourMatchAssociation(Base):
+    __table__ = tour_matches_association
+
+    tour: Mapped["Tour"] = relationship("Tour", back_populates="matches_association")
+    match: Mapped["Match"] = relationship("Match", back_populates="tours_association")
+
 class Tour(Base):
     __tablename__ = "tours"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -27,10 +33,7 @@ class Tour(Base):
 
     league: Mapped["League"] = relationship(back_populates="tours")
     custom_leagues: Mapped[list["CustomLeague"]] = relationship(secondary=custom_league_tours, back_populates="tours")
-    matches: Mapped[list["Match"]] = relationship(
-        secondary=tour_matches_association,
-        back_populates="tours"
-    )
+    matches_association: Mapped[list["TourMatchAssociation"]] = relationship(back_populates="tour")
     boosts: Mapped[list["Boost"]] = relationship(back_populates="tour")
     squads: Mapped[list["SquadTour"]] = relationship(back_populates="tour")
 

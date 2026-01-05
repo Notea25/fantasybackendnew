@@ -10,7 +10,7 @@ from app.admin.auth import AdminAuth
 from app.admin.view import (
     UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin,
     SquadAdmin, TeamAdmin, PlayerMatchStatsAdmin,
-    TourAdmin, CustomLeagueAdmin, SquadTourAdmin, BoostAdmin
+    TourAdmin, CustomLeagueAdmin, SquadTourAdmin, BoostAdmin, TourMatchesAdmin
 )
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
@@ -50,10 +50,8 @@ if settings.MODE == "DEVFRONT":
 
         return await call_next(request)
 
-# Middleware для сессий (для SQLAdmin)
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
-# Подключение всех роутеров
 app.include_router(utils_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(leagues_router, prefix="/api")
@@ -66,11 +64,10 @@ app.include_router(squads_router, prefix="/api")
 app.include_router(boosts_router, prefix="/api")
 app.include_router(custom_leagues_router, prefix="/api")
 
-# Настройка SQLAdmin с аутентификацией
 authentication_backend = AdminAuth()
 admin = Admin(app, engine, authentication_backend=authentication_backend)
 
-# Добавление всех вьюх
+
 admin.add_view(UserAdmin)
 admin.add_view(LeagueAdmin)
 admin.add_view(MatchAdmin)
@@ -83,3 +80,4 @@ admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)
 admin.add_view(CustomLeagueAdmin)
 admin.add_view(UtilsView)
+admin.add_view(TourMatchesAdmin)

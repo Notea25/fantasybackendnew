@@ -9,7 +9,8 @@ from app.players.models import Player
 from app.squads.models import Squad, SquadTour
 from app.teams.models import Team
 from app.player_match_stats.models import PlayerMatchStats
-from app.tours.models import Tour
+from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
+
 
 class UserAdmin(ModelView, model=User):
     column_list = [
@@ -300,3 +301,26 @@ class CustomLeagueAdmin(ModelView, model=CustomLeague):
     name = "Custom League"
     name_plural = "Custom Leagues"
     icon = "fa-solid fa-flag"
+
+
+class TourMatchesAdmin(ModelView, model=TourMatchAssociation):
+    name = "Tour Matches"
+    name_plural = "Tour Matches"
+    icon = "fa-solid fa-link"
+
+    column_list = [
+        TourMatchAssociation.tour_id,
+        TourMatchAssociation.match_id,
+    ]
+
+    column_labels = {
+        'tour_id': 'Tour ID',
+        'match_id': 'Match ID',
+    }
+
+    def format(self, attr, value):
+        if attr == 'tour_id' and value is not None:
+            return f"Tour {value}"
+        if attr == 'match_id' and value is not None:
+            return f"Match {value}"
+        return super().format(attr, value)
