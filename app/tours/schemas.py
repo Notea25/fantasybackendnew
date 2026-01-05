@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, field_serializer
 from datetime import datetime
 
@@ -5,21 +7,23 @@ from datetime import datetime
 class TourBase(BaseModel):
     number: int
     league_id: int
-    start_date: datetime
-    end_date: datetime
-    deadline: datetime
-
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    deadline: Optional[datetime]
 
 class TourRead(BaseModel):
     id: int
-    name: str
+    number: int
     league_id: int
-    matches: list[int] = []
-    start_date: datetime
-    end_date: datetime
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    deadline: Optional[datetime]
 
-    @field_serializer("start_date", "end_date")
-    def serialize_dates(self, date: datetime, _info):
+    @field_serializer("start_date", "end_date", "deadline")
+    def serialize_dates(self, date: Optional[datetime], _info):
+        if date is None:
+            return None
         return date.isoformat()
 
     model_config = ConfigDict(from_attributes=True)
+

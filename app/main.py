@@ -36,7 +36,7 @@ app = FastAPI()
 if settings.MODE == "DEVFRONT":
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"],
+        allow_origins=["https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

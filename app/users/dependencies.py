@@ -1,6 +1,7 @@
 import logging
 from fastapi import Request
 from app.config import settings
+from app.users.schemas import UserCreateSchema
 from app.utils.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.services import UserService
 from app.users.utils import validate_telegram_data, verify_token
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 async def get_dev_user():
     dev_user = await UserService.get_by_id(1)
     if not dev_user:
-        dev_user = await UserService.add_one(id=1)
+        dev_user_data = UserCreateSchema(username="dev_user")
+        dev_user = await UserService.add_one(dev_user_data, id=1)
     return dev_user
 
 async def get_by_id(user_id: int):

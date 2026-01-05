@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from typing import Optional
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey, Table, Column, Integer
 from app.database import Base
@@ -30,6 +33,24 @@ class Tour(Base):
     )
     boosts: Mapped[list["Boost"]] = relationship(back_populates="tour")
     squads: Mapped[list["SquadTour"]] = relationship(back_populates="tour")
+
+    @property
+    def start_date(self) -> Optional[datetime]:
+        if not self.matches:
+            return None
+        return min(match.date for match in self.matches)
+
+    @property
+    def end_date(self) -> Optional[datetime]:
+        if not self.matches:
+            return None
+        return max(match.date for match in self.matches) + timedelta(hours=2)
+
+    @property
+    def deadline(self) -> Optional[datetime]:
+        if not self.start_date:
+            return None
+        return self.start_date - timedelta(hours=2)
 
     def __repr__(self):
         return f"Tour {self.number}"

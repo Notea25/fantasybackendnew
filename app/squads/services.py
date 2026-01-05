@@ -1,12 +1,13 @@
 from typing import Optional
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
-from sqlalchemy import delete
+from sqlalchemy import delete, func
 from datetime import datetime
 
+from app.matches.models import Match
 from app.players.models import Player
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
-from app.tours.models import Tour
+from app.tours.models import Tour, tour_matches_association
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
@@ -17,7 +18,6 @@ class SquadService(BaseService):
     @classmethod
     async def create_squad(cls, name: str, user_id: int, league_id: int, fav_team_id: int):
         async with async_session_maker() as session:
-            # Проверка на существование сквада в этой лиге
             existing_squad = await session.execute(
                 select(cls.model).where(
                     cls.model.user_id == user_id,
@@ -27,55 +27,57 @@ class SquadService(BaseService):
             if existing_squad.scalars().first():
                 raise FailedOperationException("User already has a squad in this league")
 
-            # Найти следующий тур
             next_tour = await cls._get_next_tour(league_id)
-            if not next_tour:
-                raise FailedOperationException("No available tours for this league")
 
             squad = cls.model(
                 name=name,
                 user_id=user_id,
                 league_id=league_id,
                 fav_team_id=fav_team_id,
-                current_tour_id=next_tour.id
+                current_tour_id=next_tour.id if next_tour else None
             )
             session.add(squad)
 
-            # Создать историю для первого тура
-            squad_tour = SquadTour(
-                squad_id=squad.id,
-                tour_id=next_tour.id,
-                is_current=True
-            )
-            session.add(squad_tour)
+            if next_tour:
+                squad_tour = SquadTour(
+                    squad_id=squad.id,
+                    tour_id=next_tour.id,
+                    is_current=True
+                )
+                session.add(squad_tour)
 
             await session.commit()
             await session.refresh(squad)
             return squad
 
     @classmethod
-    async def _get_next_tour(cls, league_id: int) -> Optional[Tour]:
-        """Возвращает текущий или следующий тур"""
-        async with async_session_maker() as session:
-            now = datetime.now()
-            # Ищем текущий тур
-            stmt = select(Tour).where(
-                Tour.league_id == league_id,
-                Tour.start_date <= now,
-                Tour.end_date >= now
+    async def _get_next_tour(cls, league_id: int) -> Tour | None:
+        now = datetime.utcnow()
+
+        tour_start_dates = (
+            select(
+                tour_matches_association.c.tour_id,
+                func.min(Match.date).label("start_date")
             )
+            .join(Match, Match.id == tour_matches_association.c.match_id)
+            .group_by(tour_matches_association.c.tour_id)
+            .subquery()
+        )
+
+        stmt = (
+            select(Tour)
+            .join(tour_start_dates, Tour.id == tour_start_dates.c.tour_id)
+            .where(
+                Tour.league_id == league_id,
+                tour_start_dates.c.start_date > now
+            )
+            .order_by(tour_start_dates.c.start_date.asc())
+            .limit(1)
+        )
+
+        async with async_session_maker() as session:
             result = await session.execute(stmt)
-            current_tour = result.scalars().first()
-
-            # Если нет текущего, берем первый тур
-            if not current_tour:
-                stmt = select(Tour).where(
-                    Tour.league_id == league_id
-                ).order_by(Tour.start_date)
-                result = await session.execute(stmt)
-                current_tour = result.scalars().first()
-
-            return current_tour
+            return result.unique().scalars().first()
 
     @classmethod
     async def update_squad_players(cls, squad_id: int, main_player_ids: list[int], bench_player_ids: list[int]):
@@ -138,7 +140,6 @@ class SquadService(BaseService):
                 )
                 await session.execute(stmt)
 
-            # Сохранение состава для текущего тура
             await cls._save_current_squad(squad_id)
 
             await session.commit()
@@ -186,8 +187,8 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.current_main_players).selectinload(Player.stats),
-                    selectinload(cls.model.current_bench_players).selectinload(Player.stats),
+                    selectinload(cls.model.current_main_players).selectinload(Player.match_stats),
+                    selectinload(cls.model.current_bench_players).selectinload(Player.match_stats),
                     joinedload(cls.model.tour_history).joinedload(SquadTour.tour),
                     joinedload(cls.model.tour_history).joinedload(SquadTour.main_players),
                     joinedload(cls.model.tour_history).joinedload(SquadTour.bench_players),
@@ -199,7 +200,6 @@ class SquadService(BaseService):
 
     @classmethod
     async def _save_current_squad(cls, squad_id: int):
-        """Сохраняет текущий состав для текущего тура"""
         async with async_session_maker() as session:
             squad = await session.execute(
                 select(cls.model)
