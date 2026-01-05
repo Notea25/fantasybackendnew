@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
 from app.tours.schemas import TourRead
 from app.tours.services import TourService
 from app.users.dependencies import get_current_user
@@ -36,3 +38,17 @@ async def get_tours_by_league(
 ) -> list[TourRead]:
     tours = await TourService.find_all_by_league(league_id=league_id)
     return tours
+
+@router.get("/get_deadline_for_next_tour/{league_id}")
+async def get_deadline_for_next_tour(league_id: int):
+    try:
+        deadline = await TourService.get_deadline_for_next_tour(league_id=league_id)
+        return {"deadline": deadline.isoformat()}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while fetching the deadline: {str(e)}"
+        )
+

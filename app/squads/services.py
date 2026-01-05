@@ -170,8 +170,8 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.current_main_players).joinedload(Player.stats),
-                    selectinload(cls.model.current_bench_players).joinedload(Player.stats),
+                    selectinload(cls.model.current_main_players).joinedload(Player.match_stats),
+                    selectinload(cls.model.current_bench_players).joinedload(Player.match_stats),
                 )
             )
             result = await session.execute(stmt)

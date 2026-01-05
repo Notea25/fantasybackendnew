@@ -94,7 +94,7 @@ class LeagueService(BaseService):
             else:
                 league.your_place = None
 
-            league.deadline = await TourService.get_deadline_for_current_tour()
+            league.deadline = await TourService.get_deadline_for_next_tour(league_id)
 
             return league
 
