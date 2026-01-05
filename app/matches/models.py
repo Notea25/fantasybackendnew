@@ -23,7 +23,10 @@ class Match(Base):
     league: Mapped["League"] = relationship(back_populates="matches")
     home_team: Mapped["Team"] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
     away_team: Mapped["Team"] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
-    tours_association: Mapped[list["TourMatchAssociation"]] = relationship(back_populates="match")
+    tours_association: Mapped[list["TourMatchAssociation"]] = relationship(
+        back_populates="match",
+        cascade="all, delete-orphan",
+    )
 
     def __str__(self):
         return f"{self.id}"

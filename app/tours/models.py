@@ -33,7 +33,10 @@ class Tour(Base):
 
     league: Mapped["League"] = relationship(back_populates="tours")
     custom_leagues: Mapped[list["CustomLeague"]] = relationship(secondary=custom_league_tours, back_populates="tours")
-    matches_association: Mapped[list["TourMatchAssociation"]] = relationship(back_populates="tour")
+    matches_association: Mapped[list["TourMatchAssociation"]] = relationship(
+        back_populates="tour",
+        cascade="all, delete-orphan",
+    )
     boosts: Mapped[list["Boost"]] = relationship(back_populates="tour")
     squads: Mapped[list["SquadTour"]] = relationship(back_populates="tour")
 
