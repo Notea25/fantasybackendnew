@@ -2,6 +2,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.tours.schemas import TourWithMatchesSchema
+
+
 class PlayerSchema(BaseModel):
     id: int
     name: str
@@ -38,6 +41,15 @@ class PlayerExtendedInfoSchema(BaseModel):
     avg_points_last_5_matches_rank: int
     squad_presence_percentage: float
     squad_presence_rank: int
+
+    class Config:
+        from_attributes = True
+
+class PlayerFullInfoSchema(BaseModel):
+    base_info: PlayerBaseInfoSchema
+    extended_info: PlayerExtendedInfoSchema
+    last_3_tours: list[TourWithMatchesSchema]
+    next_3_tours: list[TourWithMatchesSchema]
 
     class Config:
         from_attributes = True

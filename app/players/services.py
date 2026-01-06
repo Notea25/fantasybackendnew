@@ -11,7 +11,7 @@ from app.matches.schemas import MatchInTourSchema
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
 from app.database import async_session_maker
-from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema
+from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema, PlayerFullInfoSchema
 from app.squads.models import SquadTour, squad_tour_players, squad_tour_bench_players, Squad
 from app.teams.models import Team
 from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
@@ -490,3 +490,38 @@ class PlayerService(BaseService):
 
             return tours_with_matches
 
+
+    @classmethod
+    async def get_player_full_info(cls, player_id: int) -> PlayerFullInfoSchema:
+        # Получаем базовую информацию об игроке
+        base_info = await cls.get_player_base_info(player_id)
+
+        # Получаем команду игрока для определения league_id
+        player_stmt = select(Player).where(Player.id == player_id).options(joinedload(Player.team))
+        async with async_session_maker() as session:
+            player_result = await session.execute(player_stmt)
+            player = player_result.scalar_one_or_none()
+
+            if not player or not player.team:
+                raise ResourceNotFoundException(detail=f"Player or player's team not found")
+
+            league_id = player.league_id
+
+        # Получаем расширенную информацию об игроке
+        extended_info = await cls.get_player_extended_info(player_id, league_id)
+
+        # Получаем последние 3 тура
+        last_3_tours = await cls.get_last_3_tours_with_matches(player_id)
+
+        # Получаем следующие 3 тура
+        next_3_tours = await cls.get_next_3_tours_with_matches(player_id)
+
+        # Формируем полную информацию об игроке
+        player_full_info = PlayerFullInfoSchema(
+            base_info=base_info,
+            extended_info=extended_info,
+            last_3_tours=last_3_tours,
+            next_3_tours=next_3_tours
+        )
+
+        return player_full_info

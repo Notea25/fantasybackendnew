@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.tours.schemas import TourWithMatchesSchema
 from app.utils.exceptions import ResourceNotFoundException
-from app.players.schemas import PlayerSchema, PlayerBaseInfoSchema, PlayerExtendedInfoSchema
+from app.players.schemas import PlayerSchema, PlayerBaseInfoSchema, PlayerExtendedInfoSchema, PlayerFullInfoSchema
 from app.players.services import PlayerService
 
 router = APIRouter(prefix="/players", tags=["Players"])
@@ -71,6 +71,16 @@ async def get_next_3_tours_with_matches(player_id: int) -> list[TourWithMatchesS
     try:
         tours_with_matches = await PlayerService.get_next_3_tours_with_matches(player_id)
         return tours_with_matches
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@router.get("/{player_id}/full-info", response_model=PlayerFullInfoSchema)
+async def get_player_full_info(player_id: int) -> PlayerFullInfoSchema:
+    try:
+        player_full_info = await PlayerService.get_player_full_info(player_id)
+        return player_full_info
     except ResourceNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
