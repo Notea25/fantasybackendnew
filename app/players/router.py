@@ -29,3 +29,7 @@ async def get_players_by_league_id(league_id: int) -> list[PlayerSchema]:
     if not res:
         raise ResourceNotFoundException
     return res
+
+@router.get("/league/{league_id}/players_with_points")
+async def get_players_with_total_points(league_id: int) -> list[dict]:
+    return await PlayerService.find_all_with_total_points(league_id=league_id)

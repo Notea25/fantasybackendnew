@@ -1,7 +1,10 @@
 import logging
 from random import randint
 
+from sqlalchemy import func
 from sqlalchemy.future import select
+
+from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
 from app.database import async_session_maker
 from app.utils.external_api import external_api
@@ -70,3 +73,44 @@ class PlayerService(BaseService):
                 await session.rollback()
                 raise FailedOperationException(msg=f"Failed to commit players: {e}")
 
+
+    @classmethod
+    async def find_all_with_total_points(cls, league_id: int):
+        async with async_session_maker() as session:
+            total_points_subq = (
+                select(
+                    PlayerMatchStats.player_id,
+                    func.coalesce(func.sum(PlayerMatchStats.points), 0).label("total_points")
+                )
+                .group_by(PlayerMatchStats.player_id)
+                .subquery()
+            )
+
+            stmt = (
+                select(
+                    Player,
+                    total_points_subq.c.total_points
+                )
+                .outerjoin(
+                    total_points_subq,
+                    Player.id == total_points_subq.c.player_id
+                )
+                .where(Player.league_id == league_id)
+            )
+
+            result = await session.execute(stmt)
+            players_with_points = result.unique().all()
+
+            players = []
+            for player, total_points in players_with_points:
+                player_dict = {
+                    "id": player.id,
+                    "name": player.name,
+                    "team_id": player.team_id,
+                    "position": player.position,
+                    "market_value": player.market_value,
+                    "points": total_points if total_points is not None else 0,
+                }
+                players.append(player_dict)
+
+            return players

@@ -1,14 +1,16 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 class PlayerSchema(BaseModel):
     id: int
     name: str
-    age: int
-    number: int | None = None
-    position: str | None = None
-    photo: str | None = None
+    age: Optional[int]
+    number: Optional[int]
+    position: Optional[str]
+    photo: Optional[str]
     team_id: int
-    market_value: int | None = None
+    market_value: Optional[int]
     sport: int
     league_id: int
 

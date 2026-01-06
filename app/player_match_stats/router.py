@@ -11,11 +11,3 @@ async def get_player_match_stats(player_id: int) -> list[PlayerMatchStats]:
     if not stats:
         raise ResourceNotFoundException
     return stats
-
-@router.get("/match_id_{match_id}")
-async def get_match_player_stats(match_id: int) -> list[PlayerMatchStats]:
-    stats = await PlayerMatchStatsService.find_all(match_id=match_id)
-    if not stats:
-        raise ResourceNotFoundException
-    return stats
-
