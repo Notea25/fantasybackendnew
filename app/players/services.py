@@ -11,7 +11,8 @@ from app.matches.schemas import MatchInTourSchema
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
 from app.database import async_session_maker
-from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema, PlayerFullInfoSchema
+from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema, PlayerFullInfoSchema, \
+    PlayerWithTotalPointsSchema
 from app.squads.models import SquadTour, squad_tour_players, squad_tour_bench_players, Squad
 from app.teams.models import Team
 from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
@@ -82,10 +83,10 @@ class PlayerService(BaseService):
                 await session.rollback()
                 raise FailedOperationException(msg=f"Failed to commit players: {e}")
 
-
     @classmethod
-    async def find_all_with_total_points(cls, league_id: int):
+    async def find_all_with_total_points(cls, league_id: int) -> list[PlayerWithTotalPointsSchema]:
         async with async_session_maker() as session:
+            # Подзапрос для подсчёта общего количества очков каждого игрока
             total_points_subq = (
                 select(
                     PlayerMatchStats.player_id,
@@ -95,32 +96,36 @@ class PlayerService(BaseService):
                 .subquery()
             )
 
+            # Основной запрос: выбираем игроков с их общим количеством очков и информацией о команде
             stmt = (
                 select(
                     Player,
-                    total_points_subq.c.total_points
+                    total_points_subq.c.total_points,
+                    Team.name.label("team_name"),
+                    Team.logo.label("team_logo")
                 )
-                .outerjoin(
-                    total_points_subq,
-                    Player.id == total_points_subq.c.player_id
-                )
+                .join(Team, Player.team_id == Team.id)
+                .outerjoin(total_points_subq, Player.id == total_points_subq.c.player_id)
                 .where(Player.league_id == league_id)
             )
 
             result = await session.execute(stmt)
             players_with_points = result.unique().all()
 
+            # Формируем список игроков с их общим количеством очков и логотипом команды
             players = []
-            for player, total_points in players_with_points:
-                player_dict = {
-                    "id": player.id,
-                    "name": player.name,
-                    "team_id": player.team_id,
-                    "position": player.position,
-                    "market_value": player.market_value,
-                    "points": total_points if total_points is not None else 0,
-                }
-                players.append(player_dict)
+            for player, total_points, team_name, team_logo in players_with_points:
+                player_schema = PlayerWithTotalPointsSchema(
+                    id=player.id,
+                    name=player.name,
+                    team_id=player.team_id,
+                    team_name=team_name,
+                    team_logo=team_logo,
+                    position=player.position,
+                    market_value=player.market_value,
+                    points=total_points
+                )
+                players.append(player_schema)
 
             return players
 

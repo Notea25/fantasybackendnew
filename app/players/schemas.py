@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.tours.schemas import TourWithMatchesSchema
 
@@ -16,6 +16,23 @@ class PlayerSchema(BaseModel):
     market_value: Optional[int]
     sport: int
     league_id: int
+
+    class Config:
+        from_attributes = True
+
+class PlayerWithTotalPointsSchema(BaseModel):
+    id: int
+    name: str
+    team_id: int
+    team_name: str
+    team_logo: Optional[str]
+    position: Optional[str]
+    market_value: Optional[int]
+    points: int
+
+    @field_validator('points', mode='before')
+    def set_default_points(cls, value):
+        return value if value is not None else 0
 
     class Config:
         from_attributes = True
