@@ -3,6 +3,8 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_serializer
 from datetime import datetime
 
+from app.matches.schemas import MatchInTourSchema
+
 
 class TourBase(BaseModel):
     number: int
@@ -26,4 +28,12 @@ class TourRead(BaseModel):
         return date.isoformat()
 
     model_config = ConfigDict(from_attributes=True)
+
+class TourWithMatchesSchema(BaseModel):
+    tour_id: int
+    tour_number: int
+    matches: list[MatchInTourSchema]
+
+    class Config:
+        from_attributes = True
 

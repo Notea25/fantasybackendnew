@@ -28,3 +28,16 @@ class PlayerBaseInfoSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PlayerExtendedInfoSchema(BaseModel):
+    total_players_in_league: int
+    market_value_rank: int
+    avg_points_all_matches: float
+    avg_points_all_matches_rank: int
+    avg_points_last_5_matches: float
+    avg_points_last_5_matches_rank: int
+    squad_presence_percentage: float
+    squad_presence_rank: int
+
+    class Config:
+        from_attributes = True

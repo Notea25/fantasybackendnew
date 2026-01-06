@@ -24,3 +24,14 @@ class MatchSchema(MatchCreateSchema):
 
     class Config:
         from_attributes = True
+
+class MatchInTourSchema(BaseModel):
+    match_id: int
+    is_home: bool
+    opponent_team_id: int
+    opponent_team_name: str
+    opponent_team_logo: Optional[str]
+    player_points: Optional[int] = None
+
+    class Config:
+        from_attributes = True

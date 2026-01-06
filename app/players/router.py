@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
+
+from app.tours.schemas import TourWithMatchesSchema
 from app.utils.exceptions import ResourceNotFoundException
-from app.players.schemas import PlayerSchema, PlayerBaseInfoSchema
+from app.players.schemas import PlayerSchema, PlayerBaseInfoSchema, PlayerExtendedInfoSchema
 from app.players.services import PlayerService
 
 router = APIRouter(prefix="/players", tags=["Players"])
@@ -39,6 +41,36 @@ async def get_player_base_info(player_id: int) -> PlayerBaseInfoSchema:
     try:
         player_base_info = await PlayerService.get_player_base_info(player_id)
         return player_base_info
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@router.get("/{player_id}/extended-info/{league_id}", response_model=PlayerExtendedInfoSchema)
+async def get_player_extended_info(player_id: int, league_id: int) -> PlayerExtendedInfoSchema:
+    try:
+        player_extended_info = await PlayerService.get_player_extended_info(player_id, league_id)
+        return player_extended_info
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@router.get("/{player_id}/last-3-tours", response_model=list[TourWithMatchesSchema])
+async def get_last_3_tours_with_matches(player_id: int) -> list[TourWithMatchesSchema]:
+    try:
+        tours_with_matches = await PlayerService.get_last_3_tours_with_matches(player_id)
+        return tours_with_matches
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@router.get("/{player_id}/next-3-tours", response_model=list[TourWithMatchesSchema])
+async def get_next_3_tours_with_matches(player_id: int) -> list[TourWithMatchesSchema]:
+    try:
+        tours_with_matches = await PlayerService.get_next_3_tours_with_matches(player_id)
+        return tours_with_matches
     except ResourceNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
