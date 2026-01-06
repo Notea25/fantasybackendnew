@@ -3,13 +3,15 @@ from random import randint
 
 from sqlalchemy import func
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
 from app.database import async_session_maker
+from app.players.schemas import PlayerBaseInfoSchema
 from app.utils.external_api import external_api
 from app.utils.base_service import BaseService
-from app.utils.exceptions import FailedOperationException
+from app.utils.exceptions import FailedOperationException, ResourceNotFoundException
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -114,3 +116,30 @@ class PlayerService(BaseService):
                 players.append(player_dict)
 
             return players
+
+
+    @classmethod
+    async def get_player_base_info(cls, player_id: int):
+        async with async_session_maker() as session:
+            stmt = (
+                select(Player)
+                .options(joinedload(Player.team))
+                .where(Player.id == player_id)
+            )
+            result = await session.execute(stmt)
+            player = result.scalar_one_or_none()
+
+            if not player:
+                raise ResourceNotFoundException
+
+            player_base_info = PlayerBaseInfoSchema(
+                id=player.id,
+                name=player.name,
+                photo=player.photo,
+                team_id=player.team_id,
+                team_name=player.team.name if player.team else "Unknown",
+                team_logo=player.team.logo if player.team else None,
+                position=player.position
+            )
+
+            return player_base_info

@@ -16,3 +16,15 @@ class PlayerSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PlayerBaseInfoSchema(BaseModel):
+    id: int
+    name: str
+    photo: Optional[str]
+    team_id: int
+    team_name: str
+    team_logo: Optional[str]
+    position: Optional[str]
+
+    class Config:
+        from_attributes = True
