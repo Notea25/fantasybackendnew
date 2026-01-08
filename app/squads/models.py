@@ -1,10 +1,9 @@
-from typing import Optional
-from sqlalchemy import Column, ForeignKey, Table, Integer, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import Optional, List
+from sqlalchemy import Column, ForeignKey, Table, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
 from app.database import Base
 from app.custom_leagues.models import custom_league_squads
 
-# Ассоциативные таблицы для текущих составов
 squad_players_association = Table(
     "squad_players_association",
     Base.metadata,
@@ -21,7 +20,6 @@ squad_bench_players_association = Table(
     extend_existing=True,
 )
 
-# Ассоциативные таблицы для истории составов
 squad_tour_players = Table(
     "squad_tour_players",
     Base.metadata,
@@ -40,9 +38,6 @@ squad_tour_bench_players = Table(
 
 class Squad(Base):
     __tablename__ = "squads"
-    __table_args__ = (
-        UniqueConstraint('user_id', 'league_id', name='unique_squad_per_league_per_user'),
-    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
@@ -53,34 +48,38 @@ class Squad(Base):
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
     available_boosts: Mapped[int] = mapped_column(default=5)
-    current_tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id"), nullable=True)
+    current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
 
-    # Отношения
     user: Mapped["User"] = relationship(back_populates="squads")
     league: Mapped["League"] = relationship(back_populates="squads")
-    current_main_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_players_association,
-        back_populates="main_squads"
+    current_main_players: Mapped[List["Player"]] = relationship(
+        secondary="squad_players_association",
+        back_populates="main_squads",
+        lazy="joined"
     )
-    current_bench_players: Mapped[list["Player"]] = relationship(
-        secondary=squad_bench_players_association,
-        back_populates="bench_squads"
+    current_bench_players: Mapped[List["Player"]] = relationship(
+        secondary="squad_bench_players_association",
+        back_populates="bench_squads",
+        lazy="joined"
     )
-
-    # История туров
-    tour_history: Mapped[list["SquadTour"]] = relationship(back_populates="squad")
-    used_boosts: Mapped[list["Boost"]] = relationship(back_populates="squad")
-    custom_leagues: Mapped[list["CustomLeague"]] = relationship(
+    tour_history: Mapped[List["SquadTour"]] = relationship(back_populates="squad")
+    used_boosts: Mapped[List["Boost"]] = relationship(back_populates="squad")
+    custom_leagues: Mapped[List["CustomLeague"]] = relationship(
         secondary=custom_league_squads, back_populates="squads"
     )
 
-    def calculate_players_cost(self):
-        """Рассчитывает общую стоимость игроков в скваде"""
-        return sum(p.market_value for p in self.current_main_players) + \
-               sum(p.market_value for p in self.current_bench_players)
+    @property
+    def main_player_ids(self) -> List[int]:
+        return [player.id for player in self.current_main_players]
 
-    def validate_players(self, main_players, bench_players):
-        """Валидация игроков по всем правилам"""
+    @property
+    def bench_player_ids(self) -> List[int]:
+        return [player.id for player in self.current_bench_players]
+
+    def calculate_players_cost(self) -> int:
+        return sum(p.market_value for p in self.current_main_players) + sum(p.market_value for p in self.current_bench_players)
+
+    def validate_players(self, main_players: List["Player"], bench_players: List["Player"]) -> None:
         if len(main_players) != 11:
             raise ValueError("Main squad must have exactly 11 players")
         if len(bench_players) != 4:
@@ -100,16 +99,10 @@ class Squad(Base):
             if club_counts[player.team_id] > 3:
                 raise ValueError("Cannot have more than 3 players from the same club")
 
-    def count_different_players(self, new_main_ids, new_bench_ids):
-        """Считает количество отличающихся игроков"""
+    def count_different_players(self, new_main_ids: List[int], new_bench_ids: List[int]) -> int:
         current_main_ids = {p.id for p in self.current_main_players}
         current_bench_ids = {p.id for p in self.current_bench_players}
-        return len(current_main_ids - set(new_main_ids)) + \
-               len(current_bench_ids - set(new_bench_ids))
-
-    def __repr__(self):
-        return f"{self.name} (User: {self.user_id})"
-
+        return len(current_main_ids - set(new_main_ids)) + len(current_bench_ids - set(new_bench_ids))
 
 class SquadTour(Base):
     __tablename__ = "squad_tours"
@@ -120,17 +113,13 @@ class SquadTour(Base):
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)
 
-    # Отношения
     squad: Mapped["Squad"] = relationship(back_populates="tour_history")
     tour: Mapped["Tour"] = relationship(back_populates="squads")
-    main_players: Mapped[list["Player"]] = relationship(
+    main_players: Mapped[List["Player"]] = relationship(
         secondary=squad_tour_players,
         back_populates="squad_tours"
     )
-    bench_players: Mapped[list["Player"]] = relationship(
+    bench_players: Mapped[List["Player"]] = relationship(
         secondary=squad_tour_bench_players,
         back_populates="bench_squad_tours"
     )
-
-    def __repr__(self):
-        return f"Squad {self.squad_id} Tour {self.tour_id}"

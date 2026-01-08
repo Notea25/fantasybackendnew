@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, Depends
 from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate
 from app.squads.services import SquadService
@@ -6,6 +8,11 @@ from app.users.models import User
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
 
 router = APIRouter(prefix="/squads", tags=["Squads"])
+
+@router.get("/list_squads")
+async def list_squads() -> List[SquadRead]:
+    squads = await SquadService.find_all_with_relations()
+    return squads
 
 @router.post("/create")
 async def create_squad(
@@ -20,16 +27,11 @@ async def create_squad(
         main_player_ids=squad_data.main_player_ids,
         bench_player_ids=squad_data.bench_player_ids,
     )
-    return await SquadService.find_one_or_none_with_relations(id=squad.id)
-
-
-@router.get("/list_squads")
-async def list_squads() -> list[SquadRead]:
-    squads = await SquadService.find_all_with_relations()
-    return squads
+    squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
+    return squad_with_relations
 
 @router.get("/my_squads")
-async def list_users_squads(user: User = Depends(get_current_user)) -> list[SquadRead]:
+async def list_users_squads(user: User = Depends(get_current_user)) -> List[SquadRead]:
     squads = await SquadService.find_filtered_with_relations(user_id=user.id)
     return squads
 
@@ -46,15 +48,12 @@ async def update_squad_players(
     players_data: UpdateSquadPlayersSchema,
     user: User = Depends(get_current_user)
 ):
-    try:
-        squad = await SquadService.update_squad_players(
-            squad_id=squad_id,
-            main_player_ids=players_data.main_player_ids,
-            bench_player_ids=players_data.bench_player_ids
-        )
-        return {"status": "success", "message": "Squad players updated", "squad": squad}
-    except Exception as e:
-        raise FailedOperationException(msg=str(e))
+    squad = await SquadService.update_squad_players(
+        squad_id=squad_id,
+        main_player_ids=players_data.main_player_ids,
+        bench_player_ids=players_data.bench_player_ids
+    )
+    return {"status": "success", "message": "Squad players updated", "squad": squad}
 
 @router.get("/{squad_id}/history")
 async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)):
@@ -73,30 +72,21 @@ async def replace_players(
     players_data: UpdateSquadPlayersSchema,
     user: User = Depends(get_current_user)
 ):
-    """
-    Заменяет игроков в скваде с учетом ограничений на количество замен и бюджет
-    """
-    try:
-        squad = await SquadService.replace_players(
-            squad_id=squad_id,
-            new_main_players=players_data.main_player_ids,
-            new_bench_players=players_data.bench_player_ids
-        )
-        return {
-            "status": "success",
-            "message": "Players replaced successfully",
-            "remaining_replacements": squad.replacements,
-            "squad": squad
-        }
-    except FailedOperationException as e:
-        raise e
+    squad = await SquadService.replace_players(
+        squad_id=squad_id,
+        new_main_players=players_data.main_player_ids,
+        new_bench_players=players_data.bench_player_ids
+    )
+    return {
+        "status": "success",
+        "message": "Players replaced successfully",
+        "remaining_replacements": squad.replacements,
+        "squad": squad
+    }
 
 @router.get("/{squad_id}/replacement_info")
 async def get_replacement_info(
     squad_id: int,
     user: User = Depends(get_current_user)
 ):
-    """
-    Возвращает информацию о доступных заменах и бюджете
-    """
     return await SquadService.get_replacement_info(squad_id)
