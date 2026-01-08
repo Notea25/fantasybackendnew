@@ -584,6 +584,7 @@ class SquadService(BaseService):
                 leaderboard.append({
                     "place": index,
                     "squad_id": squad.id,
+                    "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
