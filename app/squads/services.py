@@ -1,13 +1,16 @@
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+
+from fastapi import HTTPException
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
-from sqlalchemy import delete, func
+from sqlalchemy import delete, func, desc
 from datetime import datetime
 
 from app.matches.models import Match
 from app.players.models import Player
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
+from app.squads.schemas import SquadRead
 from app.tours.models import Tour, tour_matches_association
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -340,7 +343,7 @@ class SquadService(BaseService):
                 logger.warning(f"No squad tour found for squad {squad_id} and tour {squad.current_tour_id}")
 
     @classmethod
-    async def rename_squad(cls, squad_id: int, user_id: int, new_name: str) -> Squad:
+    async def rename_squad(cls, squad_id: int, user_id: int, new_name: str) -> SquadRead:
         logger.info(f"Renaming squad {squad_id} to {new_name} for user {user_id}")
 
         async with async_session_maker() as session:
@@ -364,3 +367,117 @@ class SquadService(BaseService):
                 await session.rollback()
                 logger.error(f"Failed to rename squad {squad_id}: {str(e)}", exc_info=True)
                 raise FailedOperationException(f"Failed to rename squad: {str(e)}")
+
+    @classmethod
+    async def get_leaderboard(cls, tour_id: int) -> List[Dict[str, Any]]:
+        async with async_session_maker() as session:
+            stmt = (
+                select(SquadTour)
+                .where(SquadTour.tour_id == tour_id)
+                .options(
+                    joinedload(SquadTour.squad)
+                    .joinedload(Squad.main_players),
+                    joinedload(SquadTour.squad)
+                    .joinedload(Squad.bench_players),
+                    joinedload(SquadTour.squad)
+                    .joinedload(Squad.user)
+                )
+                .order_by(desc(SquadTour.points))
+            )
+            result = await session.execute(stmt)
+            squads = result.unique().scalars().all()
+
+            leaderboard = []
+            for squad_tour in squads:
+                squad = squad_tour.squad
+                leaderboard.append({
+                    "squad_id": squad.id,
+                    "user_id": squad.user.id,
+                    "username": squad.user.username,
+                    "points": squad_tour.points,
+                    "main_players": [
+                        {
+                            "id": player.id,
+                            "name": f"{player.first_name} {player.last_name}",
+                            "points": player.points
+                        }
+                        for player in squad.main_players
+                    ],
+                    "bench_players": [
+                        {
+                            "id": player.id,
+                            "name": f"{player.first_name} {player.last_name}",
+                            "points": player.points
+                        }
+                        for player in squad.bench_players
+                    ]
+                })
+
+            return leaderboard
+
+    @classmethod
+    async def replace_players(
+        cls,
+        squad_id: int,
+        new_main_players: List[int],
+        new_bench_players: List[int]
+    ) -> Squad:
+        async with async_session_maker() as session:
+            # Проверяем, что игроки существуют
+            stmt = select(Player).where(Player.id.in_(new_main_players + new_bench_players))
+            result = await session.execute(stmt)
+            players = result.scalars().all()
+
+            if len(players) != len(new_main_players) + len(new_bench_players):
+                raise HTTPException(
+                    status_code=404,
+                    detail="One or more players not found"
+                )
+
+            # Получаем состав
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+
+            if not squad:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Squad with id {squad_id} not found"
+                )
+
+            # Обновляем основных и запасных игроков
+            squad.main_players = players[:len(new_main_players)]
+            squad.bench_players = players[len(new_main_players):]
+
+            # Уменьшаем количество замен
+            if squad.replacements > 0:
+                squad.replacements -= 1
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No replacements left"
+                )
+
+            await session.commit()
+            await session.refresh(squad)
+
+            return squad
+
+    @classmethod
+    async def get_replacement_info(cls, squad_id: int) -> Dict[str, Any]:
+        async with async_session_maker() as session:
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+
+            if not squad:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Squad with id {squad_id} not found"
+                )
+
+            return {
+                "squad_id": squad.id,
+                "remaining_replacements": squad.replacements,
+                "max_replacements": squad.max_replacements
+            }

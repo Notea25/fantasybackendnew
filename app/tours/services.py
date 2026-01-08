@@ -150,9 +150,9 @@ class TourService(BaseService):
             result = await session.execute(stmt)
             tours = result.unique().scalars().all()
 
-            previous_tour = None
             current_tour = None
-            next_tour = None
+            previous_tours = []
+            next_tours = []
 
             for tour in tours:
                 if not tour.matches_association:
@@ -164,11 +164,18 @@ class TourService(BaseService):
 
                 if start_date <= now <= end_date:
                     current_tour = tour
-                elif start_date > now:
-                    if not next_tour or start_date < next_tour.start_date:
-                        next_tour = tour
                 elif end_date < now:
-                    if not previous_tour or end_date > previous_tour.end_date:
-                        previous_tour = tour
+                    previous_tours.append((tour, end_date))
+                elif start_date > now:
+                    next_tours.append((tour, start_date))
+
+            # Определяем ближайший предыдущий тур
+            previous_tour = max(previous_tours, key=lambda x: x[1], default=None)
+            previous_tour = previous_tour[0] if previous_tour else None
+
+            # Определяем ближайший следующий тур
+            next_tour = min(next_tours, key=lambda x: x[1], default=None)
+            next_tour = next_tour[0] if next_tour else None
 
             return previous_tour, current_tour, next_tour
+
