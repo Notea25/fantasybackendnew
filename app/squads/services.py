@@ -59,7 +59,7 @@ class SquadService(BaseService):
 
             # Проверка на бюджет
             total_cost = sum(p.market_value for p in players)
-            if total_cost > 100_000:  # Стандартный бюджет
+            if total_cost > 100_000:
                 raise FailedOperationException("Total players cost exceeds squad budget")
 
             # Проверка на лигу
@@ -74,6 +74,11 @@ class SquadService(BaseService):
                 if club_counts[player.team_id] > 3:
                     raise FailedOperationException("Cannot have more than 3 players from the same club")
 
+            # Устанавливаем бюджет: 100_000 - стоимость игроков
+            budget = 100_000 - total_cost
+            if budget < 0:
+                raise FailedOperationException("Budget cannot be negative")
+
             # Создаем сквад
             squad = cls.model(
                 name=name,
@@ -81,7 +86,7 @@ class SquadService(BaseService):
                 league_id=league_id,
                 fav_team_id=fav_team_id,
                 current_tour_id=next_tour.id if next_tour else None,
-                budget=100_000,
+                budget=budget,
                 replacements=3,
             )
             session.add(squad)
