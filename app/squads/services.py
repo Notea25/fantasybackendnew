@@ -16,8 +16,17 @@ class SquadService(BaseService):
     model = Squad
 
     @classmethod
-    async def create_squad(cls, name: str, user_id: int, league_id: int, fav_team_id: int):
+    async def create_squad(
+            cls,
+            name: str,
+            user_id: int,
+            league_id: int,
+            fav_team_id: int,
+            main_player_ids: list[int],
+            bench_player_ids: list[int]
+    ):
         async with async_session_maker() as session:
+            # Проверка на существование сквада у пользователя в лиге
             existing_squad = await session.execute(
                 select(cls.model).where(
                     cls.model.user_id == user_id,
@@ -27,22 +36,78 @@ class SquadService(BaseService):
             if existing_squad.scalars().first():
                 raise FailedOperationException("User already has a squad in this league")
 
+            # Получаем следующий тур
             next_tour = await cls._get_next_tour(league_id)
 
+            # Получаем всех игроков для проверки
+            all_player_ids = main_player_ids + bench_player_ids
+            players = await session.execute(
+                select(Player).where(Player.id.in_(all_player_ids))
+            )
+            players = players.scalars().all()
+            player_by_id = {player.id: player for player in players}
+
+            # Проверки
+            if len(players) != len(all_player_ids):
+                raise ResourceNotFoundException("One or more players not found")
+
+            # Проверка на количество игроков
+            if len(main_player_ids) != 11:
+                raise FailedOperationException("Main squad must have exactly 11 players")
+            if len(bench_player_ids) != 4:
+                raise FailedOperationException("Bench must have exactly 4 players")
+
+            # Проверка на бюджет
+            total_cost = sum(p.market_value for p in players)
+            if total_cost > 100_000:  # Стандартный бюджет
+                raise FailedOperationException("Total players cost exceeds squad budget")
+
+            # Проверка на лигу
+            for player in players:
+                if player.league_id != league_id:
+                    raise FailedOperationException("All players must be from the same league")
+
+            # Проверка на количество игроков из одного клуба
+            club_counts = {}
+            for player in players:
+                club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
+                if club_counts[player.team_id] > 3:
+                    raise FailedOperationException("Cannot have more than 3 players from the same club")
+
+            # Создаем сквад
             squad = cls.model(
                 name=name,
                 user_id=user_id,
                 league_id=league_id,
                 fav_team_id=fav_team_id,
-                current_tour_id=next_tour.id if next_tour else None
+                current_tour_id=next_tour.id if next_tour else None,
+                budget=100_000,
+                replacements=3,
             )
             session.add(squad)
 
+            # Добавляем игроков в основной состав
+            for player_id in main_player_ids:
+                stmt = squad_players_association.insert().values(
+                    squad_id=squad.id, player_id=player_id
+                )
+                await session.execute(stmt)
+
+            # Добавляем игроков в запасной состав
+            for player_id in bench_player_ids:
+                stmt = squad_bench_players_association.insert().values(
+                    squad_id=squad.id, player_id=player_id
+                )
+                await session.execute(stmt)
+
+            # Создаем запись в истории, если есть следующий тур
             if next_tour:
                 squad_tour = SquadTour(
                     squad_id=squad.id,
                     tour_id=next_tour.id,
-                    is_current=True
+                    is_current=True,
+                    main_players=players[:11],
+                    bench_players=players[11:],
                 )
                 session.add(squad_tour)
 

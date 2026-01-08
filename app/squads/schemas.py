@@ -49,6 +49,8 @@ class SquadCreate(BaseModel):
     name: str
     league_id: int
     fav_team_id: int
+    main_player_ids: list[int]
+    bench_player_ids: list[int]
 
 class UpdateSquadPlayersSchema(BaseModel):
     main_player_ids: list[int]

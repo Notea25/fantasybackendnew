@@ -16,9 +16,12 @@ async def create_squad(
         name=squad_data.name,
         user_id=user.id,
         league_id=squad_data.league_id,
-        fav_team_id=squad_data.fav_team_id
+        fav_team_id=squad_data.fav_team_id,
+        main_player_ids=squad_data.main_player_ids,
+        bench_player_ids=squad_data.bench_player_ids,
     )
     return await SquadService.find_one_or_none_with_relations(id=squad.id)
+
 
 @router.get("/list_squads")
 async def list_squads() -> list[SquadRead]:
