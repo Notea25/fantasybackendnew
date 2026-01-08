@@ -122,10 +122,12 @@ class SquadService(BaseService):
                     session.add(squad_tour)
 
                 await session.commit()
+
                 return squad
 
             except Exception as e:
                 await session.rollback()
+                print(f"Error creating squad: {str(e)}")
                 raise FailedOperationException(f"Failed to create squad: {str(e)}")
 
     @classmethod
