@@ -225,6 +225,7 @@ class SquadService(BaseService):
                     main_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,  # Добавлено поле team_id
                         "points": points
                     })
 
@@ -234,6 +235,7 @@ class SquadService(BaseService):
                     bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,  # Добавлено поле team_id
                         "points": points
                     })
 
@@ -294,6 +296,7 @@ class SquadService(BaseService):
                     main_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -303,6 +306,7 @@ class SquadService(BaseService):
                     bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -330,7 +334,6 @@ class SquadService(BaseService):
             logger.debug(f"Found {len(squads)} squads with filter {filter_by}")
 
             for squad in squads:
-                # Получаем основных игроков из squad_players_association
                 main_players_stmt = (
                     select(Player)
                     .join(squad_players_association, Player.id == squad_players_association.c.player_id)
@@ -363,6 +366,7 @@ class SquadService(BaseService):
                     main_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,  # Добавлено поле team_id
                         "points": points
                     })
 
@@ -372,6 +376,7 @@ class SquadService(BaseService):
                     bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
+                        "team_id": player.team_id,  # Добавлено поле team_id
                         "points": points
                     })
 
