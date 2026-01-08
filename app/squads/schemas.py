@@ -30,7 +30,10 @@ class SquadRead(BaseModel):
     current_tour_id: Optional[int] = None
     players: list[PlayerInSquadSchema] = []
     bench_players: list[PlayerInSquadSchema] = []
-    model_config = ConfigDict(from_attributes=True)
+
+    class Config:
+        from_attributes = True
+
 
 class SquadTourSchema(BaseModel):
     id: int

@@ -233,12 +233,12 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.current_main_players),
-                    selectinload(cls.model.current_bench_players),
+                    selectinload(cls.model.current_main_players).joinedload(Player.match_stats),
+                    selectinload(cls.model.current_bench_players).joinedload(Player.match_stats),
                 )
             )
             result = await session.execute(stmt)
-            squads = result.unique().scalars().all()
+            squads = result.unique().salars().all()
             return squads
 
     @classmethod
@@ -267,11 +267,8 @@ class SquadService(BaseService):
                 .options(
                     joinedload(cls.model.user),
                     joinedload(cls.model.league),
-                    selectinload(cls.model.current_main_players).selectinload(Player.match_stats),
-                    selectinload(cls.model.current_bench_players).selectinload(Player.match_stats),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.tour),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.main_players),
-                    joinedload(cls.model.tour_history).joinedload(SquadTour.bench_players),
+                    selectinload(cls.model.current_main_players),
+                    selectinload(cls.model.current_bench_players),
                 )
             )
             result = await session.execute(stmt)
