@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
-from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate
+from app.squads.schemas import SquadRead, UpdateSquadPlayersSchema, SquadCreate, SquadRenameSchema
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
 from app.users.models import User
@@ -90,3 +90,8 @@ async def get_replacement_info(
     user: User = Depends(get_current_user)
 ):
     return await SquadService.get_replacement_info(squad_id)
+
+
+@router.patch("/{squad_id}/rename")
+async def rename_squad(squad_id: int, rename_data: SquadRenameSchema, user: User = Depends(get_current_user)) -> SquadRead:
+    return  await SquadService.rename_squad(squad_id=squad_id, user_id=user.id, new_name=rename_data.name)

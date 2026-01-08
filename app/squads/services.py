@@ -338,3 +338,29 @@ class SquadService(BaseService):
                 logger.debug(f"Updated squad tour for squad {squad_id}")
             else:
                 logger.warning(f"No squad tour found for squad {squad_id} and tour {squad.current_tour_id}")
+
+    @classmethod
+    async def rename_squad(cls, squad_id: int, user_id: int, new_name: str) -> Squad:
+        logger.info(f"Renaming squad {squad_id} to {new_name} for user {user_id}")
+
+        async with async_session_maker() as session:
+            try:
+                stmt = select(Squad).where(Squad.id == squad_id, Squad.user_id == user_id)
+                result = await session.execute(stmt)
+                squad = result.scalars().first()
+
+                if not squad:
+                    logger.error(f"Squad {squad_id} not found for user {user_id}")
+                    raise ResourceNotFoundException("Squad not found or does not belong to user")
+
+                squad.name = new_name
+                await session.commit()
+                await session.refresh(squad)
+
+                logger.info(f"Successfully renamed squad {squad_id} to {squad.name}")
+                return squad
+
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Failed to rename squad {squad_id}: {str(e)}", exc_info=True)
+                raise FailedOperationException(f"Failed to rename squad: {str(e)}")

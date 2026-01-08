@@ -45,3 +45,10 @@ class ReplacementInfo(BaseModel):
     current_players_cost: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SquadRenameSchema(BaseModel):
+    name: str
+
+    class Config:
+        from_attributes = True
