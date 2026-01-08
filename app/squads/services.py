@@ -91,6 +91,10 @@ class SquadService(BaseService):
             )
             session.add(squad)
 
+            # Сохраняем сквад, чтобы получить его id
+            await session.commit()
+            await session.refresh(squad)
+
             # Добавляем игроков в основной состав
             for player_id in main_player_ids:
                 stmt = squad_players_association.insert().values(
@@ -117,7 +121,6 @@ class SquadService(BaseService):
                 session.add(squad_tour)
 
             await session.commit()
-            await session.refresh(squad)
             return squad
 
     @classmethod
