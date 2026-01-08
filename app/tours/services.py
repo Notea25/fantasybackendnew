@@ -1,41 +1,38 @@
 from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.matches.models import Match
-from app.teams.models import Team
-from app.tours.models import Tour, tour_matches_association
+from app.tours.models import Tour, TourMatchAssociation
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
-
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 class TourService(BaseService):
     model = Tour
 
     @classmethod
-    async def get_current_and_next_tour(cls, league_id: int) -> tuple[Tour | None, Tour | None]:
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)  # Приводим текущее время к UTC с временной зоной
+    async def get_current_and_next_tour(cls, league_id: int) -> Tuple[Optional[Tour], Optional[Tour]]:
+        now = datetime.utcnow().replace(tzinfo=timezone.utc)
 
-        # Подзапрос для минимальной и максимальной даты матчей каждого тура
         tour_dates = (
             select(
-                tour_matches_association.c.tour_id,
+                Tour.id,
                 func.min(Match.date).label("start_date"),
                 func.max(Match.date).label("end_date")
             )
-            .join(Match, Match.id == tour_matches_association.c.match_id)
-            .group_by(tour_matches_association.c.tour_id)
+            .join(TourMatchAssociation, TourMatchAssociation.tour_id == Tour.id)
+            .join(Match, Match.id == TourMatchAssociation.match_id)
+            .where(Tour.league_id == league_id)
+            .group_by(Tour.id)
             .subquery()
         )
 
-        # Основной запрос: выбираем все туры с их датами
         stmt = (
             select(Tour, tour_dates.c.start_date, tour_dates.c.end_date)
-            .join(tour_dates, Tour.id == tour_dates.c.tour_id)
-            .where(Tour.league_id == league_id)
+            .join(tour_dates, Tour.id == tour_dates.c.id)
         )
 
         async with async_session_maker() as session:
@@ -63,21 +60,19 @@ class TourService(BaseService):
             return current_tour, next_tour
 
     @classmethod
-    async def get_deadline_for_next_tour(cls, league_id: int) -> datetime | None:
+    async def get_deadline_for_next_tour(cls, league_id: int) -> Optional[datetime]:
         current_tour, next_tour = await cls.get_current_and_next_tour(league_id=league_id)
 
-        # Если нет следующего тура, возвращаем ошибку
         if not next_tour:
             raise HTTPException(
                 status_code=404,
                 detail=f"No next tour found for league with ID {league_id}"
             )
 
-        # Подзапрос для получения минимальной даты матча следующего тура
         tour_start_date = (
             select(func.min(Match.date))
-            .join(tour_matches_association, Match.id == tour_matches_association.c.match_id)
-            .where(tour_matches_association.c.tour_id == next_tour.id)
+            .join(TourMatchAssociation, Match.id == TourMatchAssociation.match_id)
+            .where(TourMatchAssociation.tour_id == next_tour.id)
             .scalar_subquery()
         )
 
@@ -95,59 +90,46 @@ class TourService(BaseService):
                 start_date = start_date.replace(tzinfo=timezone.utc)
 
             return start_date - timedelta(hours=2)
+
     @classmethod
-    async def find_one_by_number(cls, number: int, league_id: int):
+    async def find_one_by_number(cls, number: int, league_id: int) -> Optional[Tour]:
         async with async_session_maker() as session:
             stmt = (
                 select(cls.model)
                 .where(cls.model.number == number, cls.model.league_id == league_id)
-                .options(selectinload(cls.model.matches))
+                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
             )
             result = await session.execute(stmt)
-            tour = result.unique().scalars().first()
-
-            if tour and tour.matches:
-                tour.start_date = min(match.date for match in tour.matches)
-                tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
-                tour.deadline = tour.start_date - timedelta(hours=2)
-
-            return tour
+            return result.unique().scalars().first()
 
     @classmethod
-    async def find_all_with_relations(cls):
+    async def find_all_with_relations(cls) -> List[Tour]:
         async with async_session_maker() as session:
-            stmt = select(cls.model).options(selectinload(cls.model.matches))
+            stmt = (
+                select(cls.model)
+                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
+            )
             result = await session.execute(stmt)
-            tours = result.unique().scalars().all()
-            return tours
+            return result.unique().scalars().all()
 
     @classmethod
-    async def find_one_or_none_with_relations(cls, tour_id: int):
+    async def find_one_or_none_with_relations(cls, tour_id: int) -> Optional[Tour]:
         async with async_session_maker() as session:
             stmt = (
                 select(cls.model)
                 .where(cls.model.id == tour_id)
-                .options(selectinload(cls.model.matches))
+                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
             )
             result = await session.execute(stmt)
-            tour = result.unique().scalars().first()
-            return tour
+            return result.unique().scalars().first()
 
     @classmethod
-    async def find_all_by_league(cls, league_id: int) -> list[Tour]:
+    async def find_all_by_league(cls, league_id: int) -> List[Tour]:
         async with async_session_maker() as session:
             stmt = (
                 select(cls.model)
                 .where(cls.model.league_id == league_id)
-                .options(selectinload(cls.model.matches))
+                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
             )
             result = await session.execute(stmt)
-            tours = result.unique().scalars().all()
-
-            for tour in tours:
-                if tour.matches:
-                    tour.start_date = min(match.date for match in tour.matches)
-                    tour.end_date = max(match.date for match in tour.matches) + timedelta(hours=2)
-                    tour.deadline = tour.start_date - timedelta(hours=2)
-
-            return tours
+            return result.unique().scalars().all()

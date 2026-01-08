@@ -24,7 +24,7 @@ class TourMatchAssociation(Base):
 class Tour(Base):
     __tablename__ = "tours"
     id: Mapped[int] = mapped_column(primary_key=True)
-    number: Mapped[int] = mapped_column(Integer)
+    number: Mapped[int]
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
 
     __table_args__ = (
@@ -42,15 +42,15 @@ class Tour(Base):
 
     @property
     def start_date(self) -> Optional[datetime]:
-        if not self.matches:
+        if not self.matches_association:
             return None
-        return min(match.date for match in self.matches)
+        return min(association.match.date for association in self.matches_association)
 
     @property
     def end_date(self) -> Optional[datetime]:
-        if not self.matches:
+        if not self.matches_association:
             return None
-        return max(match.date for match in self.matches) + timedelta(hours=2)
+        return max(association.match.date for association in self.matches_association) + timedelta(hours=2)
 
     @property
     def deadline(self) -> Optional[datetime]:
@@ -60,3 +60,7 @@ class Tour(Base):
 
     def __repr__(self):
         return f"Tour {self.number}"
+
+    def __repr__(self):
+        return f"Tour {self.number}"
+
