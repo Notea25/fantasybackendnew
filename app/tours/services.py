@@ -133,3 +133,42 @@ class TourService(BaseService):
             )
             result = await session.execute(stmt)
             return result.unique().scalars().all()
+
+    @classmethod
+    async def get_previous_current_next_tour(cls, league_id: int) -> tuple[
+        Optional["Tour"], Optional["Tour"], Optional["Tour"]]:
+        now = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+        async with async_session_maker() as session:
+            # Загружаем все туры с их ассоциациями матчей
+            stmt = (
+                select(Tour)
+                .where(Tour.league_id == league_id)
+                .options(selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match))
+                .order_by(Tour.number)
+            )
+            result = await session.execute(stmt)
+            tours = result.unique().scalars().all()
+
+            previous_tour = None
+            current_tour = None
+            next_tour = None
+
+            for tour in tours:
+                if not tour.matches_association:
+                    continue
+
+                # Вычисляем start_date и end_date на основе матчей
+                start_date = min(association.match.date for association in tour.matches_association)
+                end_date = max(association.match.date for association in tour.matches_association)
+
+                if start_date <= now <= end_date:
+                    current_tour = tour
+                elif start_date > now:
+                    if not next_tour or start_date < next_tour.start_date:
+                        next_tour = tour
+                elif end_date < now:
+                    if not previous_tour or end_date > previous_tour.end_date:
+                        previous_tour = tour
+
+            return previous_tour, current_tour, next_tour
