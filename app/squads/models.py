@@ -114,7 +114,7 @@ class Squad(Base):
 class SquadTour(Base):
     __tablename__ = "squad_tours"
     id: Mapped[int] = mapped_column(primary_key=True)
-    squad_id: Mapped[int] = mapped_column(ForeignKey("squads.id"))
+    squad_id: Mapped[int] = mapped_column(ForeignKey("squads.id", ondelete="CASCADE"))
     tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id"))
     is_current: Mapped[bool] = mapped_column(default=False)
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
