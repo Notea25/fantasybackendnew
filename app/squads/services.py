@@ -238,7 +238,7 @@ class SquadService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            squads = result.unique().salars().all()
+            squads = result.unique().scalars().all()
             return squads
 
     @classmethod
