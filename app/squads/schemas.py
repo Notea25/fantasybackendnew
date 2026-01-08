@@ -7,14 +7,15 @@ class PlayerInSquadSchema(BaseModel):
     id: int
     name: str
     age: int
-    number: Optional[int] = Field(default=None)
+    number: Optional[int] = None
     position: str
     photo: str
     team_id: int
     market_value: int
     sport: int
     league_id: int
-    points: int = Field(default=0)
+    points: int = 0
+
     model_config = ConfigDict(from_attributes=True)
 
 class SquadRead(BaseModel):
@@ -28,11 +29,10 @@ class SquadRead(BaseModel):
     fav_team_id: int
     available_boosts: int
     current_tour_id: Optional[int] = None
-    players: list[PlayerInSquadSchema] = []
-    bench_players: list[PlayerInSquadSchema] = []
+    players: List[PlayerInSquadSchema] = []
+    bench_players: List[PlayerInSquadSchema] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SquadTourSchema(BaseModel):

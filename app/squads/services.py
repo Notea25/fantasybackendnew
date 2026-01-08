@@ -110,6 +110,9 @@ class SquadService(BaseService):
                     )
                     await session.execute(stmt)
 
+                # Сохраняем изменения
+                await session.commit()
+
                 # Создаем запись в истории, если есть следующий тур
                 if next_tour:
                     squad_tour = SquadTour(
@@ -120,14 +123,12 @@ class SquadService(BaseService):
                         bench_players=players[11:],
                     )
                     session.add(squad_tour)
-
-                await session.commit()
+                    await session.commit()
 
                 return squad
 
             except Exception as e:
                 await session.rollback()
-                print(f"Error creating squad: {str(e)}")
                 raise FailedOperationException(f"Failed to create squad: {str(e)}")
 
     @classmethod
@@ -238,7 +239,7 @@ class SquadService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            squads = result.unique().scalars().all()
+            squads = result.scalars().unique().all()
             return squads
 
     @classmethod
@@ -255,7 +256,7 @@ class SquadService(BaseService):
                 )
             )
             result = await session.execute(stmt)
-            squads = result.unique().scalars().all()
+            squads = result.scalars().unique().all()
             return squads
 
     @classmethod
