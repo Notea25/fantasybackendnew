@@ -85,6 +85,7 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Di
     squad = await SquadService.find_one_or_none_with_relations(id=squad_id, user_id=user.id)
     if not squad:
         raise ResourceNotFoundException()
+
     squad_data = {
         "id": squad.id,
         "name": squad.name,

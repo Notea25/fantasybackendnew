@@ -190,56 +190,57 @@ class SquadService(BaseService):
             result = await session.execute(stmt)
             squad = result.scalars().unique().first()
             if squad:
-                logger.debug(f"Found squad {squad.id} with relations")
+                logger.debug(f"Found squad {squad.id} with relations, current_tour_id: {squad.current_tour_id}")
 
-                if squad.current_tour_id:
-                    # Получаем основных игроков
-                    main_players_stmt = (
-                        select(Player)
-                        .join(player_squad_tours, Player.id == player_squad_tours.c.player_id)
-                        .where(player_squad_tours.c.squad_tour_id == squad.current_tour_id)
+                # Получаем основных игроков из squad_players_association
+                main_players_stmt = (
+                    select(Player)
+                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
+                    .where(squad_players_association.c.squad_id == squad.id)
+                )
+                main_players_result = await session.execute(main_players_stmt)
+                main_players = main_players_result.scalars().all()
+
+                # Получаем запасных игроков из squad_bench_players_association
+                bench_players_stmt = (
+                    select(Player)
+                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
+                    .where(squad_bench_players_association.c.squad_id == squad.id)
+                )
+                bench_players_result = await session.execute(bench_players_stmt)
+                bench_players = bench_players_result.scalars().all()
+
+                # Получаем очки для каждого игрока
+                async def get_player_points(player_id: int) -> int:
+                    stmt = (
+                        select(func.sum(PlayerMatchStats.points))
+                        .where(PlayerMatchStats.player_id == player_id)
                     )
-                    main_players_result = await session.execute(main_players_stmt)
-                    main_players = main_players_result.scalars().all()
+                    result = await session.execute(stmt)
+                    return result.scalar() or 0
 
-                    # Получаем запасных игроков
-                    bench_players_stmt = (
-                        select(Player)
-                        .join(player_bench_squad_tours, Player.id == player_bench_squad_tours.c.player_id)
-                        .where(player_bench_squad_tours.c.squad_tour_id == squad.current_tour_id)
-                    )
-                    bench_players_result = await session.execute(bench_players_stmt)
-                    bench_players = bench_players_result.scalars().all()
+                main_players_data = []
+                for player in main_players:
+                    points = await get_player_points(player.id)
+                    main_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    # Получаем очки для каждого игрока
-                    async def get_player_points(player_id: int) -> int:
-                        stmt = (
-                            select(func.sum(PlayerMatchStats.points))
-                            .where(PlayerMatchStats.player_id == player_id)
-                        )
-                        result = await session.execute(stmt)
-                        return result.scalar() or 0
+                bench_players_data = []
+                for player in bench_players:
+                    points = await get_player_points(player.id)
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    main_players_data = []
-                    for player in main_players:
-                        points = await get_player_points(player.id)
-                        main_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    bench_players_data = []
-                    for player in bench_players:
-                        points = await get_player_points(player.id)
-                        bench_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    squad.main_players_data = main_players_data
-                    squad.bench_players_data = bench_players_data
+                squad.main_players_data = main_players_data
+                squad.bench_players_data = bench_players_data
+                logger.debug(
+                    f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players")
             else:
                 logger.debug(f"No squad found with filter {filter_by}")
             return squad
@@ -260,54 +261,55 @@ class SquadService(BaseService):
             logger.debug(f"Found {len(squads)} squads")
 
             for squad in squads:
-                if squad.current_tour_id:
-                    # Получаем основных игроков
-                    main_players_stmt = (
-                        select(Player)
-                        .join(player_squad_tours, Player.id == player_squad_tours.c.player_id)
-                        .where(player_squad_tours.c.squad_tour_id == squad.current_tour_id)
+                # Получаем основных игроков из squad_players_association
+                main_players_stmt = (
+                    select(Player)
+                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
+                    .where(squad_players_association.c.squad_id == squad.id)
+                )
+                main_players_result = await session.execute(main_players_stmt)
+                main_players = main_players_result.scalars().all()
+
+                # Получаем запасных игроков из squad_bench_players_association
+                bench_players_stmt = (
+                    select(Player)
+                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
+                    .where(squad_bench_players_association.c.squad_id == squad.id)
+                )
+                bench_players_result = await session.execute(bench_players_stmt)
+                bench_players = bench_players_result.scalars().all()
+
+                # Получаем очки для каждого игрока
+                async def get_player_points(player_id: int) -> int:
+                    stmt = (
+                        select(func.sum(PlayerMatchStats.points))
+                        .where(PlayerMatchStats.player_id == player_id)
                     )
-                    main_players_result = await session.execute(main_players_stmt)
-                    main_players = main_players_result.scalars().all()
+                    result = await session.execute(stmt)
+                    return result.scalar() or 0
 
-                    # Получаем запасных игроков
-                    bench_players_stmt = (
-                        select(Player)
-                        .join(player_bench_squad_tours, Player.id == player_bench_squad_tours.c.player_id)
-                        .where(player_bench_squad_tours.c.squad_tour_id == squad.current_tour_id)
-                    )
-                    bench_players_result = await session.execute(bench_players_stmt)
-                    bench_players = bench_players_result.scalars().all()
+                main_players_data = []
+                for player in main_players:
+                    points = await get_player_points(player.id)
+                    main_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    # Получаем очки для каждого игрока
-                    async def get_player_points(player_id: int) -> int:
-                        stmt = (
-                            select(func.sum(PlayerMatchStats.points))
-                            .where(PlayerMatchStats.player_id == player_id)
-                        )
-                        result = await session.execute(stmt)
-                        return result.scalar() or 0
+                bench_players_data = []
+                for player in bench_players:
+                    points = await get_player_points(player.id)
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    main_players_data = []
-                    for player in main_players:
-                        points = await get_player_points(player.id)
-                        main_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    bench_players_data = []
-                    for player in bench_players:
-                        points = await get_player_points(player.id)
-                        bench_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    squad.main_players_data = main_players_data
-                    squad.bench_players_data = bench_players_data
+                squad.main_players_data = main_players_data
+                squad.bench_players_data = bench_players_data
+                logger.debug(
+                    f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players for squad {squad.id}")
 
             return squads
 
@@ -328,54 +330,55 @@ class SquadService(BaseService):
             logger.debug(f"Found {len(squads)} squads with filter {filter_by}")
 
             for squad in squads:
-                if squad.current_tour_id:
-                    # Получаем основных игроков
-                    main_players_stmt = (
-                        select(Player)
-                        .join(player_squad_tours, Player.id == player_squad_tours.c.player_id)
-                        .where(player_squad_tours.c.squad_tour_id == squad.current_tour_id)
+                # Получаем основных игроков из squad_players_association
+                main_players_stmt = (
+                    select(Player)
+                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
+                    .where(squad_players_association.c.squad_id == squad.id)
+                )
+                main_players_result = await session.execute(main_players_stmt)
+                main_players = main_players_result.scalars().all()
+
+                # Получаем запасных игроков из squad_bench_players_association
+                bench_players_stmt = (
+                    select(Player)
+                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
+                    .where(squad_bench_players_association.c.squad_id == squad.id)
+                )
+                bench_players_result = await session.execute(bench_players_stmt)
+                bench_players = bench_players_result.scalars().all()
+
+                # Получаем очки для каждого игрока
+                async def get_player_points(player_id: int) -> int:
+                    stmt = (
+                        select(func.sum(PlayerMatchStats.points))
+                        .where(PlayerMatchStats.player_id == player_id)
                     )
-                    main_players_result = await session.execute(main_players_stmt)
-                    main_players = main_players_result.scalars().all()
+                    result = await session.execute(stmt)
+                    return result.scalar() or 0
 
-                    # Получаем запасных игроков
-                    bench_players_stmt = (
-                        select(Player)
-                        .join(player_bench_squad_tours, Player.id == player_bench_squad_tours.c.player_id)
-                        .where(player_bench_squad_tours.c.squad_tour_id == squad.current_tour_id)
-                    )
-                    bench_players_result = await session.execute(bench_players_stmt)
-                    bench_players = bench_players_result.scalars().all()
+                main_players_data = []
+                for player in main_players:
+                    points = await get_player_points(player.id)
+                    main_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    # Получаем очки для каждого игрока
-                    async def get_player_points(player_id: int) -> int:
-                        stmt = (
-                            select(func.sum(PlayerMatchStats.points))
-                            .where(PlayerMatchStats.player_id == player_id)
-                        )
-                        result = await session.execute(stmt)
-                        return result.scalar() or 0
+                bench_players_data = []
+                for player in bench_players:
+                    points = await get_player_points(player.id)
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "points": points
+                    })
 
-                    main_players_data = []
-                    for player in main_players:
-                        points = await get_player_points(player.id)
-                        main_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    bench_players_data = []
-                    for player in bench_players:
-                        points = await get_player_points(player.id)
-                        bench_players_data.append({
-                            "id": player.id,
-                            "name": player.name,
-                            "points": points
-                        })
-
-                    squad.main_players_data = main_players_data
-                    squad.bench_players_data = bench_players_data
+                squad.main_players_data = main_players_data
+                squad.bench_players_data = bench_players_data
+                logger.debug(
+                    f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players for squad {squad.id}")
 
             return squads
 
