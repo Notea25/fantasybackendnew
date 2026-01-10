@@ -393,12 +393,12 @@ class SquadService(BaseService):
 
     @classmethod
     async def update_squad_players(
-        cls,
-        squad_id: int,
-        captain_id: Optional[int] = None,
-        vice_captain_id: Optional[int] = None,
-        main_player_ids: List[int] = [],
-        bench_player_ids: List[int] = []
+            cls,
+            squad_id: int,
+            captain_id: Optional[int] = None,
+            vice_captain_id: Optional[int] = None,
+            main_player_ids: List[int] = [],
+            bench_player_ids: List[int] = []
     ):
         logger.info(f"Updating players for squad {squad_id}")
         async with async_session_maker() as session:
@@ -409,6 +409,12 @@ class SquadService(BaseService):
             if not squad:
                 logger.error(f"Squad {squad_id} not found")
                 raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что капитан и вице-капитан входят в состав основных или запасных игроков
+            if captain_id and captain_id not in main_player_ids + bench_player_ids:
+                raise FailedOperationException("Captain must be in main or bench players")
+            if vice_captain_id and vice_captain_id not in main_player_ids + bench_player_ids:
+                raise FailedOperationException("Vice-captain must be in main or bench players")
 
             players = await session.execute(
                 select(Player).where(Player.id.in_(main_player_ids + bench_player_ids))
@@ -511,39 +517,11 @@ class SquadService(BaseService):
                 bench_players_result = await session.execute(bench_players_stmt)
                 bench_players = bench_players_result.scalars().all()
 
-                # Получаем очки для каждого игрока
-                async def get_player_points(player_id: int) -> int:
-                    stmt = (
-                        select(func.sum(PlayerMatchStats.points))
-                        .where(PlayerMatchStats.player_id == player_id)
-                    )
-                    result = await session.execute(stmt)
-                    return result.scalar() or 0
-
-                main_players_data = []
-                for player in main_players:
-                    points = await get_player_points(player.id)
-                    main_players_data.append({
-                        "id": player.id,
-                        "name": player.name,
-                        "points": points
-                    })
-
-                bench_players_data = []
-                for player in bench_players:
-                    points = await get_player_points(player.id)
-                    bench_players_data.append({
-                        "id": player.id,
-                        "name": player.name,
-                        "points": points
-                    })
-
-                squad_tour.main_players_data = main_players_data
-                squad_tour.bench_players_data = bench_players_data
+                # Рассчитываем очки для SquadTour
+                squad_tour.points = await squad.calculate_points(session)
                 squad_tour.captain_id = squad.captain_id
                 squad_tour.vice_captain_id = squad.vice_captain_id
 
-                squad_tour.points = squad.calculate_points()
                 await session.commit()
                 logger.debug(f"Updated squad tour for squad {squad_id}")
             else:

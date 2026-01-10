@@ -1,8 +1,9 @@
 from typing import Optional, List
-from sqlalchemy import Column, ForeignKey, Table, Integer
+from sqlalchemy import Column, ForeignKey, Table, Integer, select, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
 from app.database import Base
 from app.custom_leagues.models import custom_league_squads
+from app.player_match_stats.models import PlayerMatchStats
 
 squad_players_association = Table(
     "squad_players_association",
@@ -105,6 +106,33 @@ class Squad(Base):
         current_main_ids = {p.id for p in self.current_main_players}
         current_bench_ids = {p.id for p in self.current_bench_players}
         return len(current_main_ids - set(new_main_ids)) + len(current_bench_ids - set(new_bench_ids))
+
+    async def calculate_points(self, session) -> int:
+
+        total_points = 0
+
+        # Получаем очки для основных игроков
+        for player in self.current_main_players:
+            player_points_stmt = (
+                select(func.sum(PlayerMatchStats.points))
+                .where(PlayerMatchStats.player_id == player.id)
+            )
+            player_points_result = await session.execute(player_points_stmt)
+            player_points = player_points_result.scalar() or 0
+            total_points += player_points
+
+        # Получаем очки для запасных игроков
+        for player in self.current_bench_players:
+            player_points_stmt = (
+                select(func.sum(PlayerMatchStats.points))
+                .where(PlayerMatchStats.player_id == player.id)
+            )
+            player_points_result = await session.execute(player_points_stmt)
+            player_points = player_points_result.scalar() or 0
+            total_points += player_points
+
+        return total_points
+
 
 class SquadTour(Base):
     __tablename__ = "squad_tours"
