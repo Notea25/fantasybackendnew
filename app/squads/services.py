@@ -1,12 +1,10 @@
 import logging
 from typing import Optional, List, Dict, Any
-
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy import delete, func, desc
 from datetime import datetime
-
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
@@ -28,8 +26,10 @@ class SquadService(BaseService):
         user_id: int,
         league_id: int,
         fav_team_id: int,
-        main_player_ids: List[int],
-        bench_player_ids: List[int]
+        captain_id: Optional[int] = None,
+        vice_captain_id: Optional[int] = None,
+        main_player_ids: List[int] = [],
+        bench_player_ids: List[int] = []
     ):
         logger.info(f"Creating squad {name} for user {user_id} in league {league_id}")
         async with async_session_maker() as session:
@@ -99,6 +99,8 @@ class SquadService(BaseService):
                     current_tour_id=next_tour.id if next_tour else None,
                     budget=budget,
                     replacements=3,
+                    captain_id=captain_id,
+                    vice_captain_id=vice_captain_id,
                 )
                 session.add(squad)
                 logger.debug(f"Created squad object: {squad}")
@@ -129,6 +131,8 @@ class SquadService(BaseService):
                         squad_id=squad.id,
                         tour_id=next_tour.id,
                         is_current=True,
+                        captain_id=captain_id,
+                        vice_captain_id=vice_captain_id,
                         main_players=players[:11],
                         bench_players=players[11:],
                     )
@@ -225,7 +229,7 @@ class SquadService(BaseService):
                     main_players_data.append({
                         "id": player.id,
                         "name": player.name,
-                        "team_id": player.team_id,  # Добавлено поле team_id
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -235,7 +239,7 @@ class SquadService(BaseService):
                     bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
-                        "team_id": player.team_id,  # Добавлено поле team_id
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -366,7 +370,7 @@ class SquadService(BaseService):
                     main_players_data.append({
                         "id": player.id,
                         "name": player.name,
-                        "team_id": player.team_id,  # Добавлено поле team_id
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -376,7 +380,7 @@ class SquadService(BaseService):
                     bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
-                        "team_id": player.team_id,  # Добавлено поле team_id
+                        "team_id": player.team_id,
                         "points": points
                     })
 
@@ -388,7 +392,14 @@ class SquadService(BaseService):
             return squads
 
     @classmethod
-    async def update_squad_players(cls, squad_id: int, main_player_ids: List[int], bench_player_ids: List[int]):
+    async def update_squad_players(
+        cls,
+        squad_id: int,
+        captain_id: Optional[int] = None,
+        vice_captain_id: Optional[int] = None,
+        main_player_ids: List[int] = [],
+        bench_player_ids: List[int] = []
+    ):
         logger.info(f"Updating players for squad {squad_id}")
         async with async_session_maker() as session:
             squad = await session.execute(
@@ -450,6 +461,9 @@ class SquadService(BaseService):
                 )
                 await session.execute(stmt)
                 logger.debug(f"Added bench player with ID: {player_id} to squad {squad_id}")
+
+            squad.captain_id = captain_id
+            squad.vice_captain_id = vice_captain_id
 
             await cls._save_current_squad(squad_id)
 
@@ -526,6 +540,8 @@ class SquadService(BaseService):
 
                 squad_tour.main_players_data = main_players_data
                 squad_tour.bench_players_data = bench_players_data
+                squad_tour.captain_id = squad.captain_id
+                squad_tour.vice_captain_id = squad.vice_captain_id
 
                 squad_tour.points = squad.calculate_points()
                 await session.commit()
@@ -605,8 +621,10 @@ class SquadService(BaseService):
     async def replace_players(
         cls,
         squad_id: int,
-        new_main_players: List[int],
-        new_bench_players: List[int]
+        captain_id: Optional[int] = None,
+        vice_captain_id: Optional[int] = None,
+        new_main_players: List[int] = [],
+        new_bench_players: List[int] = []
     ):
         async with async_session_maker() as session:
             # Проверяем, что игроки существуют
@@ -631,9 +649,21 @@ class SquadService(BaseService):
                     detail=f"Squad with id {squad_id} not found"
                 )
 
+            # Проверяем, что капитан и вице-капитан входят в состав основных или запасных игроков
+            if captain_id and captain_id not in new_main_players + new_bench_players:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Captain must be in main or bench players"
+                )
+            if vice_captain_id and vice_captain_id not in new_main_players + new_bench_players:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Vice-captain must be in main or bench players"
+                )
+
             # Обновляем основных и запасных игроков
-            squad.main_players = players[:len(new_main_players)]
-            squad.bench_players = players[len(new_main_players):]
+            squad.captain_id = captain_id
+            squad.vice_captain_id = vice_captain_id
 
             # Уменьшаем количество замен
             if squad.replacements > 0:
@@ -665,5 +695,5 @@ class SquadService(BaseService):
             return {
                 "squad_id": squad.id,
                 "remaining_replacements": squad.replacements,
-                "max_replacements": squad.max_replacements
+                "max_replacements": 3
             }

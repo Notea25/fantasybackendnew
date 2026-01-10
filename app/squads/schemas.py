@@ -12,6 +12,8 @@ class SquadRead(BaseModel):
     fav_team_id: int
     available_boosts: int
     current_tour_id: Optional[int] = None
+    captain_id: Optional[int] = None
+    vice_captain_id: Optional[int] = None
     main_player_ids: List[int] = []
     bench_player_ids: List[int] = []
 
@@ -21,10 +23,14 @@ class SquadCreate(BaseModel):
     name: str
     league_id: int
     fav_team_id: int
+    captain_id: Optional[int] = None
+    vice_captain_id: Optional[int] = None
     main_player_ids: List[int]
     bench_player_ids: List[int]
 
 class UpdateSquadPlayersSchema(BaseModel):
+    captain_id: Optional[int] = None
+    vice_captain_id: Optional[int] = None
     main_player_ids: List[int]
     bench_player_ids: List[int]
 
@@ -34,6 +40,8 @@ class SquadTourSchema(BaseModel):
     is_current: bool
     used_boost: Optional[str] = None
     points: int
+    captain_id: Optional[int] = None
+    vice_captain_id: Optional[int] = None
     main_player_ids: List[int] = []
     bench_player_ids: List[int] = []
 
@@ -45,7 +53,6 @@ class ReplacementInfo(BaseModel):
     current_players_cost: int
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class SquadRenameSchema(BaseModel):
     name: str

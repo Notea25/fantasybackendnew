@@ -49,6 +49,8 @@ class Squad(Base):
     points: Mapped[int] = mapped_column(default=0)
     available_boosts: Mapped[int] = mapped_column(default=5)
     current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
+    captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
+    vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="squads")
     league: Mapped["League"] = relationship(back_populates="squads")
@@ -112,6 +114,8 @@ class SquadTour(Base):
     is_current: Mapped[bool] = mapped_column(default=False)
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)
+    captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
+    vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
 
     squad: Mapped["Squad"] = relationship(back_populates="tour_history")
     tour: Mapped["Tour"] = relationship(back_populates="squads")

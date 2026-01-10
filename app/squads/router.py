@@ -1,5 +1,4 @@
-from typing import List, Dict, Any
-
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
@@ -22,6 +21,8 @@ async def list_squads() -> List[Dict[str, Any]]:
             "fav_team_id": squad.fav_team_id,
             "budget": squad.budget,
             "replacements": squad.replacements,
+            "captain_id": squad.captain_id,
+            "vice_captain_id": squad.vice_captain_id,
             "main_players": getattr(squad, 'main_players_data', []),
             "bench_players": getattr(squad, 'bench_players_data', [])
         }
@@ -33,8 +34,10 @@ async def create_squad(
     name: str,
     league_id: int,
     fav_team_id: int,
-    main_player_ids: List[int],
-    bench_player_ids: List[int],
+    captain_id: Optional[int] = None,
+    vice_captain_id: Optional[int] = None,
+    main_player_ids: List[int] = [],
+    bench_player_ids: List[int] = [],
     user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     squad = await SquadService.create_squad(
@@ -42,6 +45,8 @@ async def create_squad(
         user_id=user.id,
         league_id=league_id,
         fav_team_id=fav_team_id,
+        captain_id=captain_id,
+        vice_captain_id=vice_captain_id,
         main_player_ids=main_player_ids,
         bench_player_ids=bench_player_ids,
     )
@@ -55,6 +60,8 @@ async def create_squad(
         "fav_team_id": squad_with_relations.fav_team_id,
         "budget": squad_with_relations.budget,
         "replacements": squad_with_relations.replacements,
+        "captain_id": squad_with_relations.captain_id,
+        "vice_captain_id": squad_with_relations.vice_captain_id,
         "main_players": getattr(squad_with_relations, 'main_players_data', []),
         "bench_players": getattr(squad_with_relations, 'bench_players_data', [])
     }
@@ -74,6 +81,8 @@ async def list_users_squads(user: User = Depends(get_current_user)) -> List[Dict
             "fav_team_id": squad.fav_team_id,
             "budget": squad.budget,
             "replacements": squad.replacements,
+            "captain_id": squad.captain_id,
+            "vice_captain_id": squad.vice_captain_id,
             "main_players": getattr(squad, 'main_players_data', []),
             "bench_players": getattr(squad, 'bench_players_data', [])
         }
@@ -95,6 +104,8 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Di
         "fav_team_id": squad.fav_team_id,
         "budget": squad.budget,
         "replacements": squad.replacements,
+        "captain_id": squad.captain_id,
+        "vice_captain_id": squad.vice_captain_id,
         "main_players": getattr(squad, 'main_players_data', []),
         "bench_players": getattr(squad, 'bench_players_data', [])
     }
@@ -103,12 +114,16 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Di
 @router.put("/update_players/{squad_id}", response_model=Dict[str, Any])
 async def update_squad_players(
     squad_id: int,
-    main_player_ids: List[int],
-    bench_player_ids: List[int],
+    captain_id: Optional[int] = None,
+    vice_captain_id: Optional[int] = None,
+    main_player_ids: List[int] = [],
+    bench_player_ids: List[int] = [],
     user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     squad = await SquadService.update_squad_players(
         squad_id=squad_id,
+        captain_id=captain_id,
+        vice_captain_id=vice_captain_id,
         main_player_ids=main_player_ids,
         bench_player_ids=bench_player_ids
     )
@@ -122,31 +137,26 @@ async def update_squad_players(
         "fav_team_id": squad_with_relations.fav_team_id,
         "budget": squad_with_relations.budget,
         "replacements": squad_with_relations.replacements,
+        "captain_id": squad_with_relations.captain_id,
+        "vice_captain_id": squad_with_relations.vice_captain_id,
         "main_players": getattr(squad_with_relations, 'main_players_data', []),
         "bench_players": getattr(squad_with_relations, 'bench_players_data', [])
     }
     return {"status": "success", "message": "Squad players updated", "squad": squad_data}
 
-@router.get("/{squad_id}/history", response_model=List[Dict[str, Any]])
-async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)) -> List[Dict[str, Any]]:
-    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
-    if not squad:
-        raise ResourceNotFoundException()
-    return squad.tour_history
-
-@router.get("/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
-async def get_leaderboard(tour_id: int) -> List[Dict[str, Any]]:
-    return await SquadService.get_leaderboard(tour_id)
-
 @router.post("/{squad_id}/replace_players", response_model=Dict[str, Any])
 async def replace_players(
     squad_id: int,
-    main_player_ids: List[int],
-    bench_player_ids: List[int],
+    captain_id: Optional[int] = None,
+    vice_captain_id: Optional[int] = None,
+    main_player_ids: List[int] = [],
+    bench_player_ids: List[int] = [],
     user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     squad = await SquadService.replace_players(
         squad_id=squad_id,
+        captain_id=captain_id,
+        vice_captain_id=vice_captain_id,
         new_main_players=main_player_ids,
         new_bench_players=bench_player_ids
     )
@@ -160,6 +170,8 @@ async def replace_players(
         "fav_team_id": squad_with_relations.fav_team_id,
         "budget": squad_with_relations.budget,
         "replacements": squad_with_relations.replacements,
+        "captain_id": squad_with_relations.captain_id,
+        "vice_captain_id": squad_with_relations.vice_captain_id,
         "main_players": getattr(squad_with_relations, 'main_players_data', []),
         "bench_players": getattr(squad_with_relations, 'bench_players_data', [])
     }
@@ -187,5 +199,18 @@ async def rename_squad(squad_id: int, new_name: str, user: User = Depends(get_cu
         "league_id": squad.league_id,
         "fav_team_id": squad.fav_team_id,
         "budget": squad.budget,
-        "replacements": squad.replacements
+        "replacements": squad.replacements,
+        "captain_id": squad.captain_id,
+        "vice_captain_id": squad.vice_captain_id
     }
+
+@router.get("/{squad_id}/history", response_model=List[Dict[str, Any]])
+async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)) -> List[Dict[str, Any]]:
+    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
+    if not squad:
+        raise ResourceNotFoundException()
+    return squad.tour_history
+
+@router.get("/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+async def get_leaderboard(tour_id: int) -> List[Dict[str, Any]]:
+    return await SquadService.get_leaderboard(tour_id)
