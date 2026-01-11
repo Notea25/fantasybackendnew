@@ -156,3 +156,39 @@ class CustomLeagueService(BaseService):
             result = await session.execute(stmt)
             leagues = result.scalars().all()
             return leagues
+
+
+    @classmethod
+    async def add_squad_to_custom_league(cls, custom_league_id: int, squad_id: int, user_id: int):
+        async with async_session_maker() as session:
+            # Проверка существования кастомной лиги
+            stmt = select(CustomLeague).where(CustomLeague.id == custom_league_id)
+            result = await session.execute(stmt)
+            custom_league = result.scalars().first()
+            if not custom_league:
+                raise ResourceNotFoundException("Custom league not found")
+
+            # Проверка существования сквада
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что сквад принадлежит пользователю
+            if squad.user_id != user_id:
+                raise NotAllowedException("You can only add your own squad to a custom league")
+
+            # Проверка, что сквад еще не добавлен в эту лигу
+            stmt = select(custom_league_squads).where(
+                custom_league_squads.c.custom_league_id == custom_league_id,
+                custom_league_squads.c.squad_id == squad_id
+            )
+            result = await session.execute(stmt)
+            if result.first():
+                raise NotAllowedException("Squad is already in this custom league")
+
+            # Добавление сквада в кастомную лигу
+            custom_league.squads.append(squad)
+            await session.commit()
+            return custom_league

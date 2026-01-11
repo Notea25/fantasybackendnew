@@ -94,3 +94,18 @@ async def get_all_custom_leagues():
 async def get_custom_leagues_by_type(league_type: str):
     leagues = await CustomLeagueService.get_custom_leagues_by_type(league_type)
     return leagues
+
+
+@router.post("/{custom_league_id}/squads/{squad_id}")
+async def add_squad_to_custom_league(
+    custom_league_id: int,
+    squad_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        custom_league = await CustomLeagueService.add_squad_to_custom_league(custom_league_id, squad_id, current_user.id)
+        return {"message": "Squad successfully added to the custom league", "custom_league": custom_league}
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotAllowedException as e:
+        raise HTTPException(status_code=403, detail=str(e))
