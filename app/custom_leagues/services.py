@@ -176,7 +176,7 @@ class CustomLeagueService(BaseService):
             return leagues
 
     @classmethod
-    async def get_club_custom_league_by_team_id(cls, team_id: int) -> List[CustomLeague]:
+    async def get_club_custom_league_by_team_id(cls, team_id: int) -> list[CustomLeague]:
         async with async_session_maker() as session:
             stmt = (
                 select(CustomLeague)
