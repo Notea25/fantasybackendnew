@@ -107,7 +107,6 @@ class SquadAdmin(ModelView, model=Squad):
         Squad.replacements,
         Squad.league_id,
         Squad.points,
-        Squad.available_boosts,
         Squad.current_tour_id,
     ]
 
@@ -119,7 +118,6 @@ class SquadAdmin(ModelView, model=Squad):
         Squad.replacements,
         Squad.league_id,
         Squad.points,
-        Squad.available_boosts,
         Squad.current_tour_id,
     ]
 

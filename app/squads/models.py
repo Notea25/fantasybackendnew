@@ -48,7 +48,6 @@ class Squad(Base):
     replacements: Mapped[int] = mapped_column(default=3)
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
-    available_boosts: Mapped[int] = mapped_column(default=5)
     current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
@@ -108,7 +107,6 @@ class Squad(Base):
         return len(current_main_ids - set(new_main_ids)) + len(current_bench_ids - set(new_bench_ids))
 
     async def calculate_points(self, session) -> int:
-
         total_points = 0
 
         # Получаем очки для основных игроков
@@ -132,7 +130,6 @@ class Squad(Base):
             total_points += player_points
 
         return total_points
-
 
 class SquadTour(Base):
     __tablename__ = "squad_tours"

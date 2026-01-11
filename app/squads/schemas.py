@@ -10,7 +10,6 @@ class SquadRead(BaseModel):
     league_id: int
     points: int = 0
     fav_team_id: int
-    available_boosts: int
     current_tour_id: Optional[int] = None
     captain_id: Optional[int] = None
     vice_captain_id: Optional[int] = None
