@@ -1,6 +1,6 @@
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, delete
 
 from app.boosts.schemas import BoostType
 from app.database import async_session_maker
@@ -114,3 +114,26 @@ class BoostService(BaseService):
             )
             result = await session.execute(stmt)
             return result.scalars().all()
+
+
+    @classmethod
+    async def remove_boost(cls, squad_id: int, tour_id: int):
+
+        async with async_session_maker() as session:
+            stmt = select(cls.model).where(
+                cls.model.squad_id == squad_id,
+                cls.model.tour_id == tour_id
+            )
+            result = await session.execute(stmt)
+            boost = result.scalars().first()
+
+            if not boost:
+                raise ResourceNotFoundException("Boost not found for this squad and tour")
+
+            await session.execute(
+                delete(cls.model).where(
+                    cls.model.squad_id == squad_id,
+                    cls.model.tour_id == tour_id
+                )
+            )
+            await session.commit()
