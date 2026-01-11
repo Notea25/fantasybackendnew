@@ -5,6 +5,7 @@ from sqlalchemy import func, delete
 from app.boosts.schemas import BoostType
 from app.database import async_session_maker
 from app.boosts.models import Boost
+from app.squads.models import Squad
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
 
@@ -14,7 +15,6 @@ class BoostService(BaseService):
     @classmethod
     async def apply_boost(cls, squad_id: int, tour_id: int, boost_type: str):
         async with async_session_maker() as session:
-            # Проверка, что в этом туре буст ещё не использовался
             stmt = select(cls.model).where(
                 cls.model.squad_id == squad_id,
                 cls.model.tour_id == tour_id
@@ -23,7 +23,6 @@ class BoostService(BaseService):
             if result.scalars().first():
                 raise FailedOperationException("Boost already used in this tour")
 
-            # Проверка, что конкретный тип буста ещё не использовался ранее
             used_boost_type = await session.scalar(
                 select(func.count(cls.model.id)).where(
                     cls.model.squad_id == squad_id,
@@ -33,7 +32,6 @@ class BoostService(BaseService):
             if used_boost_type:
                 raise FailedOperationException(f"Boost type {boost_type} already used for this squad")
 
-            # Создание нового буста
             boost = cls.model(
                 squad_id=squad_id,
                 tour_id=tour_id,
@@ -46,15 +44,10 @@ class BoostService(BaseService):
     @classmethod
     async def get_available_boosts(cls, squad_id: int, tour_id: int):
         async with async_session_maker() as session:
-            from app.squads.models import Squad
-            stmt = select(Squad).where(Squad.id == squad_id)
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-
+            squad = await session.get(Squad, squad_id)
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что в этом туре буст ещё не использовался
             used_in_tour = await session.scalar(
                 select(func.count(cls.model.id)).where(
                     cls.model.squad_id == squad_id,
@@ -62,30 +55,29 @@ class BoostService(BaseService):
                 )
             )
 
-            # Получаем список всех использованных типов бустов для этого состава
-            used_boost_types = await session.scalars(
-                select(cls.model.type.distinct()).where(
+            used_boosts = await session.execute(
+                select(cls.model.type, cls.model.tour_id).where(
                     cls.model.squad_id == squad_id
                 )
             )
-            used_boost_types = set(used_boost_types)
+            used_boosts = used_boosts.all()
 
-            # Формируем список доступных бустов
+            used_boosts_dict = {boost_type: tour_id for boost_type, tour_id in used_boosts}
+
             all_boost_types = [boost_type.value for boost_type in BoostType]
             boosts = []
             for boost_type in all_boost_types:
-                # Буст доступен, если:
-                # 1. В этом туре ещё не использовался любой буст
-                # 2. Этот конкретный тип буста ещё не использовался ранее
-                available = not used_in_tour and (boost_type not in used_boost_types)
+                available = not used_in_tour and (boost_type not in used_boosts_dict)
+                used_in_tour_number = used_boosts_dict.get(boost_type)
+
                 boosts.append({
                     "type": boost_type,
                     "description": cls._get_boost_description(boost_type),
-                    "available": available
+                    "available": available,
+                    "used_in_tour_number": used_in_tour_number
                 })
 
             return {
-                "available_boosts": not used_in_tour,
                 "used_in_current_tour": bool(used_in_tour),
                 "boosts": boosts
             }
