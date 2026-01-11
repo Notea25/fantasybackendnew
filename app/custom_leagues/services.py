@@ -174,3 +174,14 @@ class CustomLeagueService(BaseService):
             result = await session.execute(stmt)
             leagues = result.scalars().all()
             return leagues
+
+    @classmethod
+    async def get_club_custom_league_by_team_id(cls, team_id: int) -> List[CustomLeague]:
+        async with async_session_maker() as session:
+            stmt = (
+                select(CustomLeague)
+                .where(CustomLeague.type == "CLUB", CustomLeague.team_id == team_id)
+            )
+            result = await session.execute(stmt)
+            leagues = result.scalars().all()
+            return leagues

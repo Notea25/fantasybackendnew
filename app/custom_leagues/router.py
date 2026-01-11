@@ -113,3 +113,10 @@ async def add_squad_to_custom_league(
         raise HTTPException(status_code=404, detail=str(e))
     except NotAllowedException as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+@router.get("/club/by_team/{team_id}", response_model=list[CustomLeagueSchema])
+async def get_club_custom_league_by_team(team_id: int):
+    leagues = await CustomLeagueService.get_club_custom_league_by_team_id(team_id)
+    if not leagues:
+        raise HTTPException(status_code=404, detail="No club custom leagues found for this team_id")
+    return leagues
