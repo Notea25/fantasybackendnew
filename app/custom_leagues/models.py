@@ -28,14 +28,16 @@ class CustomLeague(Base):
     is_public: Mapped[bool] = mapped_column(default=False)
     invitation_only: Mapped[bool] = mapped_column(default=False)
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=True)  # Только для клубных лиг
 
     registration_start: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     registration_end: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     league: Mapped["League"] = relationship(back_populates="custom_leagues")
     creator: Mapped["User"] = relationship(back_populates="custom_leagues")
+    team: Mapped["Team"] = relationship(back_populates="custom_leagues", foreign_keys=[team_id])  # Связь с командой
     tours: Mapped[list["Tour"]] = relationship(secondary=custom_league_tours, back_populates="custom_leagues")
     squads: Mapped[list["Squad"]] = relationship(secondary=custom_league_squads, back_populates="custom_leagues")
 
     def __repr__(self):
-        return f"{self.name} ({self.type.value})"
+        return f"{self.name} ({self.type})"

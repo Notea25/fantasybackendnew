@@ -1,9 +1,10 @@
 import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.custom_leagues.schemas import CustomLeague, CustomLeagueCreate
 from app.custom_leagues.services import CustomLeagueService
 from app.users.dependencies import get_current_user
+from app.users.models import User
 from app.utils.exceptions import CustomLeagueException, NotAllowedException, ResourceNotFoundException
 
 router = APIRouter(prefix="/custom_leagues", tags=["Custom Leagues"])
@@ -11,14 +12,16 @@ router = APIRouter(prefix="/custom_leagues", tags=["Custom Leagues"])
 @router.post("/")
 async def create_custom_league(
     data: CustomLeagueCreate,
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     try:
-        return await CustomLeagueService.create_custom_league(data.model_dump(), current_user['id'])
+        return await CustomLeagueService.create_custom_league(data.model_dump(), current_user.id)
     except CustomLeagueException as e:
-        raise e
+        raise HTTPException(status_code=403, detail=str(e))
     except NotAllowedException as e:
-        raise e
+        raise HTTPException(status_code=403, detail=str(e))
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.delete("/{custom_league_id}")
 async def delete_custom_league(
@@ -66,3 +69,17 @@ async def get_registration_status(custom_league_id: int):
         "message": "Registration is open" if is_open else "Registration is closed"
     }
 
+@router.get("/club/{custom_league_id}")
+async def get_club_league(custom_league_id: int):
+    custom_league = await CustomLeagueService.get_club_league(custom_league_id)
+    if not custom_league:
+        raise ResourceNotFoundException("Custom league not found")
+
+    return {
+        "id": custom_league.id,
+        "name": custom_league.name,
+        "team_name": custom_league.team.name if custom_league.team else None,
+        "type": custom_league.type,
+        "registration_start": custom_league.registration_start,
+        "registration_end": custom_league.registration_end,
+    }
