@@ -32,11 +32,11 @@ async def get_league_main_page(
         raise ResourceNotFoundException
     return res
 
-@router.get("/all_leagues_main_page", response_model=list[LeagueMainPageSchema])
-async def get_all_leagues_main_page(user: User = Depends(get_current_user)) -> list[LeagueMainPageSchema]:
-    leagues = await LeagueService.find_all_main_page(user_id=user.id)
-    return leagues
-
+# @router.get("/all_leagues_main_page", response_model=list[LeagueMainPageSchema])
+# async def get_all_leagues_main_page(user: User = Depends(get_current_user)) -> list[LeagueMainPageSchema]:
+#     leagues = await LeagueService.find_all_main_page(user_id=user.id)
+#     return leagues
+#
 @router.get("/sport_type_{sport}/")
 async def get_leagues_by_sport_type(sport: int) -> list[LeagueSchema]:
     res = await LeagueService.find_filtered(sport=sport)
