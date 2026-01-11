@@ -9,6 +9,22 @@ class CustomLeagueType(str, Enum):
     USER = "User"
     CLUB = "Club"
 
+class CustomLeagueSchema(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    league_id: int
+    type: CustomLeagueType
+    is_public: bool
+    invitation_only: bool
+    creator_id: Optional[int]
+    team_id: Optional[int]
+    registration_start: Optional[datetime]
+    registration_end: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
 class CustomLeagueBase(BaseModel):
     name: str
     description: str | None = None
@@ -23,7 +39,7 @@ class CustomLeagueCreate(BaseModel):
     name: str
     description: Optional[str] = None
     league_id: int
-    type: str
+    type: CustomLeagueType
     is_public: bool = False
     invitation_only: bool = False
     registration_start: Optional[datetime] = None

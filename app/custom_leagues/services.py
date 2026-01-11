@@ -137,3 +137,22 @@ class CustomLeagueService(BaseService):
             )
             result = await session.execute(stmt)
             return result.scalars().first()
+
+    @classmethod
+    async def get_all_custom_leagues(cls) -> list[CustomLeague]:
+        async with async_session_maker() as session:
+            stmt = select(CustomLeague)
+            result = await session.execute(stmt)
+            leagues = result.scalars().all()
+            return leagues
+
+    @classmethod
+    async def get_custom_leagues_by_type(cls, league_type: str) -> list[CustomLeague]:
+        async with async_session_maker() as session:
+            if league_type:
+                stmt = select(CustomLeague).where(CustomLeague.type == league_type)
+            else:
+                stmt = select(CustomLeague)
+            result = await session.execute(stmt)
+            leagues = result.scalars().all()
+            return leagues

@@ -1,7 +1,7 @@
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from app.custom_leagues.schemas import CustomLeague, CustomLeagueCreate
+from app.custom_leagues.schemas import CustomLeague, CustomLeagueCreate, CustomLeagueSchema
 from app.custom_leagues.services import CustomLeagueService
 from app.users.dependencies import get_current_user
 from app.users.models import User
@@ -83,3 +83,14 @@ async def get_club_league(custom_league_id: int):
         "registration_start": custom_league.registration_start,
         "registration_end": custom_league.registration_end,
     }
+
+
+@router.get("/all", response_model=list[CustomLeagueSchema])
+async def get_all_custom_leagues():
+    leagues = await CustomLeagueService.get_all_custom_leagues()
+    return leagues
+
+@router.get("/by_type", response_model=list[CustomLeagueSchema])
+async def get_custom_leagues_by_type(league_type: str):
+    leagues = await CustomLeagueService.get_custom_leagues_by_type(league_type)
+    return leagues
