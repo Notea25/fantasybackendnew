@@ -1,8 +1,10 @@
 import datetime
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from app.custom_leagues.schemas import CustomLeague, CustomLeagueCreate, CustomLeagueSchema
 from app.custom_leagues.services import CustomLeagueService
+from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
 from app.users.models import User
 from app.utils.exceptions import CustomLeagueException, NotAllowedException, ResourceNotFoundException
@@ -114,9 +116,16 @@ async def add_squad_to_custom_league(
     except NotAllowedException as e:
         raise HTTPException(status_code=403, detail=str(e))
 
-@router.get("/club/by_team/{team_id}", response_model=list[CustomLeagueSchema])
+@router.get("/club/by_team/{team_id}", response_model=CustomLeagueSchema)
 async def get_club_custom_league_by_team(team_id: int):
-    leagues = await CustomLeagueService.get_club_custom_league_by_team_id(team_id)
-    if not leagues:
-        raise HTTPException(status_code=404, detail="No club custom leagues found for this team_id")
-    return leagues
+    league = await CustomLeagueService.get_club_custom_league_by_team_id(team_id)
+    if not league:
+        raise HTTPException(status_code=404, detail=f"No club custom league found for team_id: {team_id}")
+    return league
+
+@router.get("/{custom_league_id}/leaderboard/{tour_id}", response_model=list[Dict[str, Any]])
+async def get_custom_league_leaderboard(custom_league_id: int, tour_id: int):
+    leaderboard = await SquadService.get_custom_league_leaderboard(custom_league_id, tour_id)
+    if not leaderboard:
+        raise HTTPException(status_code=404, detail="No data found for this custom league and tour")
+    return leaderboard

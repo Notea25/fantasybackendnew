@@ -1,10 +1,12 @@
 import datetime
 import logging
+from typing import Optional
 
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
+from app.custom_leagues.schemas import CustomLeagueSchema
 from app.database import async_session_maker
 from app.custom_leagues.models import CustomLeague, custom_league_squads
 from app.leagues.models import League
@@ -116,7 +118,7 @@ class CustomLeagueService(BaseService):
             return result.scalars().first()
 
     @classmethod
-    async def get_all_custom_leagues(cls) -> list[CustomLeague]:
+    async def get_all_custom_leagues(cls) -> list[CustomLeagueSchema]:
         async with async_session_maker() as session:
             stmt = select(CustomLeague)
             result = await session.execute(stmt)
@@ -160,7 +162,7 @@ class CustomLeagueService(BaseService):
             return custom_league
 
     @classmethod
-    async def get_custom_leagues_by_league_id(cls, league_id: int) -> list[CustomLeague]:
+    async def get_custom_leagues_by_league_id(cls, league_id: int) -> list[CustomLeagueSchema]:
         async with async_session_maker() as session:
             stmt = select(CustomLeague).where(CustomLeague.league_id == league_id)
             result = await session.execute(stmt)
@@ -168,7 +170,7 @@ class CustomLeagueService(BaseService):
             return leagues
 
     @classmethod
-    async def get_custom_leagues_by_type(cls, league_type: str) -> list[CustomLeague]:
+    async def get_custom_leagues_by_type(cls, league_type: str) -> list[CustomLeagueSchema]:
         async with async_session_maker() as session:
             stmt = select(CustomLeague).where(CustomLeague.type == league_type)
             result = await session.execute(stmt)
@@ -176,12 +178,12 @@ class CustomLeagueService(BaseService):
             return leagues
 
     @classmethod
-    async def get_club_custom_league_by_team_id(cls, team_id: int) -> list[CustomLeague]:
+    async def get_club_custom_league_by_team_id(cls, team_id: int) -> Optional[CustomLeague]:
         async with async_session_maker() as session:
             stmt = (
                 select(CustomLeague)
-                .where(CustomLeague.type == "CLUB", CustomLeague.team_id == team_id)
+                .where(CustomLeague.team_id == team_id, CustomLeague.type == "Club")
             )
             result = await session.execute(stmt)
-            leagues = result.scalars().all()
-            return leagues
+            league = result.scalars().first()
+            return league
