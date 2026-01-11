@@ -44,6 +44,8 @@ class BoostService(BaseService):
     @classmethod
     async def get_available_boosts(cls, squad_id: int, tour_id: int):
         async with async_session_maker() as session:
+            from app.tours.models import Tour
+
             squad = await session.get(Squad, squad_id)
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
@@ -56,13 +58,13 @@ class BoostService(BaseService):
             )
 
             used_boosts = await session.execute(
-                select(cls.model.type, cls.model.tour_id).where(
+                select(cls.model.type, Tour.number).join(Tour, cls.model.tour_id == Tour.id).where(
                     cls.model.squad_id == squad_id
                 )
             )
             used_boosts = used_boosts.all()
 
-            used_boosts_dict = {boost_type: tour_id for boost_type, tour_id in used_boosts}
+            used_boosts_dict = {boost_type: tour_number for boost_type, tour_number in used_boosts}
 
             all_boost_types = [boost_type.value for boost_type in BoostType]
             boosts = []
