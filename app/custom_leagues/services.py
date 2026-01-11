@@ -192,3 +192,19 @@ class CustomLeagueService(BaseService):
             custom_league.squads.append(squad)
             await session.commit()
             return custom_league
+
+    @classmethod
+    async def get_custom_leagues_by_league_id(cls, league_id: int) -> List[CustomLeague]:
+        async with async_session_maker() as session:
+            stmt = select(CustomLeague).where(CustomLeague.league_id == league_id)
+            result = await session.execute(stmt)
+            leagues = result.scalars().all()
+            return leagues
+
+    @classmethod
+    async def get_custom_leagues_by_type(cls, league_type: str) -> List[CustomLeague]:
+        async with async_session_maker() as session:
+            stmt = select(CustomLeague).where(CustomLeague.type == league_type)
+            result = await session.execute(stmt)
+            leagues = result.scalars().all()
+            return leagues

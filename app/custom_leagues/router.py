@@ -90,11 +90,15 @@ async def get_all_custom_leagues():
     leagues = await CustomLeagueService.get_all_custom_leagues()
     return leagues
 
-@router.get("/by_type", response_model=list[CustomLeagueSchema])
+@router.get("/by_league/{league_id}", response_model=list[CustomLeagueSchema])
+async def get_custom_leagues_by_league(league_id: int):
+    leagues = await CustomLeagueService.get_custom_leagues_by_league_id(league_id)
+    return leagues
+
+@router.get("/by_type/{league_type}", response_model=list[CustomLeagueSchema])
 async def get_custom_leagues_by_type(league_type: str):
     leagues = await CustomLeagueService.get_custom_leagues_by_type(league_type)
     return leagues
-
 
 @router.post("/{custom_league_id}/squads/{squad_id}")
 async def add_squad_to_custom_league(
