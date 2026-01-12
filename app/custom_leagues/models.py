@@ -17,7 +17,6 @@ custom_league_squads = Table(
     Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
 )
 
-
 class CustomLeague(Base):
     __tablename__ = "custom_leagues"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -29,15 +28,19 @@ class CustomLeague(Base):
     invitation_only: Mapped[bool] = mapped_column(default=False)
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=True)  # Только для клубных лиг
+    prize: Mapped[str] = mapped_column(nullable=True)  # Приз лиги
+    logo: Mapped[str] = mapped_column(nullable=True)  # Логотип лиги
+    winner_id: Mapped[int] = mapped_column(ForeignKey("squads.id"), nullable=True)  # Победитель лиги
 
     registration_start: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     registration_end: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     league: Mapped["League"] = relationship(back_populates="custom_leagues")
     creator: Mapped["User"] = relationship(back_populates="custom_leagues")
-    team: Mapped["Team"] = relationship(back_populates="custom_leagues", foreign_keys=[team_id])  # Связь с командой
+    team: Mapped["Team"] = relationship(back_populates="custom_leagues", foreign_keys=[team_id])
     tours: Mapped[list["Tour"]] = relationship(secondary=custom_league_tours, back_populates="custom_leagues")
     squads: Mapped[list["Squad"]] = relationship(secondary=custom_league_squads, back_populates="custom_leagues")
+    winner: Mapped["Squad"] = relationship(foreign_keys=[winner_id])
 
     def __repr__(self):
         return f"{self.name} ({self.type})"

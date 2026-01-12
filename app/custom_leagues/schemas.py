@@ -8,6 +8,10 @@ class CustomLeagueType(str, Enum):
     COMMERCIAL = "Commercial"
     USER = "User"
     CLUB = "Club"
+class TourSchema(BaseModel):
+    id: int
+    name: str
+    # другие поля тура
 
 class CustomLeagueSchema(BaseModel):
     id: int
@@ -19,8 +23,12 @@ class CustomLeagueSchema(BaseModel):
     invitation_only: bool
     creator_id: Optional[int]
     team_id: Optional[int]
+    prize: Optional[str]
+    logo: Optional[str]
+    winner_id: Optional[int]
     registration_start: Optional[datetime]
     registration_end: Optional[datetime]
+    tours: list[TourSchema]
 
     class Config:
         from_attributes = True
