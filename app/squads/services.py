@@ -656,12 +656,12 @@ class SquadService(BaseService):
 
     @classmethod
     async def replace_players(
-        cls,
-        squad_id: int,
-        captain_id: Optional[int] = None,
-        vice_captain_id: Optional[int] = None,
-        new_main_players: List[int] = [],
-        new_bench_players: List[int] = []
+            cls,
+            squad_id: int,
+            captain_id: Optional[int] = None,
+            vice_captain_id: Optional[int] = None,
+            new_main_players: List[int] = [],
+            new_bench_players: List[int] = []
     ):
         async with async_session_maker() as session:
             # Проверяем, что игроки существуют
@@ -698,9 +698,21 @@ class SquadService(BaseService):
                     detail="Vice-captain must be in main or bench players"
                 )
 
+            # Рассчитываем общую стоимость новых игроков
+            total_cost = sum(p.market_value for p in players)
+            new_budget = 100_000 - total_cost
+
+            # Проверяем, что бюджет не отрицательный
+            if new_budget < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Budget cannot be negative"
+                )
+
             # Обновляем основных и запасных игроков
             squad.captain_id = captain_id
             squad.vice_captain_id = vice_captain_id
+            squad.budget = new_budget  # Обновляем бюджет
 
             # Уменьшаем количество замен
             if squad.replacements > 0:
@@ -710,6 +722,32 @@ class SquadService(BaseService):
                     status_code=400,
                     detail="No replacements left"
                 )
+
+            # Удаляем старых игроков из основного и запасного составов
+            await session.execute(
+                delete(squad_players_association).where(
+                    squad_players_association.c.squad_id == squad_id
+                )
+            )
+            await session.execute(
+                delete(squad_bench_players_association).where(
+                    squad_bench_players_association.c.squad_id == squad_id
+                )
+            )
+
+            # Добавляем новых основных игроков
+            for player_id in new_main_players:
+                stmt = squad_players_association.insert().values(
+                    squad_id=squad_id, player_id=player_id
+                )
+                await session.execute(stmt)
+
+            # Добавляем новых запасных игроков
+            for player_id in new_bench_players:
+                stmt = squad_bench_players_association.insert().values(
+                    squad_id=squad_id, player_id=player_id
+                )
+                await session.execute(stmt)
 
             await session.commit()
             await session.refresh(squad)
