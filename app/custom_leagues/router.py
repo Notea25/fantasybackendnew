@@ -35,6 +35,11 @@ async def delete_custom_league(
     except NotAllowedException as e:
         raise e
 
+@router.get("/commercial", response_model=list[CustomLeagueSchema])
+async def get_all_commercial_leagues(league_id: int):
+    commercial_leagues = await CustomLeagueService.get_all_commercial_leagues(league_id)
+    return commercial_leagues
+
 @router.get("/commercial/registration_status")
 async def get_all_commercial_leagues_registration_status():
     commercial_leagues = await CustomLeagueService.get_all_commercial_leagues()

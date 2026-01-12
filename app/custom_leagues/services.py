@@ -77,11 +77,12 @@ class CustomLeagueService(BaseService):
             await session.commit()
             return custom_league
 
-
     @classmethod
-    async def get_all_commercial_leagues(cls):
+    async def get_all_commercial_leagues(cls, league_id: Optional[int] = None) -> list[CustomLeague]:
         async with async_session_maker() as session:
-            stmt = select(cls.model).where(cls.model.type == "COMMERCIAL")
+            stmt = select(CustomLeague).where(CustomLeague.type == "COMMERCIAL")
+            if league_id:
+                stmt = stmt.where(CustomLeague.league_id == league_id)
             result = await session.execute(stmt)
             return result.scalars().all()
 
