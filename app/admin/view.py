@@ -1,7 +1,10 @@
 from sqladmin import ModelView
 
 from app.boosts.models import Boost
+from app.custom_leagues.club_league.models import ClubLeague
+from app.custom_leagues.commercial_league.models import CommercialLeague
 from app.custom_leagues.models import CustomLeague
+from app.custom_leagues.user_league.models import UserLeague
 from app.users.models import User
 from app.leagues.models import League
 from app.matches.models import Match
@@ -273,22 +276,59 @@ class TourAdmin(ModelView, model=Tour):
     name_plural = "Tours"
     icon = "fa-solid fa-calendar"
 
-class CustomLeagueAdmin(ModelView, model=CustomLeague):
+class UserLeagueAdmin(ModelView, model=UserLeague):
     column_list = [
-        CustomLeague.id,
-        CustomLeague.name,
-        CustomLeague.description,
-        CustomLeague.league_id,
-        CustomLeague.type,
-        CustomLeague.is_public,
-        CustomLeague.invitation_only,
+        UserLeague.id,
+        UserLeague.name,
+        UserLeague.description,
+        UserLeague.league_id,
+        UserLeague.is_public,
+        UserLeague.invitation_only,
+        UserLeague.creator_id,
+        UserLeague.registration_start,
+        UserLeague.registration_end,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         'league_id': 'League',
-        'type': 'Type',
         'is_public': 'Public',
         'invitation_only': 'Invitation Only',
+        'creator_id': 'Creator',
+        'registration_start': 'Registration Start',
+        'registration_end': 'Registration End',
+    }
+
+    def format(self, attr, value):
+        if attr == 'league_id' and value is not None:
+            return value.name
+        if attr == 'creator_id' and value is not None:
+            return value.username
+        return super().format(attr, value)
+
+    name = "User League"
+    name_plural = "User Leagues"
+    icon = "fa-solid fa-user"
+
+class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
+    column_list = [
+        CommercialLeague.id,
+        CommercialLeague.name,
+        CommercialLeague.description,
+        CommercialLeague.league_id,
+        CommercialLeague.prize,
+        CommercialLeague.logo,
+        CommercialLeague.is_public,
+        CommercialLeague.registration_start,
+        CommercialLeague.registration_end,
+    ]
+    column_searchable_list = ["name"]
+    column_labels = {
+        'league_id': 'League',
+        'is_public': 'Public',
+        'prize': 'Prize',
+        'logo': 'Logo',
+        'registration_start': 'Registration Start',
+        'registration_end': 'Registration End',
     }
 
     def format(self, attr, value):
@@ -296,9 +336,46 @@ class CustomLeagueAdmin(ModelView, model=CustomLeague):
             return value.name
         return super().format(attr, value)
 
-    name = "Custom League"
-    name_plural = "Custom Leagues"
-    icon = "fa-solid fa-flag"
+    name = "Commercial League"
+    name_plural = "Commercial Leagues"
+    icon = "fa-solid fa-money-bill-wave"
+
+class ClubLeagueAdmin(ModelView, model=ClubLeague):
+    column_list = [
+        ClubLeague.id,
+        ClubLeague.name,
+        ClubLeague.description,
+        ClubLeague.league_id,
+        ClubLeague.team_id,
+        ClubLeague.prize,
+        ClubLeague.logo,
+        ClubLeague.winner_id,
+        ClubLeague.registration_start,
+        ClubLeague.registration_end,
+    ]
+    column_searchable_list = ["name"]
+    column_labels = {
+        'league_id': 'League',
+        'team_id': 'Team',
+        'prize': 'Prize',
+        'logo': 'Logo',
+        'winner_id': 'Winner',
+        'registration_start': 'Registration Start',
+        'registration_end': 'Registration End',
+    }
+
+    def format(self, attr, value):
+        if attr == 'league_id' and value is not None:
+            return value.name
+        if attr == 'team_id' and value is not None:
+            return value.name
+        if attr == 'winner_id' and value is not None:
+            return value.name
+        return super().format(attr, value)
+
+    name = "Club League"
+    name_plural = "Club Leagues"
+    icon = "fa-solid fa-trophy"
 
 
 class TourMatchesAdmin(ModelView, model=TourMatchAssociation):

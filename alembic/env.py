@@ -20,7 +20,9 @@ from app.squads.models import Squad
 from app.boosts.models import Boost
 from app.users.models import User
 from app.tours.models import Tour
-from app.custom_leagues.models import CustomLeague
+from app.custom_leagues.user_league.models import UserLeague
+from app.custom_leagues.commercial_league.models import CommercialLeague
+from app.custom_leagues.club_league.models import ClubLeague
 
 config = context.config
 

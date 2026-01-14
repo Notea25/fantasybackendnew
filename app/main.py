@@ -10,7 +10,7 @@ from app.admin.auth import AdminAuth
 from app.admin.view import (
     UserAdmin, LeagueAdmin, MatchAdmin, PlayerAdmin,
     SquadAdmin, TeamAdmin, PlayerMatchStatsAdmin,
-    TourAdmin, CustomLeagueAdmin, SquadTourAdmin, BoostAdmin, TourMatchesAdmin
+    TourAdmin, UserLeagueAdmin, CommercialLeagueAdmin, ClubLeagueAdmin, SquadTourAdmin, BoostAdmin, TourMatchesAdmin
 )
 from app.leagues.router import router as leagues_router
 from app.teams.router import router as teams_router
@@ -22,7 +22,9 @@ from app.boosts.router import router as boosts_router
 from app.users.router import router as users_router
 from app.utils.router import router as utils_router
 from app.tours.router import router as tours_router
-from app.custom_leagues.router import router as custom_leagues_router
+from app.custom_leagues.user_league.router import router as user_leagues_router
+from app.custom_leagues.commercial_league.router import router as commercial_leagues_router
+from app.custom_leagues.club_league.router import router as club_leagues_router
 from app.config import settings
 
 logging.basicConfig(
@@ -62,7 +64,9 @@ app.include_router(players_router, prefix="/api")
 app.include_router(player_stats_router, prefix="/api")
 app.include_router(squads_router, prefix="/api")
 app.include_router(boosts_router, prefix="/api")
-app.include_router(custom_leagues_router, prefix="/api")
+app.include_router(user_leagues_router, prefix="/api")
+app.include_router(commercial_leagues_router, prefix="/api")
+app.include_router(club_leagues_router, prefix="/api")
 
 authentication_backend = AdminAuth()
 admin = Admin(app, engine, authentication_backend=authentication_backend)
@@ -78,6 +82,8 @@ admin.add_view(BoostAdmin)
 admin.add_view(TeamAdmin)
 admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)
-admin.add_view(CustomLeagueAdmin)
+admin.add_view(UserLeagueAdmin)
+admin.add_view(CommercialLeagueAdmin)
+admin.add_view(ClubLeagueAdmin)
 admin.add_view(UtilsView)
 admin.add_view(TourMatchesAdmin)
