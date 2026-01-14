@@ -597,62 +597,7 @@ class SquadService(BaseService):
 
             return leaderboard
 
-    @classmethod
-    async def get_custom_league_leaderboard(cls, custom_league_id: int, tour_id: int) -> List[Dict[str, Any]]:
-        async with async_session_maker() as session:
-            # Получаем все сквады, которые участвуют в данной кастомной лиге
-            stmt = (
-                select(custom_league_squads.c.squad_id)
-                .where(custom_league_squads.c.custom_league_id == custom_league_id)
-            )
-            result = await session.execute(stmt)
-            squad_ids = [row.squad_id for row in result.all()]
-
-            if not squad_ids:
-                return []
-
-            # Получаем данные о турах для этих сквадов
-            stmt = (
-                select(SquadTour)
-                .where(
-                    SquadTour.squad_id.in_(squad_ids),
-                    SquadTour.tour_id == tour_id
-                )
-                .options(
-                    joinedload(SquadTour.squad).joinedload(Squad.user)
-                )
-                .order_by(desc(SquadTour.points))
-            )
-            result = await session.execute(stmt)
-            squad_tours = result.unique().scalars().all()
-
-            # Получаем общее количество очков для каждого сквада за все туры
-            total_points_stmt = (
-                select(
-                    SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
-                )
-                .where(SquadTour.squad_id.in_(squad_ids))
-                .group_by(SquadTour.squad_id)
-            )
-            total_points_result = await session.execute(total_points_stmt)
-            total_points = {row.squad_id: row.total_points for row in total_points_result}
-
-            leaderboard = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
-                squad = squad_tour.squad
-
-                leaderboard.append({
-                    "place": index,
-                    "squad_id": squad.id,
-                    "squad_name": squad.name,
-                    "user_id": squad.user.id,
-                    "username": squad.user.username,
-                    "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
-                })
-
-            return leaderboard
+   
 
     @classmethod
     async def replace_players(

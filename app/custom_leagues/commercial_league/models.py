@@ -13,8 +13,10 @@ class CommercialLeague(Base):
     prize: Mapped[str] = mapped_column(nullable=True)
     logo: Mapped[str] = mapped_column(nullable=True)
     is_public: Mapped[bool] = mapped_column(default=True)
+    winner_id: Mapped[int] = mapped_column(ForeignKey("squads.id"), nullable=True)
 
     registration_start: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     registration_end: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     league: Mapped["League"] = relationship(back_populates="commercial_leagues")
+    winner: Mapped["Squad"] = relationship(foreign_keys=[winner_id])

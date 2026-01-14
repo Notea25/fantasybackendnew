@@ -340,28 +340,24 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     name_plural = "Commercial Leagues"
     icon = "fa-solid fa-money-bill-wave"
 
+from sqladmin import ModelView
+from app.custom_leagues.club_league.models import ClubLeague
+
 class ClubLeagueAdmin(ModelView, model=ClubLeague):
     column_list = [
         ClubLeague.id,
         ClubLeague.name,
-        ClubLeague.description,
         ClubLeague.league_id,
         ClubLeague.team_id,
-        ClubLeague.prize,
-        ClubLeague.logo,
-        ClubLeague.winner_id,
-        ClubLeague.registration_start,
-        ClubLeague.registration_end,
+        ClubLeague.tours,
+        ClubLeague.squads,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         'league_id': 'League',
         'team_id': 'Team',
-        'prize': 'Prize',
-        'logo': 'Logo',
-        'winner_id': 'Winner',
-        'registration_start': 'Registration Start',
-        'registration_end': 'Registration End',
+        'tours': 'Tours',
+        'squads': 'Squads',
     }
 
     def format(self, attr, value):
@@ -369,8 +365,10 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
             return value.name
         if attr == 'team_id' and value is not None:
             return value.name
-        if attr == 'winner_id' and value is not None:
-            return value.name
+        if attr == 'tours' and value:
+            return ", ".join(tour.name for tour in value)
+        if attr == 'squads' and value:
+            return ", ".join(squad.name for squad in value)
         return super().format(attr, value)
 
     name = "Club League"

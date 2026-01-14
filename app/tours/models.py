@@ -2,10 +2,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, Table, Column, Integer
+from sqlalchemy import ForeignKey, Table, Column
+
+from app.custom_leagues.club_league.models import club_league_tours
 from app.database import Base
 from sqlalchemy import UniqueConstraint
-from app.custom_leagues.models import custom_league_tours
 
 tour_matches_association = Table(
     "tour_matches_association",
@@ -32,7 +33,7 @@ class Tour(Base):
     )
 
     league: Mapped["League"] = relationship(back_populates="tours")
-    custom_leagues: Mapped[list["CustomLeague"]] = relationship(secondary=custom_league_tours, back_populates="tours")
+    club_leagues: Mapped[list["ClubLeague"]] = relationship(secondary=club_league_tours, back_populates="tours")
     matches_association: Mapped[list["TourMatchAssociation"]] = relationship(
         back_populates="tour",
         cascade="all, delete-orphan",
@@ -57,9 +58,6 @@ class Tour(Base):
         if not self.start_date:
             return None
         return self.start_date - timedelta(hours=2)
-
-    def __repr__(self):
-        return f"Tour {self.number}"
 
     def __repr__(self):
         return f"Tour {self.number}"

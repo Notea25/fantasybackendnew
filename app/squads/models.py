@@ -1,8 +1,8 @@
 from typing import Optional, List
 from sqlalchemy import Column, ForeignKey, Table, Integer, select, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-from app.custom_leagues.models import custom_league_squads
+from app.custom_leagues.club_league.models import club_league_squads
 from app.player_match_stats.models import PlayerMatchStats
 
 squad_players_association = Table(
@@ -66,8 +66,8 @@ class Squad(Base):
     )
     tour_history: Mapped[List["SquadTour"]] = relationship(back_populates="squad")
     used_boosts: Mapped[List["Boost"]] = relationship(back_populates="squad")
-    custom_leagues: Mapped[List["CustomLeague"]] = relationship(
-        secondary=custom_league_squads, back_populates="squads"
+    club_leagues: Mapped[List["ClubLeague"]] = relationship(
+        secondary=club_league_squads, back_populates="squads"
     )
 
     @property
