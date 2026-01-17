@@ -18,9 +18,12 @@ async def create_commercial_league(data: CommercialLeagueSchema):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/", response_model=List[CommercialLeagueSchema])
-async def get_commercial_leagues(league_id: Optional[int] = None):
-    commercial_leagues = await CommercialLeagueService.get_commercial_leagues(league_id)
-    return commercial_leagues
+async def get_commercial_leagues(league_id: int = None):
+    try:
+        commercial_leagues = await CommercialLeagueService.get_commercial_leagues(league_id)
+        return commercial_leagues
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{commercial_league_id}", response_model=CommercialLeagueSchema)
 async def get_commercial_league_by_id(commercial_league_id: int):
@@ -50,3 +53,20 @@ async def get_commercial_league_leaderboard(commercial_league_id: int, tour_id: 
     if not leaderboard:
         raise HTTPException(status_code=404, detail="No data found for this commercial league and tour")
     return leaderboard
+
+
+@router.post("/join/{commercial_league_id}/{squad_id}")
+async def join_commercial_league(
+    commercial_league_id: int,
+    squad_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        result = await CommercialLeagueService.join_commercial_league(squad_id, commercial_league_id)
+        return {"message": "Squad successfully joined the commercial league", "result": result}
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotAllowedException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

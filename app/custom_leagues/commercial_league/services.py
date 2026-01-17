@@ -43,13 +43,16 @@ class CommercialLeagueService:
                 raise
 
     @classmethod
-    async def get_commercial_leagues(cls, league_id: Optional[int] = None) -> List[CommercialLeague]:
+    async def get_commercial_leagues(cls, league_id: int = None):
         async with async_session_maker() as session:
-            stmt = select(CommercialLeague).options(joinedload(CommercialLeague.tours), joinedload(CommercialLeague.squads))
+            stmt = select(CommercialLeague)
             if league_id:
                 stmt = stmt.where(CommercialLeague.league_id == league_id)
+
+            # Не используем joinedload для коллекций
             result = await session.execute(stmt)
-            return result.scalars().all()
+            commercial_leagues = result.unique().scalars().all()
+            return commercial_leagues
 
     @classmethod
     async def get_commercial_league_by_id(cls, commercial_league_id: int) -> CommercialLeague:
@@ -158,3 +161,43 @@ class CommercialLeagueService:
                 })
 
             return leaderboard
+
+    @classmethod
+    async def join_commercial_league(cls, squad_id: int, commercial_league_id: int) -> dict:
+        async with async_session_maker() as session:
+            # Проверка существования коммерческой лиги
+            stmt = select(CommercialLeague).where(CommercialLeague.id == commercial_league_id)
+            result = await session.execute(stmt)
+            commercial_league = result.scalars().first()
+            if not commercial_league:
+                raise ResourceNotFoundException("Commercial league not found")
+
+            # Проверка существования сквада
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что сквад и коммерческая лига принадлежат одной и той же лиге
+            if squad.league_id != commercial_league.league_id:
+                raise NotAllowedException("Squad and commercial league must belong to the same league")
+
+            # Проверка, что сквад еще не добавлен в эту лигу
+            stmt = select(commercial_league_squads).where(
+                commercial_league_squads.c.commercial_league_id == commercial_league.id,
+                commercial_league_squads.c.squad_id == squad.id
+            )
+            result = await session.execute(stmt)
+            if result.first():
+                raise NotAllowedException("Squad is already in this commercial league")
+
+            # Добавление записи в промежуточную таблицу
+            insert_stmt = commercial_league_squads.insert().values(
+                commercial_league_id=commercial_league.id,
+                squad_id=squad.id
+            )
+            await session.execute(insert_stmt)
+            await session.commit()
+
+            return {"commercial_league_id": commercial_league.id, "squad_id": squad.id}

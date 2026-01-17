@@ -318,19 +318,11 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
         CommercialLeague.winner_id,
         CommercialLeague.registration_start,
         CommercialLeague.registration_end,
-        CommercialLeague.tours,
-        CommercialLeague.squads,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         'league_id': 'League',
-        'prize': 'Prize',
-        'logo': 'Logo',
-        'winner_id': 'Winner',
-        'registration_start': 'Registration Start',
-        'registration_end': 'Registration End',
-        'tours': 'Tours',
-        'squads': 'Squads',
+        'winner_id': 'Winner Squad',
     }
 
     def format(self, attr, value):
@@ -338,15 +330,18 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
             return value.name
         if attr == 'winner_id' and value is not None:
             return value.name
-        if attr == 'tours' and value:
-            return ", ".join(tour.name for tour in value)
-        if attr == 'squads' and value:
-            return ", ".join(squad.name for squad in value)
         return super().format(attr, value)
 
     name = "Commercial League"
     name_plural = "Commercial Leagues"
-    icon = "fa-solid fa-money-bill-wave"
+    icon = "fa-solid fa-money-bill"
+
+    # Отключаем загрузку связанных коллекций
+    def get_query(self):
+        return self.session.query(self.model)
+
+    def get_one(self, ident):
+        return self.session.query(self.model).filter(self.model.id == ident).first()
 
 
 class ClubLeagueAdmin(ModelView, model=ClubLeague):
