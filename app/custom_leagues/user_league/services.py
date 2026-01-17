@@ -1,5 +1,7 @@
 import logging
 from typing import List
+
+from sqlalchemy import delete
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
@@ -74,7 +76,7 @@ class UserLeagueService:
             return league
 
     @classmethod
-    async def add_squad_to_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
+    async def join_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
         async with async_session_maker() as session:
             # Проверка существования пользовательской лиги
             stmt = select(UserLeague).where(UserLeague.id == user_league_id)
@@ -108,3 +110,52 @@ class UserLeagueService:
             user_league.squads.append(squad)
             await session.commit()
             return user_league
+
+    @classmethod
+    async def leave_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
+        async with async_session_maker() as session:
+            # Проверка существования пользовательской лиги
+            stmt = select(UserLeague).where(UserLeague.id == user_league_id)
+            result = await session.execute(stmt)
+            user_league = result.scalars().first()
+            if not user_league:
+                raise ResourceNotFoundException("User league not found")
+
+            # Проверка существования сквада
+            from app.squads.models import Squad
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что сквад принадлежит пользователю
+            if squad.user_id != user_id:
+                raise NotAllowedException("You can only remove your own squad from a user league")
+
+            # Удаление сквада из пользовательской лиги
+            stmt = delete(user_league_squads).where(
+                user_league_squads.c.user_league_id == user_league_id,
+                user_league_squads.c.squad_id == squad_id
+            )
+            await session.execute(stmt)
+            await session.commit()
+            return user_league
+
+    @classmethod
+    async def delete_user_league(cls, user_league_id: int, user_id: int):
+        async with async_session_maker() as session:
+            # Проверка существования пользовательской лиги
+            stmt = select(UserLeague).where(UserLeague.id == user_league_id)
+            result = await session.execute(stmt)
+            user_league = result.scalars().first()
+            if not user_league:
+                raise ResourceNotFoundException("User league not found")
+
+            # Проверка, что пользователь является создателем лиги
+            if user_league.creator_id != user_id:
+                raise NotAllowedException("Only the creator can delete the user league")
+
+            # Удаление лиги
+            await session.delete(user_league)
+            await session.commit()

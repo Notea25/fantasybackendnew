@@ -36,14 +36,41 @@ async def get_user_league_by_id(user_league_id: int):
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/{user_league_id}/squads/{squad_id}")
-async def add_squad_to_user_league(
+async def join_user_league(
     user_league_id: int,
     squad_id: int,
     current_user: User = Depends(get_current_user)
 ):
     try:
-        user_league = await UserLeagueService.add_squad_to_user_league(user_league_id, squad_id, current_user.id)
-        return {"message": "Squad successfully added to the user league", "user_league": user_league}
+        user_league = await UserLeagueService.join_user_league(user_league_id, squad_id, current_user.id)
+        return {"message": "Squad successfully joined the user league", "user_league": user_league}
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotAllowedException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+@router.delete("/{user_league_id}/squads/{squad_id}")
+async def leave_user_league(
+    user_league_id: int,
+    squad_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        user_league = await UserLeagueService.leave_user_league(user_league_id, squad_id, current_user.id)
+        return {"message": "Squad successfully left the user league", "user_league": user_league}
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except NotAllowedException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+@router.delete("/{user_league_id}")
+async def delete_user_league(
+    user_league_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        await UserLeagueService.delete_user_league(user_league_id, current_user.id)
+        return {"message": "User league successfully deleted"}
     except ResourceNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except NotAllowedException as e:
