@@ -101,6 +101,9 @@ class Squad(Base):
         secondary=club_league_squads, back_populates="squads"
     )
 
+    def __repr__(self):
+        return self.name
+
     @property
     def main_player_ids(self) -> List[int]:
         return [player.id for player in self.current_main_players]

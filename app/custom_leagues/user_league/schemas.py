@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class TourSchema(BaseModel):
     id: int
@@ -16,6 +16,18 @@ class UserLeagueSchema(BaseModel):
     creator_id: int
     tours: List[TourSchema] = []
     squads: List[SquadSchema] = []
+
+    class Config:
+        from_attributes = True
+
+class UserLeagueWithStatsSchema(BaseModel):
+    user_league_id: int
+    league_name: str
+    total_players: int
+    squad_place: int
+    is_creator: bool
+    squad_id: int
+    squad_name: str
 
     class Config:
         from_attributes = True

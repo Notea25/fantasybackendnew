@@ -1,17 +1,15 @@
 import logging
-from typing import List, Dict, Any
-
-from sqlalchemy import delete, func, desc
-from sqlalchemy.future import select
+from typing import List
+from sqlalchemy import select, func, delete
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
-from app.custom_leagues.user_league.models import UserLeague, user_league_squads
+from app.custom_leagues.user_league.schemas import UserLeagueWithStatsSchema
 from app.database import async_session_maker
+from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.leagues.models import League
-from app.squads.models import SquadTour, Squad
+from app.squads.models import Squad, SquadTour
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
-
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +85,6 @@ class UserLeagueService:
                 raise ResourceNotFoundException("User league not found")
 
             # Проверка существования сквада
-            from app.squads.models import Squad
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
@@ -123,7 +120,6 @@ class UserLeagueService:
                 raise ResourceNotFoundException("User league not found")
 
             # Проверка существования сквада
-            from app.squads.models import Squad
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
@@ -162,57 +158,65 @@ class UserLeagueService:
             await session.commit()
 
     @classmethod
-    async def get_user_league_leaderboard(cls, user_league_id: int, tour_id: int) -> List[Dict[str, Any]]:
+    async def get_my_squad_leagues(cls, user_id: int) -> List[UserLeagueWithStatsSchema]:
         async with async_session_maker() as session:
-            # Получаем все сквады, участвующие в данной пользовательской лиге
-            stmt = (
-                select(user_league_squads.c.squad_id)
-                .where(user_league_squads.c.user_league_id == user_league_id)
-            )
+            # 1. Получаем все сквады текущего пользователя
+            stmt = select(Squad).where(Squad.user_id == user_id)
             result = await session.execute(stmt)
-            squad_ids = [row.squad_id for row in result.all()]
+            squads = result.scalars().all()
 
-            if not squad_ids:
-                return []
-
-            # Получаем данные о турах для этих сквадов
-            stmt = (
-                select(SquadTour)
-                .where(
-                    SquadTour.squad_id.in_(squad_ids),
-                    SquadTour.tour_id == tour_id
+            leagues_data = []
+            for squad in squads:
+                # 2. Получаем все пользовательские лиги, в которых участвует сквад
+                stmt = (
+                    select(user_league_squads.c.user_league_id)
+                    .where(user_league_squads.c.squad_id == squad.id)
                 )
-                .options(
-                    joinedload(SquadTour.squad).joinedload(Squad.user)
-                )
-                .order_by(desc(SquadTour.points))
-            )
-            result = await session.execute(stmt)
-            squad_tours = result.unique().scalars().all()
+                result = await session.execute(stmt)
+                user_league_ids = [row.user_league_id for row in result.all()]
 
-            # Получаем общее количество очков для каждого сквада за все туры
-            total_points_stmt = (
-                select(
-                    SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
-                )
-                .where(SquadTour.squad_id.in_(squad_ids))
-                .group_by(SquadTour.squad_id)
-            )
-            total_points_result = await session.execute(total_points_stmt)
-            total_points = {row.squad_id: row.total_points for row in total_points_result}
+                for user_league_id in user_league_ids:
+                    # 3. Получаем информацию о лиге
+                    stmt = (
+                        select(UserLeague)
+                        .where(UserLeague.id == user_league_id)
+                        .options(joinedload(UserLeague.league))
+                    )
+                    result = await session.execute(stmt)
+                    user_league = result.scalars().first()
 
-            leaderboard = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
-                squad = squad_tour.squad
-                leaderboard.append({
-                    "place": index,
-                    "squad_id": squad.id,
-                    "squad_name": squad.name,
-                    "user_id": squad.user.id,
-                    "username": squad.user.username,
-                    "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
-                })
+                    # 4. Получаем всех сквадов в лиге
+                    stmt = (
+                        select(user_league_squads.c.squad_id)
+                        .where(user_league_squads.c.user_league_id == user_league_id)
+                    )
+                    result = await session.execute(stmt)
+                    squad_ids_in_league = [row.squad_id for row in result.all()]
 
-            return leaderboard
+                    # 5. Получаем очки всех сквадов в лиге
+                    stmt = (
+                        select(SquadTour.squad_id, func.sum(SquadTour.points).label("total_points"))
+                        .where(SquadTour.squad_id.in_(squad_ids_in_league))
+                        .group_by(SquadTour.squad_id)
+                    )
+                    result = await session.execute(stmt)
+                    squad_points = {row.squad_id: row.total_points for row in result.all()}
+
+                    # 6. Сортируем сквады по очкам
+                    sorted_squads = sorted(squad_points.items(), key=lambda x: x[1], reverse=True)
+                    squad_place = next((i + 1 for i, (s_id, _) in enumerate(sorted_squads) if s_id == squad.id), len(squad_ids_in_league))
+
+                    # 7. Формируем ответ
+                    leagues_data.append(
+                        UserLeagueWithStatsSchema(
+                            user_league_id=user_league.id,
+                            league_name=user_league.league.name,
+                            total_players=len(squad_ids_in_league),
+                            squad_place=squad_place,
+                            is_creator=user_league.creator_id == user_id,
+                            squad_id=squad.id,
+                            squad_name=squad.name,
+                        )
+                    )
+
+            return leagues_data

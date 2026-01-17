@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from app.custom_leagues.user_league.schemas import UserLeagueSchema
+from app.custom_leagues.user_league.schemas import UserLeagueSchema, UserLeagueWithStatsSchema
 from app.custom_leagues.user_league.services import UserLeagueService
 from app.users.dependencies import get_current_user
 from app.users.models import User
-from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
+
 
 router = APIRouter(prefix="/user_leagues", tags=["User Leagues"])
 
@@ -44,10 +44,8 @@ async def join_user_league(
     try:
         user_league = await UserLeagueService.join_user_league(user_league_id, squad_id, current_user.id)
         return {"message": "Squad successfully joined the user league", "user_league": user_league}
-    except ResourceNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except NotAllowedException as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{user_league_id}/squads/{squad_id}")
 async def leave_user_league(
@@ -58,10 +56,8 @@ async def leave_user_league(
     try:
         user_league = await UserLeagueService.leave_user_league(user_league_id, squad_id, current_user.id)
         return {"message": "Squad successfully left the user league", "user_league": user_league}
-    except ResourceNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except NotAllowedException as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{user_league_id}")
 async def delete_user_league(
@@ -71,14 +67,10 @@ async def delete_user_league(
     try:
         await UserLeagueService.delete_user_league(user_league_id, current_user.id)
         return {"message": "User league successfully deleted"}
-    except ResourceNotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except NotAllowedException as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/{user_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
-async def get_user_league_leaderboard(user_league_id: int, tour_id: int):
-    leaderboard = await UserLeagueService.get_user_league_leaderboard(user_league_id, tour_id)
-    if not leaderboard:
-        raise HTTPException(status_code=404, detail="No data found for this user league and tour")
-    return leaderboard
+@router.get("/my-squad-leagues", response_model=List[UserLeagueWithStatsSchema])
+async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
+    leagues = await UserLeagueService.get_my_squad_leagues(current_user.id)
+    return leagues
