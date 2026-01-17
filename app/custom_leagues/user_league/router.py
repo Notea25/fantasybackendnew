@@ -75,3 +75,10 @@ async def delete_user_league(
         raise HTTPException(status_code=404, detail=str(e))
     except NotAllowedException as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+@router.get("/{user_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+async def get_user_league_leaderboard(user_league_id: int, tour_id: int):
+    leaderboard = await UserLeagueService.get_user_league_leaderboard(user_league_id, tour_id)
+    if not leaderboard:
+        raise HTTPException(status_code=404, detail="No data found for this user league and tour")
+    return leaderboard
