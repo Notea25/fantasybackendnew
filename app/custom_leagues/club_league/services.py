@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 
 from sqlalchemy import desc, func
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.custom_leagues.club_league.models import ClubLeague, club_league_squads
 from app.database import async_session_maker
@@ -15,15 +15,25 @@ logger = logging.getLogger(__name__)
 class ClubLeagueService:
 
     @classmethod
-    async def get_club_leagues(cls, league_id: Optional[int] = None, team_id: Optional[int] = None) -> List[ClubLeague]:
+    async def get_club_league(cls, league_id: int = None, team_id: int = None):
         async with async_session_maker() as session:
-            stmt = select(ClubLeague).options(joinedload(ClubLeague.tours), joinedload(ClubLeague.squads))
+            stmt = select(ClubLeague)
             if league_id:
                 stmt = stmt.where(ClubLeague.league_id == league_id)
             if team_id:
                 stmt = stmt.where(ClubLeague.team_id == team_id)
+
+            # Используем selectinload для загрузки коллекций
+            stmt = stmt.options(
+                selectinload(ClubLeague.tours),
+                selectinload(ClubLeague.squads),
+                selectinload(ClubLeague.league),
+                selectinload(ClubLeague.team),
+            )
+
             result = await session.execute(stmt)
-            return result.scalars().all()
+            club_league = result.unique().scalars().first()
+            return club_league
 
     @classmethod
     async def get_club_league_by_id(cls, club_league_id: int) -> ClubLeague:
@@ -130,3 +140,47 @@ class ClubLeagueService:
                 })
 
             return leaderboard
+
+    @classmethod
+    async def get_club_leagues_by_league_id(cls, league_id: int):
+        async with async_session_maker() as session:
+            stmt = select(ClubLeague).where(ClubLeague.league_id == league_id)
+            result = await session.execute(stmt)
+            club_leagues = result.scalars().all()
+            return club_leagues
+
+    @classmethod
+    async def add_squad_to_club_league_by_team_id(cls, squad_id: int, team_id: int) -> dict:
+        async with async_session_maker() as session:
+            # Проверка существования клубной лиги по team_id
+            stmt = select(ClubLeague).where(ClubLeague.team_id == team_id)
+            result = await session.execute(stmt)
+            club_league = result.scalars().first()
+            if not club_league:
+                raise ResourceNotFoundException("Club league not found")
+
+            # Проверка существования сквада
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что сквад еще не добавлен в эту лигу
+            stmt = select(club_league_squads).where(
+                club_league_squads.c.club_league_id == club_league.id,
+                club_league_squads.c.squad_id == squad_id
+            )
+            result = await session.execute(stmt)
+            if result.first():
+                raise NotAllowedException("Squad is already in this club league")
+
+            # Добавление записи в промежуточную таблицу
+            insert_stmt = club_league_squads.insert().values(
+                club_league_id=club_league.id,
+                squad_id=squad.id
+            )
+            await session.execute(insert_stmt)
+            await session.commit()
+
+            return {"club_league_id": club_league.id, "squad_id": squad.id}

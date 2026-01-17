@@ -1,4 +1,5 @@
 from sqladmin import ModelView
+from sqlalchemy.orm import joinedload
 
 from app.boosts.models import Boost
 from app.custom_leagues.club_league.models import ClubLeague
@@ -354,15 +355,11 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
         ClubLeague.name,
         ClubLeague.league_id,
         ClubLeague.team_id,
-        ClubLeague.tours,
-        ClubLeague.squads,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         'league_id': 'League',
         'team_id': 'Team',
-        'tours': 'Tours',
-        'squads': 'Squads',
     }
 
     def format(self, attr, value):
@@ -370,16 +367,26 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
             return value.name
         if attr == 'team_id' and value is not None:
             return value.name
-        if attr == 'tours' and value:
-            return ", ".join(tour.name for tour in value)
-        if attr == 'squads' and value:
-            return ", ".join(squad.name for squad in value)
         return super().format(attr, value)
 
     name = "Club League"
     name_plural = "Club Leagues"
     icon = "fa-solid fa-trophy"
 
+    # Указываем, какие отношения нужно загружать
+    def get_query(self):
+        return self.session.query(self.model).options(
+            joinedload(ClubLeague.league),
+            joinedload(ClubLeague.team)
+        )
+
+    # Отключаем загрузку коллекций, чтобы избежать ошибки
+    def get_one(self, ident):
+        return (
+            self.get_query()
+            .filter(self.model.id == ident)
+            .one()
+        )
 
 class TourMatchesAdmin(ModelView, model=TourMatchAssociation):
     name = "Tour Matches"
