@@ -1,13 +1,16 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
-from datetime import datetime
+from app.squads.models import commercial_league_squads
 
 commercial_league_tours = Table(
     "commercial_league_tours",
     Base.metadata,
     Column("commercial_league_id", Integer, ForeignKey("commercial_leagues.id"), primary_key=True),
     Column("tour_id", Integer, ForeignKey("tours.id"), primary_key=True),
+    extend_existing=True,
 )
 
 commercial_league_squads = Table(
@@ -15,6 +18,7 @@ commercial_league_squads = Table(
     Base.metadata,
     Column("commercial_league_id", Integer, ForeignKey("commercial_leagues.id"), primary_key=True),
     Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
+    extend_existing=True,
 )
 
 class CommercialLeague(Base):

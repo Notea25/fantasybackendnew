@@ -3,7 +3,6 @@ from sqladmin import ModelView
 from app.boosts.models import Boost
 from app.custom_leagues.club_league.models import ClubLeague
 from app.custom_leagues.commercial_league.models import CommercialLeague
-from app.custom_leagues.models import CustomLeague
 from app.custom_leagues.user_league.models import UserLeague
 from app.users.models import User
 from app.leagues.models import League
@@ -12,7 +11,7 @@ from app.players.models import Player
 from app.squads.models import Squad, SquadTour
 from app.teams.models import Team
 from app.player_match_stats.models import PlayerMatchStats
-from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
+from app.tours.models import Tour, TourMatchAssociation
 
 
 class UserAdmin(ModelView, model=User):

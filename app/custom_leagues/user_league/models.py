@@ -7,6 +7,7 @@ user_league_tours = Table(
     Base.metadata,
     Column("user_league_id", Integer, ForeignKey("user_leagues.id"), primary_key=True),
     Column("tour_id", Integer, ForeignKey("tours.id"), primary_key=True),
+    extend_existing=True,
 )
 
 user_league_squads = Table(
@@ -14,6 +15,7 @@ user_league_squads = Table(
     Base.metadata,
     Column("user_league_id", Integer, ForeignKey("user_leagues.id"), primary_key=True),
     Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
+    extend_existing=True,
 )
 
 class UserLeague(Base):

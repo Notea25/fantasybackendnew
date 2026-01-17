@@ -1,12 +1,11 @@
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
 from sqlalchemy import delete, func, desc
 from datetime import datetime
 
-from app.custom_leagues.models import custom_league_squads
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
