@@ -1,11 +1,14 @@
 import logging
 from typing import List
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
+
+from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.database import async_session_maker
 from app.leagues.models import League
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
-from app.custom_leagues.user_league.models import UserLeague
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +34,6 @@ class UserLeagueService:
                 if existing_league:
                     raise NotAllowedException("You already have a league for this competition")
 
-                # Преобразуем datetime в наивный формат, если он содержит tzinfo
-                if data.get("registration_start") and data["registration_start"].tzinfo:
-                    data["registration_start"] = data["registration_start"].replace(tzinfo=None)
-                if data.get("registration_end") and data["registration_end"].tzinfo:
-                    data["registration_end"] = data["registration_end"].replace(tzinfo=None)
-
                 # Создание лиги
                 user_league = UserLeague(**data, creator_id=user_id)
                 session.add(user_league)
@@ -55,6 +52,59 @@ class UserLeagueService:
     @classmethod
     async def get_user_leagues(cls, user_id: int) -> List[UserLeague]:
         async with async_session_maker() as session:
-            stmt = select(UserLeague).where(UserLeague.creator_id == user_id)
+            stmt = select(UserLeague).where(UserLeague.creator_id == user_id).options(
+                joinedload(UserLeague.tours),
+                joinedload(UserLeague.squads)
+            )
             result = await session.execute(stmt)
             return result.scalars().all()
+
+    @classmethod
+    async def get_user_league_by_id(cls, user_league_id: int) -> UserLeague:
+        async with async_session_maker() as session:
+            stmt = (
+                select(UserLeague)
+                .where(UserLeague.id == user_league_id)
+                .options(joinedload(UserLeague.tours), joinedload(UserLeague.squads))
+            )
+            result = await session.execute(stmt)
+            league = result.scalars().first()
+            if not league:
+                raise ResourceNotFoundException("User league not found")
+            return league
+
+    @classmethod
+    async def add_squad_to_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
+        async with async_session_maker() as session:
+            # Проверка существования пользовательской лиги
+            stmt = select(UserLeague).where(UserLeague.id == user_league_id)
+            result = await session.execute(stmt)
+            user_league = result.scalars().first()
+            if not user_league:
+                raise ResourceNotFoundException("User league not found")
+
+            # Проверка существования сквада
+            from app.squads.models import Squad
+            stmt = select(Squad).where(Squad.id == squad_id)
+            result = await session.execute(stmt)
+            squad = result.scalars().first()
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Проверка, что сквад принадлежит пользователю
+            if squad.user_id != user_id:
+                raise NotAllowedException("You can only add your own squad to a user league")
+
+            # Проверка, что сквад еще не добавлен в эту лигу
+            stmt = select(user_league_squads).where(
+                user_league_squads.c.user_league_id == user_league_id,
+                user_league_squads.c.squad_id == squad_id
+            )
+            result = await session.execute(stmt)
+            if result.first():
+                raise NotAllowedException("Squad is already in this user league")
+
+            # Добавление сквада в пользовательскую лигу
+            user_league.squads.append(squad)
+            await session.commit()
+            return user_league

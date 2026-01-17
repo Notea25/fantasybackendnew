@@ -280,22 +280,17 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
     column_list = [
         UserLeague.id,
         UserLeague.name,
-        UserLeague.description,
         UserLeague.league_id,
-        UserLeague.is_public,
-        UserLeague.invitation_only,
         UserLeague.creator_id,
-        UserLeague.registration_start,
-        UserLeague.registration_end,
+        UserLeague.tours,
+        UserLeague.squads,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         'league_id': 'League',
-        'is_public': 'Public',
-        'invitation_only': 'Invitation Only',
         'creator_id': 'Creator',
-        'registration_start': 'Registration Start',
-        'registration_end': 'Registration End',
+        'tours': 'Tours',
+        'squads': 'Squads',
     }
 
     def format(self, attr, value):
@@ -303,6 +298,10 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
             return value.name
         if attr == 'creator_id' and value is not None:
             return value.username
+        if attr == 'tours' and value:
+            return ", ".join(tour.name for tour in value)
+        if attr == 'squads' and value:
+            return ", ".join(squad.name for squad in value)
         return super().format(attr, value)
 
     name = "User League"
