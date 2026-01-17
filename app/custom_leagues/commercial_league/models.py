@@ -1,9 +1,7 @@
-from datetime import datetime
-
-from sqlalchemy import Column, Integer, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
-from app.squads.models import commercial_league_squads
+from datetime import datetime
 
 commercial_league_tours = Table(
     "commercial_league_tours",

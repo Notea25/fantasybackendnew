@@ -12,10 +12,7 @@ class User(Base):
     birth_date: Mapped[Optional[date]]
 
     squads: Mapped[list["Squad"]] = relationship(back_populates="user")
-
     user_leagues: Mapped[list["UserLeague"]] = relationship(back_populates="creator")
-    commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(back_populates="creator")
-    club_leagues: Mapped[list["ClubLeague"]] = relationship(back_populates="creator")
 
     def __repr__(self):
         return f"User {self.username}"
