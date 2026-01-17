@@ -2,9 +2,9 @@ from typing import Optional, List
 from sqlalchemy import Column, ForeignKey, Table, Integer, select, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-from app.custom_leagues.club_league.models import club_league_squads
 from app.player_match_stats.models import PlayerMatchStats
 
+# Промежуточные таблицы для связей с основными и запасными игроками
 squad_players_association = Table(
     "squad_players_association",
     Base.metadata,
@@ -21,6 +21,7 @@ squad_bench_players_association = Table(
     extend_existing=True,
 )
 
+# Промежуточные таблицы для связей с игроками в турах
 squad_tour_players = Table(
     "squad_tour_players",
     Base.metadata,
@@ -35,6 +36,28 @@ squad_tour_bench_players = Table(
     Column("squad_tour_id", Integer, ForeignKey("squad_tours.id"), primary_key=True),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
     extend_existing=True,
+)
+
+# Промежуточные таблицы для связей с лигами
+user_league_squads = Table(
+    "user_league_squads",
+    Base.metadata,
+    Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
+    Column("user_league_id", Integer, ForeignKey("user_leagues.id"), primary_key=True),
+)
+
+commercial_league_squads = Table(
+    "commercial_league_squads",
+    Base.metadata,
+    Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
+    Column("commercial_league_id", Integer, ForeignKey("commercial_leagues.id"), primary_key=True),
+)
+
+club_league_squads = Table(
+    "club_league_squads",
+    Base.metadata,
+    Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
+    Column("club_league_id", Integer, ForeignKey("club_leagues.id"), primary_key=True),
 )
 
 class Squad(Base):
@@ -66,6 +89,14 @@ class Squad(Base):
     )
     tour_history: Mapped[List["SquadTour"]] = relationship(back_populates="squad")
     used_boosts: Mapped[List["Boost"]] = relationship(back_populates="squad")
+
+    # Связи с различными типами лиг
+    user_leagues: Mapped[List["UserLeague"]] = relationship(
+        secondary=user_league_squads, back_populates="squads"
+    )
+    commercial_leagues: Mapped[List["CommercialLeague"]] = relationship(
+        secondary=commercial_league_squads, back_populates="squads"
+    )
     club_leagues: Mapped[List["ClubLeague"]] = relationship(
         secondary=club_league_squads, back_populates="squads"
     )

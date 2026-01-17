@@ -14,7 +14,10 @@ class League(Base):
     players: Mapped[list["Player"]] = relationship(back_populates="league")
     teams: Mapped[list["Team"]] = relationship(back_populates="league")
     tours: Mapped[list["Tour"]] = relationship(back_populates="league")
-    custom_leagues: Mapped[list["CustomLeague"]] = relationship(back_populates="league")
+
+    user_leagues: Mapped[list["UserLeague"]] = relationship(back_populates="league")
+    commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(back_populates="league")
+    club_leagues: Mapped[list["ClubLeague"]] = relationship(back_populates="league")
 
     def __str__(self):
         return self.name

@@ -2,11 +2,30 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey, Table, Column
-
-from app.custom_leagues.club_league.models import club_league_tours
+from sqlalchemy import ForeignKey, Table, Column, UniqueConstraint
 from app.database import Base
-from sqlalchemy import UniqueConstraint
+
+# Промежуточные таблицы для связей с различными типами лиг
+user_league_tours = Table(
+    "user_league_tours",
+    Base.metadata,
+    Column("tour_id", ForeignKey("tours.id"), primary_key=True),
+    Column("user_league_id", ForeignKey("user_leagues.id"), primary_key=True),
+)
+
+commercial_league_tours = Table(
+    "commercial_league_tours",
+    Base.metadata,
+    Column("tour_id", ForeignKey("tours.id"), primary_key=True),
+    Column("commercial_league_id", ForeignKey("commercial_leagues.id"), primary_key=True),
+)
+
+club_league_tours = Table(
+    "club_league_tours",
+    Base.metadata,
+    Column("tour_id", ForeignKey("tours.id"), primary_key=True),
+    Column("club_league_id", ForeignKey("club_leagues.id"), primary_key=True),
+)
 
 tour_matches_association = Table(
     "tour_matches_association",
@@ -33,7 +52,12 @@ class Tour(Base):
     )
 
     league: Mapped["League"] = relationship(back_populates="tours")
+
+    # Связи с различными типами лиг
+    user_leagues: Mapped[list["UserLeague"]] = relationship(secondary=user_league_tours, back_populates="tours")
+    commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(secondary=commercial_league_tours, back_populates="tours")
     club_leagues: Mapped[list["ClubLeague"]] = relationship(secondary=club_league_tours, back_populates="tours")
+
     matches_association: Mapped[list["TourMatchAssociation"]] = relationship(
         back_populates="tour",
         cascade="all, delete-orphan",
@@ -61,4 +85,3 @@ class Tour(Base):
 
     def __repr__(self):
         return f"Tour {self.number}"
-
