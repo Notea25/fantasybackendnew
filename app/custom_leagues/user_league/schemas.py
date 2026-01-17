@@ -3,7 +3,7 @@ from typing import List
 
 class TourSchema(BaseModel):
     id: int
-    name: str
+    number: int
 
 class SquadSchema(BaseModel):
     id: int

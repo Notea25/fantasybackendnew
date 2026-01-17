@@ -4,7 +4,6 @@ from typing import Optional, List
 class TourSchema(BaseModel):
     id: int
     number: int
-    league_id: int
 
     class Config:
         from_attributes = True

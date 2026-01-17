@@ -10,7 +10,6 @@ from app.custom_leagues.commercial_league.models import CommercialLeague, commer
 from app.database import async_session_maker
 from app.leagues.models import League
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
-
 from app.squads.models import Squad
 
 logger = logging.getLogger(__name__)
@@ -22,12 +21,12 @@ class CommercialLeagueService:
         async with async_session_maker() as session:
             stmt = select(CommercialLeague)
             if league_id:
-                stmt = stmt.where(CommercialLeague.league_id == league_id)
-
-            # Не используем joinedload для коллекций
+                stmt = stmt.where(CommercialLeague.league_id == league_id).options(
+                    joinedload(CommercialLeague.tours),
+                    joinedload(CommercialLeague.squads)
+                )
             result = await session.execute(stmt)
-            commercial_leagues = result.unique().scalars().all()
-            return commercial_leagues
+            return result.unique().scalars().all()
 
     @classmethod
     async def get_commercial_league_by_id(cls, commercial_league_id: int) -> CommercialLeague:
@@ -35,14 +34,16 @@ class CommercialLeagueService:
             stmt = (
                 select(CommercialLeague)
                 .where(CommercialLeague.id == commercial_league_id)
-                .options(joinedload(CommercialLeague.tours), joinedload(CommercialLeague.squads))
+                .options(
+                    joinedload(CommercialLeague.tours).joinedload(Tour.name),  # Загружаем имя тура
+                    joinedload(CommercialLeague.squads)
+                )
             )
             result = await session.execute(stmt)
             league = result.scalars().first()
             if not league:
                 raise ResourceNotFoundException("Commercial league not found")
             return league
-
 
     @classmethod
     async def get_commercial_league_leaderboard(cls, commercial_league_id: int, tour_id: int) -> List[Dict[str, Any]]:

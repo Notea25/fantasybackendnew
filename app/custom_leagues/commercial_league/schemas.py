@@ -4,7 +4,7 @@ from datetime import datetime
 
 class TourSchema(BaseModel):
     id: int
-    name: str
+    number: int
 
 class SquadSchema(BaseModel):
     id: int
@@ -19,6 +19,8 @@ class CommercialLeagueSchema(BaseModel):
     winner_id: Optional[int]
     registration_start: Optional[datetime]
     registration_end: Optional[datetime]
+    tours: List[TourSchema] = []
+    squads: List[SquadSchema] = []
 
     class Config:
         from_attributes = True
