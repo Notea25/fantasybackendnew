@@ -16,31 +16,6 @@ from app.squads.models import Squad
 logger = logging.getLogger(__name__)
 
 class CommercialLeagueService:
-    @classmethod
-    async def create_commercial_league(cls, data: dict) -> CommercialLeague:
-        async with async_session_maker() as session:
-            try:
-                # Проверка существования league_id
-                stmt = select(League).where(League.id == data.get("league_id"))
-                result = await session.execute(stmt)
-                league = result.scalars().first()
-                if not league:
-                    raise ResourceNotFoundException(f"League with id {data.get('league_id')} not found")
-
-                # Создание лиги
-                commercial_league = CommercialLeague(**data)
-                session.add(commercial_league)
-                await session.commit()
-                return commercial_league
-
-            except IntegrityError as e:
-                await session.rollback()
-                logger.error(f"Integrity error while creating commercial league: {e}")
-                raise NotAllowedException(f"Failed to create commercial league due to integrity error: {e}")
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"Unexpected error while creating commercial league: {e}")
-                raise
 
     @classmethod
     async def get_commercial_leagues(cls, league_id: int = None):
@@ -68,40 +43,6 @@ class CommercialLeagueService:
                 raise ResourceNotFoundException("Commercial league not found")
             return league
 
-    @classmethod
-    async def add_squad_to_commercial_league(cls, commercial_league_id: int, squad_id: int, user_id: int) -> CommercialLeague:
-        async with async_session_maker() as session:
-            # Проверка существования коммерческой лиги
-            stmt = select(CommercialLeague).where(CommercialLeague.id == commercial_league_id)
-            result = await session.execute(stmt)
-            commercial_league = result.scalars().first()
-            if not commercial_league:
-                raise ResourceNotFoundException("Commercial league not found")
-
-            # Проверка существования сквада
-            stmt = select(Squad).where(Squad.id == squad_id)
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-            if not squad:
-                raise ResourceNotFoundException("Squad not found")
-
-            # Проверка, что сквад принадлежит пользователю
-            if squad.user_id != user_id:
-                raise NotAllowedException("You can only add your own squad to a commercial league")
-
-            # Проверка, что сквад еще не добавлен в эту лигу
-            stmt = select(commercial_league_squads).where(
-                commercial_league_squads.c.commercial_league_id == commercial_league_id,
-                commercial_league_squads.c.squad_id == squad_id
-            )
-            result = await session.execute(stmt)
-            if result.first():
-                raise NotAllowedException("Squad is already in this commercial league")
-
-            # Добавление сквада в коммерческую лигу
-            commercial_league.squads.append(squad)
-            await session.commit()
-            return commercial_league
 
     @classmethod
     async def get_commercial_league_leaderboard(cls, commercial_league_id: int, tour_id: int) -> List[Dict[str, Any]]:
