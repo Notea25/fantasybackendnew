@@ -1,12 +1,14 @@
+from jose import JWTError, jwt
 from sqladmin.authentication import AuthenticationBackend
+from sqlalchemy.future import select
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
-from jose import JWTError, jwt
-from sqlalchemy.future import select
+
 from app.admin.models import Admin
-from app.admin.utils import verify_password, create_access_token
-from app.database import async_session_maker
+from app.admin.utils import create_access_token, verify_password
 from app.config import settings
+from app.database import async_session_maker
+
 
 class AdminAuth(AuthenticationBackend):
     def __init__(self):
@@ -17,7 +19,9 @@ class AdminAuth(AuthenticationBackend):
         username, password = form["username"], form["password"]
 
         async with async_session_maker() as db:
-            admin = await db.execute(select(Admin).where(Admin.username == username))
+            admin = await db.execute(
+                select(Admin).where(Admin.username == username)
+            )
             admin = admin.scalars().first()
 
             if not admin or not verify_password(password, admin.hashed_password):
@@ -35,12 +39,18 @@ class AdminAuth(AuthenticationBackend):
     async def authenticate(self, request: Request) -> RedirectResponse | bool:
         token = request.session.get("token")
         if not token or not token.startswith("Bearer "):
-            return RedirectResponse(request.url_for("admin:login"), status_code=302)
+            return RedirectResponse(
+                request.url_for("admin:login"), status_code=302
+            )
 
         try:
             token = token.split(" ")[1]
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
         except JWTError:
-            return RedirectResponse(request.url_for("admin:login"), status_code=302)
+            return RedirectResponse(
+                request.url_for("admin:login"), status_code=302
+            )
 
         return True

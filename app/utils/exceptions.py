@@ -1,8 +1,10 @@
 from fastapi import HTTPException, status
 
+
 class BaseAppException(HTTPException):
     status_code = 500
     detail = ""
+
     def __init__(self, msg=None):
         if msg:
             self.detail = msg
@@ -59,6 +61,7 @@ class UsernameGenerationFailedException(BaseAppException):
 class ForbiddenException(BaseAppException):
     status_code = status.HTTP_403_FORBIDDEN
     detail = "Forbidden"
+
 
 class CustomLeagueException(BaseAppException):
     status_code = status.HTTP_403_FORBIDDEN

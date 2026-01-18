@@ -23,7 +23,6 @@ class ClubLeagueService:
             if team_id:
                 stmt = stmt.where(ClubLeague.team_id == team_id)
 
-            # Используем selectinload для загрузки коллекций
             stmt = stmt.options(
                 selectinload(ClubLeague.tours),
                 selectinload(ClubLeague.squads),
@@ -52,25 +51,21 @@ class ClubLeagueService:
     @classmethod
     async def add_squad_to_club_league(cls, club_league_id: int, squad_id: int, user_id: int) -> ClubLeague:
         async with async_session_maker() as session:
-            # Проверка существования клубной лиги
             stmt = select(ClubLeague).where(ClubLeague.id == club_league_id)
             result = await session.execute(stmt)
             club_league = result.scalars().first()
             if not club_league:
                 raise ResourceNotFoundException("Club league not found")
 
-            # Проверка существования сквада
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что сквад принадлежит пользователю
             if squad.user_id != user_id:
                 raise NotAllowedException("You can only add your own squad to a club league")
 
-            # Проверка, что сквад еще не добавлен в эту лигу
             stmt = select(club_league_squads).where(
                 club_league_squads.c.club_league_id == club_league_id,
                 club_league_squads.c.squad_id == squad_id
@@ -79,7 +74,6 @@ class ClubLeagueService:
             if result.first():
                 raise NotAllowedException("Squad is already in this club league")
 
-            # Добавление сквада в клубную лигу
             club_league.squads.append(squad)
             await session.commit()
             return club_league
@@ -87,7 +81,6 @@ class ClubLeagueService:
     @classmethod
     async def get_club_league_leaderboard(cls, club_league_id: int, tour_id: int) -> List[Dict[str, Any]]:
         async with async_session_maker() as session:
-            # Получаем все сквады, которые участвуют в данной клубной лиге
             stmt = (
                 select(club_league_squads.c.squad_id)
                 .where(club_league_squads.c.club_league_id == club_league_id)
@@ -98,7 +91,6 @@ class ClubLeagueService:
             if not squad_ids:
                 return []
 
-            # Получаем данные о турах для этих сквадов
             stmt = (
                 select(SquadTour)
                 .where(
@@ -113,7 +105,6 @@ class ClubLeagueService:
             result = await session.execute(stmt)
             squad_tours = result.unique().scalars().all()
 
-            # Получаем общее количество очков для каждого сквада за все туры
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,
@@ -152,21 +143,18 @@ class ClubLeagueService:
     @classmethod
     async def add_squad_to_club_league_by_team_id(cls, squad_id: int, team_id: int) -> dict:
         async with async_session_maker() as session:
-            # Проверка существования клубной лиги по team_id
             stmt = select(ClubLeague).where(ClubLeague.team_id == team_id)
             result = await session.execute(stmt)
             club_league = result.scalars().first()
             if not club_league:
                 raise ResourceNotFoundException("Club league not found")
 
-            # Проверка существования сквада
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что сквад еще не добавлен в эту лигу
             stmt = select(club_league_squads).where(
                 club_league_squads.c.club_league_id == club_league.id,
                 club_league_squads.c.squad_id == squad_id
@@ -175,7 +163,6 @@ class ClubLeagueService:
             if result.first():
                 raise NotAllowedException("Squad is already in this club league")
 
-            # Добавление записи в промежуточную таблицу
             insert_stmt = club_league_squads.insert().values(
                 club_league_id=club_league.id,
                 squad_id=squad.id
@@ -188,14 +175,12 @@ class ClubLeagueService:
     @classmethod
     async def get_club_league_leaderboard_by_team(cls, team_id: int, tour_id: int) -> List[Dict[str, Any]]:
         async with async_session_maker() as session:
-            # Получаем клубную лигу по team_id
             stmt = select(ClubLeague).where(ClubLeague.team_id == team_id)
             result = await session.execute(stmt)
             club_league = result.scalars().first()
             if not club_league:
                 raise ResourceNotFoundException("Club league not found")
 
-            # Получаем все сквады, которые участвуют в данной клубной лиге
             stmt = (
                 select(club_league_squads.c.squad_id)
                 .where(club_league_squads.c.club_league_id == club_league.id)
@@ -206,7 +191,6 @@ class ClubLeagueService:
             if not squad_ids:
                 return []
 
-            # Получаем данные о турах для этих сквадов
             stmt = (
                 select(SquadTour)
                 .where(
@@ -221,7 +205,6 @@ class ClubLeagueService:
             result = await session.execute(stmt)
             squad_tours = result.unique().scalars().all()
 
-            # Получаем общее количество очков для каждого сквада за все туры
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,

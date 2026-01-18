@@ -25,4 +25,3 @@ class CommercialLeagueSchema(BaseModel):
 
     class Config:
         from_attributes = True
-

@@ -103,7 +103,7 @@ class LeagueService(BaseService):
                     )
                 )
                 all_squads_res = await session.execute(all_squads_query)
-                all_squads = all_squads_res.unique().scalars().all()  # Исправлено: добавлен .unique()
+                all_squads = all_squads_res.unique().scalars().all()
 
                 league.your_place = next(
                     (i + 1 for i, squad in enumerate(all_squads) if squad.id == user_squad.id),
@@ -115,53 +115,3 @@ class LeagueService(BaseService):
             league.deadline = await TourService.get_deadline_for_next_tour(league_id)
 
             return league
-
-    # @classmethod
-    # async def find_all_main_page(cls, user_id: int) -> List[League]:
-    #     async with async_session_maker() as session:
-    #         leagues_query = sql_select(cls.model)
-    #         leagues_res = await session.execute(leagues_query)
-    #         leagues = leagues_res.scalars().all()
-    #
-    #         current_tour, _ = await TourService.get_current_and_next_tour()
-    #         deadline = current_tour.start_date - timedelta(hours=2) if current_tour else None
-    #
-    #         for league in leagues:
-    #             squads_count_query = sql_select(func.count()).select_from(Squad).where(Squad.league_id == league.id)
-    #             squads_count_res = await session.execute(squads_count_query)
-    #             league.all_squads_quantity = squads_count_res.scalar()
-    #
-    #             user_squad_query = (
-    #                 sql_select(Squad)
-    #                 .where(Squad.league_id == league.id, Squad.user_id == user_id)
-    #                 .options(
-    #                     selectinload(Squad.current_main_players),
-    #                     selectinload(Squad.current_bench_players)
-    #                 )
-    #             )
-    #             user_squad_res = await session.execute(user_squad_query)
-    #             user_squad = user_squad_res.unique().scalar_one_or_none()
-    #
-    #             if user_squad:
-    #                 all_squads_query = (
-    #                     sql_select(Squad)
-    #                     .where(Squad.league_id == league.id)
-    #                     .order_by(Squad.points.desc())
-    #                     .options(
-    #                         selectinload(Squad.current_main_players),
-    #                         selectinload(Squad.current_bench_players)
-    #                     )
-    #                 )
-    #                 all_squads_res = await session.execute(all_squads_query)
-    #                 all_squads = all_squads_res.unique().scalars().all()
-    #
-    #                 league.your_place = next(
-    #                     (i + 1 for i, squad in enumerate(all_squads) if squad.id == user_squad.id),
-    #                     None,
-    #                 )
-    #             else:
-    #                 league.your_place = None
-    #
-    #             league.deadline = deadline
-    #
-    #         return leagues

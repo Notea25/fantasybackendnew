@@ -1,9 +1,11 @@
 from fastapi import APIRouter
+
 from app.matches.schemas import MatchSchema
 from app.matches.services import MatchService
 from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/matches", tags=["Matches"])
+
 
 @router.get("/all")
 async def list_matches() -> list[MatchSchema]:

@@ -1,10 +1,11 @@
 import logging
+
 from sqlalchemy.future import select
 
 from app.database import async_session_maker
-from app.utils.base_service import BaseService
 from app.users.models import User
 from app.users.schemas import UserCreateSchema, UserUpdateSchema
+from app.utils.base_service import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -71,4 +72,3 @@ class UserService(BaseService):
                 await session.rollback()
                 logger.error(f"Error updating user: {str(e)}", exc_info=True)
                 raise
-

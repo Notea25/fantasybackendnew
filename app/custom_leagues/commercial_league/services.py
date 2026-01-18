@@ -46,7 +46,7 @@ class CommercialLeagueService:
                 select(CommercialLeague)
                 .where(CommercialLeague.id == commercial_league_id)
                 .options(
-                    joinedload(CommercialLeague.tours).joinedload(Tour.name),  # Загружаем имя тура
+                    joinedload(CommercialLeague.tours).joinedload(Tour.name),
                     joinedload(CommercialLeague.squads)
                 )
             )
@@ -59,7 +59,6 @@ class CommercialLeagueService:
     @classmethod
     async def get_commercial_league_leaderboard(cls, commercial_league_id: int, tour_id: int) -> List[Dict[str, Any]]:
         async with async_session_maker() as session:
-            # Получаем все сквады, которые участвуют в данной коммерческой лиге
             stmt = (
                 select(commercial_league_squads.c.squad_id)
                 .where(commercial_league_squads.c.commercial_league_id == commercial_league_id)
@@ -70,7 +69,6 @@ class CommercialLeagueService:
             if not squad_ids:
                 return []
 
-            # Получаем данные о турах для этих сквадов
             from app.squads.models import SquadTour, Squad
             stmt = (
                 select(SquadTour)
@@ -86,7 +84,6 @@ class CommercialLeagueService:
             result = await session.execute(stmt)
             squad_tours = result.unique().scalars().all()
 
-            # Получаем общее количество очков для каждого сквада за все туры
             from sqlalchemy import func
             total_points_stmt = (
                 select(
@@ -118,25 +115,21 @@ class CommercialLeagueService:
     @classmethod
     async def join_commercial_league(cls, squad_id: int, commercial_league_id: int) -> dict:
         async with async_session_maker() as session:
-            # Проверка существования коммерческой лиги
             stmt = select(CommercialLeague).where(CommercialLeague.id == commercial_league_id)
             result = await session.execute(stmt)
             commercial_league = result.scalars().first()
             if not commercial_league:
                 raise ResourceNotFoundException("Commercial league not found")
 
-            # Проверка существования сквада
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что сквад и коммерческая лига принадлежат одной и той же лиге
             if squad.league_id != commercial_league.league_id:
                 raise NotAllowedException("Squad and commercial league must belong to the same league")
 
-            # Проверка, что сквад еще не добавлен в эту лигу
             stmt = select(commercial_league_squads).where(
                 commercial_league_squads.c.commercial_league_id == commercial_league.id,
                 commercial_league_squads.c.squad_id == squad.id
@@ -145,7 +138,6 @@ class CommercialLeagueService:
             if result.first():
                 raise NotAllowedException("Squad is already in this commercial league")
 
-            # Добавление записи в промежуточную таблицу
             insert_stmt = commercial_league_squads.insert().values(
                 commercial_league_id=commercial_league.id,
                 squad_id=squad.id

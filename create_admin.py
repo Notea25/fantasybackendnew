@@ -1,14 +1,15 @@
 import asyncio
 import os
 import sys
+
 from sqlalchemy import text
 
 sys.path.append(os.getcwd())
 
-from app.database import async_session_maker
 from app.admin.models import Admin
 from app.admin.utils import get_password_hash
 from app.config import settings
+from app.database import async_session_maker
 
 async def create_admin():
     admin_username = settings.ADMIN_USERNAME
@@ -18,7 +19,7 @@ async def create_admin():
         async with session.begin():
             result = await session.execute(
                 text("SELECT 1 FROM admin WHERE username = :username"),
-                {"username": admin_username}
+                {"username": admin_username},
             )
             if result.scalar():
                 print("Admin already exists")
@@ -31,6 +32,7 @@ async def create_admin():
             )
             session.add(new_admin)
             print("Admin created successfully")
+
 
 if __name__ == "__main__":
     asyncio.run(create_admin())

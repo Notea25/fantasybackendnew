@@ -30,7 +30,7 @@ class ExternalAPIClient:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}/teams",
-                params={"league": league_id, "season": self.season},  # Уберите "page": page
+                params={"league": league_id, "season": self.season},
                 headers={"x-apisports-key": self.api_key}
             )
             response.raise_for_status()

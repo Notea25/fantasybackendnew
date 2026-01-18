@@ -1,11 +1,16 @@
-from sqlalchemy import ForeignKey, Table, Column, Integer
+from sqlalchemy import Column, ForeignKey, Integer, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
 
+from app.database import Base
 player_squad_tours = Table(
     "squad_tour_players",
     Base.metadata,
-    Column("squad_tour_id", Integer, ForeignKey("squad_tours.id"), primary_key=True),
+    Column(
+        "squad_tour_id",
+        Integer,
+        ForeignKey("squad_tours.id"),
+        primary_key=True,
+    ),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
     extend_existing=True,
 )
@@ -13,10 +18,16 @@ player_squad_tours = Table(
 player_bench_squad_tours = Table(
     "squad_tour_bench_players",
     Base.metadata,
-    Column("squad_tour_id", Integer, ForeignKey("squad_tours.id"), primary_key=True),
+    Column(
+        "squad_tour_id",
+        Integer,
+        ForeignKey("squad_tours.id"),
+        primary_key=True,
+    ),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
     extend_existing=True,
 )
+
 
 class Player(Base):
     __tablename__ = "players"
@@ -33,24 +44,24 @@ class Player(Base):
 
     team: Mapped["Team"] = relationship(back_populates="players")
     league: Mapped["League"] = relationship(back_populates="players")
-    match_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="player")
+    match_stats: Mapped[list["PlayerMatchStats"]] = relationship(
+        back_populates="player"
+    )
 
     main_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_players_association",
-        back_populates="current_main_players"
+        back_populates="current_main_players",
     )
     bench_squads: Mapped[list["Squad"]] = relationship(
         secondary="squad_bench_players_association",
-        back_populates="current_bench_players"
+        back_populates="current_bench_players",
     )
 
     squad_tours: Mapped[list["SquadTour"]] = relationship(
-        secondary=player_squad_tours,
-        back_populates="main_players"
+        secondary=player_squad_tours, back_populates="main_players"
     )
     bench_squad_tours: Mapped[list["SquadTour"]] = relationship(
-        secondary=player_bench_squad_tours,
-        back_populates="bench_players"
+        secondary=player_bench_squad_tours, back_populates="bench_players"
     )
 
     def __str__(self):

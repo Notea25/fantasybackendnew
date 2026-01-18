@@ -16,7 +16,7 @@ def calculate_points(statistics: dict) -> int:
             points += 5
 
     yellow_cards = statistics.get("cards", {}).get("yellow", 0) or 0
-    points -= yellow_cards * 1
+    points -= yellow_cards
 
     yellow_red_cards = statistics.get("cards", {}).get("yellowred", 0) or 0
     points -= yellow_red_cards * 2

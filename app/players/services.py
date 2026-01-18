@@ -86,7 +86,6 @@ class PlayerService(BaseService):
     @classmethod
     async def find_all_with_total_points(cls, league_id: int) -> list[PlayerWithTotalPointsSchema]:
         async with async_session_maker() as session:
-            # Подзапрос для подсчёта общего количества очков каждого игрока
             total_points_subq = (
                 select(
                     PlayerMatchStats.player_id,
@@ -96,7 +95,6 @@ class PlayerService(BaseService):
                 .subquery()
             )
 
-            # Основной запрос: выбираем игроков с их общим количеством очков и информацией о команде
             stmt = (
                 select(
                     Player,
@@ -112,7 +110,6 @@ class PlayerService(BaseService):
             result = await session.execute(stmt)
             players_with_points = result.unique().all()
 
-            # Формируем список игроков с их общим количеством очков и логотипом команды
             players = []
             for player, total_points, team_name, team_logo in players_with_points:
                 player_schema = PlayerWithTotalPointsSchema(
@@ -254,7 +251,6 @@ class PlayerService(BaseService):
     @classmethod
     async def _get_squad_presence_percentage(cls, player_id: int, league_id: int) -> tuple[float, int]:
         async with async_session_maker() as session:
-            # Подзапрос для подсчёта участий игрока в основных и запасных составах
             squad_presence_stmt = (
                 select(func.count())
                 .select_from(SquadTour)
@@ -278,7 +274,6 @@ class PlayerService(BaseService):
                 .alias("squad_presence_count")
             )
 
-            # Общее количество туров в лиге
             total_squad_tours_stmt = (
                 select(func.count())
                 .select_from(SquadTour)
@@ -288,20 +283,16 @@ class PlayerService(BaseService):
             total_squad_tours_result = await session.execute(total_squad_tours_stmt)
             total_squad_tours = total_squad_tours_result.scalar()
 
-            # Если нет туров в лиге, возвращаем 0
             if total_squad_tours == 0:
                 total_players_in_league = await cls._get_total_players_in_league(league_id)
                 return 0, total_players_in_league
 
-            # Количество участий игрока в сквадах
             squad_presence_count_stmt = select(func.sum(squad_presence_stmt.c.count))
             squad_presence_count_result = await session.execute(squad_presence_count_stmt)
             squad_presence_count = squad_presence_count_result.scalar() or 0
 
-            # Процент присутствия
             squad_presence_percentage = (squad_presence_count / total_squad_tours) * 100
 
-            # Запрос для ранжирования по проценту присутствия
             rank_stmt = (
                 select(func.count() + 1)
                 .select_from(Player)
@@ -325,7 +316,6 @@ class PlayerService(BaseService):
             rank_result = await session.execute(rank_stmt)
             rank = rank_result.scalar()
 
-            # Если ранг не найден, значит у всех игроков процент присутствия <= текущего игрока
             if rank is None:
                 total_players_in_league = await cls._get_total_players_in_league(league_id)
                 rank = total_players_in_league
@@ -359,7 +349,6 @@ class PlayerService(BaseService):
     @classmethod
     async def get_last_3_tours_with_matches(cls, player_id: int) -> list[TourWithMatchesSchema]:
         async with async_session_maker() as session:
-            # Получаем команду игрока
             player_stmt = select(Player).where(Player.id == player_id).options(joinedload(Player.team))
             player_result = await session.execute(player_stmt)
             player = player_result.scalar_one_or_none()
@@ -369,7 +358,6 @@ class PlayerService(BaseService):
 
             team_id = player.team_id
 
-            # Получаем последние 3 тура, в которых играла команда игрока
             last_3_tours_stmt = (
                 select(Tour)
                 .join(Tour.matches_association)
@@ -434,7 +422,6 @@ class PlayerService(BaseService):
     @classmethod
     async def get_next_3_tours_with_matches(cls, player_id: int) -> list[TourWithMatchesSchema]:
         async with async_session_maker() as session:
-            # Получаем команду игрока
             player_stmt = select(Player).where(Player.id == player_id).options(joinedload(Player.team))
             player_result = await session.execute(player_stmt)
             player = player_result.scalar_one_or_none()
@@ -444,7 +431,6 @@ class PlayerService(BaseService):
 
             team_id = player.team_id
 
-            # Получаем следующие 3 тура, в которых будет играть команда игрока
             next_3_tours_stmt = (
                 select(Tour)
                 .join(Tour.matches_association)
@@ -498,10 +484,8 @@ class PlayerService(BaseService):
 
     @classmethod
     async def get_player_full_info(cls, player_id: int) -> PlayerFullInfoSchema:
-        # Получаем базовую информацию об игроке
         base_info = await cls.get_player_base_info(player_id)
 
-        # Получаем команду игрока для определения league_id
         player_stmt = select(Player).where(Player.id == player_id).options(joinedload(Player.team))
         async with async_session_maker() as session:
             player_result = await session.execute(player_stmt)
@@ -512,16 +496,12 @@ class PlayerService(BaseService):
 
             league_id = player.league_id
 
-        # Получаем расширенную информацию об игроке
         extended_info = await cls.get_player_extended_info(player_id, league_id)
 
-        # Получаем последние 3 тура
         last_3_tours = await cls.get_last_3_tours_with_matches(player_id)
 
-        # Получаем следующие 3 тура
         next_3_tours = await cls.get_next_3_tours_with_matches(player_id)
 
-        # Формируем полную информацию об игроке
         player_full_info = PlayerFullInfoSchema(
             base_info=base_info,
             extended_info=extended_info,

@@ -1,14 +1,20 @@
 import logging
-from fastapi import APIRouter, Depends, Request, Response, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+
 from app.config import settings
-from app.utils.exceptions import AuthenticationFailedException, InvalidDataException
 from app.users.dependencies import get_current_user
-from app.users.schemas import UserSchema, UserCreateSchema, UserUpdateSchema
-from app.users.utils import create_access_token
+from app.users.schemas import UserCreateSchema, UserSchema, UserUpdateSchema
 from app.users.services import UserService
+from app.users.utils import create_access_token
+from app.utils.exceptions import (
+    AuthenticationFailedException,
+    InvalidDataException,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
+
 
 @router.post("/login")
 async def login(request: Request, response: Response):
@@ -35,6 +41,7 @@ async def login(request: Request, response: Response):
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         raise AuthenticationFailedException()
 
+
 @router.get("/protected")
 async def protected_route(user: UserSchema = Depends(get_current_user)):
     return {
@@ -42,6 +49,7 @@ async def protected_route(user: UserSchema = Depends(get_current_user)):
         "user_id": user.id,
         "authenticated": True,
     }
+
 
 @router.post("/refresh")
 async def refresh(request: Request, response: Response):
@@ -60,8 +68,9 @@ async def refresh(request: Request, response: Response):
         )
 
         return {"status": "ok", "message": "Token refreshed"}
-    except Exception as e:
+    except Exception:
         raise AuthenticationFailedException()
+
 
 @router.post("/register")
 async def register_user(
@@ -79,6 +88,7 @@ async def register_user(
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.put("/update")
 async def update_user(

@@ -1,7 +1,10 @@
-from sqlalchemy import ForeignKey, DateTime
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from app.database import Base
 from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+
 
 class Boost(Base):
     __tablename__ = "boosts"

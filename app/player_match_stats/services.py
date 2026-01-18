@@ -83,7 +83,6 @@ class PlayerMatchStatsService(BaseService):
 
                 stats_to_add = []
                 for player in home_players + away_players:
-                    # Проверить, есть ли уже статистика для этого игрока в этом матче
                     existing_stmt = select(cls.model).where(
                         cls.model.player_id == player.id,
                         cls.model.match_id == match.id

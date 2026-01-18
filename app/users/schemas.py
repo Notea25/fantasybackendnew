@@ -1,6 +1,7 @@
 from typing import Optional
-from datetime import date
+
 from pydantic import BaseModel
+
 
 class UserSchema(BaseModel):
     id: int
@@ -11,10 +12,12 @@ class UserSchema(BaseModel):
     class Config:
         from_attributes = True
 
+
 class UserCreateSchema(BaseModel):
     username: str
     photo_url: Optional[str] = None
     emblem_url: Optional[str] = None
+
 
 class UserUpdateSchema(BaseModel):
     username: Optional[str] = None

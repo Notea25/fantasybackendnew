@@ -1,10 +1,12 @@
-from typing import Optional, List
-from sqlalchemy import Column, ForeignKey, Table, Integer, select, func
+from typing import List, Optional
+
+from sqlalchemy import Column, ForeignKey, Integer, Table, func, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 from app.player_match_stats.models import PlayerMatchStats
 
-# Промежуточные таблицы для связей с основными и запасными игроками
+
 squad_players_association = Table(
     "squad_players_association",
     Base.metadata,
@@ -21,7 +23,6 @@ squad_bench_players_association = Table(
     extend_existing=True,
 )
 
-# Промежуточные таблицы для связей с игроками в турах
 squad_tour_players = Table(
     "squad_tour_players",
     Base.metadata,
@@ -38,7 +39,6 @@ squad_tour_bench_players = Table(
     extend_existing=True,
 )
 
-# Промежуточные таблицы для связей с лигами
 user_league_squads = Table(
     "user_league_squads",
     Base.metadata,
@@ -81,17 +81,16 @@ class Squad(Base):
     current_main_players: Mapped[List["Player"]] = relationship(
         secondary="squad_players_association",
         back_populates="main_squads",
-        lazy="joined"
+        lazy="joined",
     )
     current_bench_players: Mapped[List["Player"]] = relationship(
         secondary="squad_bench_players_association",
         back_populates="bench_squads",
-        lazy="joined"
+        lazy="joined",
     )
     tour_history: Mapped[List["SquadTour"]] = relationship(back_populates="squad")
     used_boosts: Mapped[List["Boost"]] = relationship(back_populates="squad")
 
-    # Связи с различными типами лиг
     user_leagues: Mapped[List["UserLeague"]] = relationship(
         secondary=user_league_squads, back_populates="squads"
     )
@@ -114,9 +113,13 @@ class Squad(Base):
         return [player.id for player in self.current_bench_players]
 
     def calculate_players_cost(self) -> int:
-        return sum(p.market_value for p in self.current_main_players) + sum(p.market_value for p in self.current_bench_players)
+        return sum(p.market_value for p in self.current_main_players) + sum(
+            p.market_value for p in self.current_bench_players
+        )
 
-    def validate_players(self, main_players: List["Player"], bench_players: List["Player"]) -> None:
+    def validate_players(
+        self, main_players: List["Player"], bench_players: List["Player"]
+    ) -> None:
         if len(main_players) != 11:
             raise ValueError("Main squad must have exactly 11 players")
         if len(bench_players) != 4:
@@ -134,17 +137,22 @@ class Squad(Base):
         for player in main_players + bench_players:
             club_counts[player.team_id] = club_counts.get(player.team_id, 0) + 1
             if club_counts[player.team_id] > 3:
-                raise ValueError("Cannot have more than 3 players from the same club")
+                raise ValueError(
+                    "Cannot have more than 3 players from the same club"
+                )
 
-    def count_different_players(self, new_main_ids: List[int], new_bench_ids: List[int]) -> int:
+    def count_different_players(
+        self, new_main_ids: List[int], new_bench_ids: List[int]
+    ) -> int:
         current_main_ids = {p.id for p in self.current_main_players}
         current_bench_ids = {p.id for p in self.current_bench_players}
-        return len(current_main_ids - set(new_main_ids)) + len(current_bench_ids - set(new_bench_ids))
+        return len(current_main_ids - set(new_main_ids)) + len(
+            current_bench_ids - set(new_bench_ids)
+        )
 
     async def calculate_points(self, session) -> int:
         total_points = 0
 
-        # Получаем очки для основных игроков
         for player in self.current_main_players:
             player_points_stmt = (
                 select(func.sum(PlayerMatchStats.points))
@@ -154,7 +162,6 @@ class Squad(Base):
             player_points = player_points_result.scalar() or 0
             total_points += player_points
 
-        # Получаем очки для запасных игроков
         for player in self.current_bench_players:
             player_points_stmt = (
                 select(func.sum(PlayerMatchStats.points))
@@ -166,24 +173,27 @@ class Squad(Base):
 
         return total_points
 
+
 class SquadTour(Base):
     __tablename__ = "squad_tours"
     id: Mapped[int] = mapped_column(primary_key=True)
-    squad_id: Mapped[int] = mapped_column(ForeignKey("squads.id", ondelete="CASCADE"))
+    squad_id: Mapped[int] = mapped_column(
+        ForeignKey("squads.id", ondelete="CASCADE")
+    )
     tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id"))
     is_current: Mapped[bool] = mapped_column(default=False)
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
-    vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
+    vice_captain_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("players.id"), nullable=True
+    )
 
     squad: Mapped["Squad"] = relationship(back_populates="tour_history")
     tour: Mapped["Tour"] = relationship(back_populates="squads")
     main_players: Mapped[List["Player"]] = relationship(
-        secondary=squad_tour_players,
-        back_populates="squad_tours"
+        secondary=squad_tour_players, back_populates="squad_tours"
     )
     bench_players: Mapped[List["Player"]] = relationship(
-        secondary=squad_tour_bench_players,
-        back_populates="bench_squad_tours"
+        secondary=squad_tour_bench_players, back_populates="bench_squad_tours"
     )

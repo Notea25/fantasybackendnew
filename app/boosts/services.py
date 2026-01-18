@@ -1,13 +1,17 @@
+from sqlalchemy import delete, func
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, delete
 
+from app.boosts.models import Boost
 from app.boosts.schemas import BoostType
 from app.database import async_session_maker
-from app.boosts.models import Boost
 from app.squads.models import Squad
 from app.utils.base_service import BaseService
-from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
+from app.utils.exceptions import (
+    FailedOperationException,
+    ResourceNotFoundException,
+)
+
 
 class BoostService(BaseService):
     model = Boost
@@ -21,7 +25,9 @@ class BoostService(BaseService):
             )
             result = await session.execute(stmt)
             if result.scalars().first():
-                raise FailedOperationException("Boost already used in this tour")
+                raise FailedOperationException(
+                    "Boost already used in this tour"
+                )
 
             used_boost_type = await session.scalar(
                 select(func.count(cls.model.id)).where(
@@ -30,12 +36,12 @@ class BoostService(BaseService):
                 )
             )
             if used_boost_type:
-                raise FailedOperationException(f"Boost type {boost_type} already used for this squad")
+                raise FailedOperationException(
+                    f"Boost type {boost_type} already used for this squad"
+                )
 
             boost = cls.model(
-                squad_id=squad_id,
-                tour_id=tour_id,
-                type=boost_type
+                squad_id=squad_id, tour_id=tour_id, type=boost_type
             )
             session.add(boost)
             await session.commit()
@@ -58,31 +64,34 @@ class BoostService(BaseService):
             )
 
             used_boosts = await session.execute(
-                select(cls.model.type, Tour.number).join(Tour, cls.model.tour_id == Tour.id).where(
-                    cls.model.squad_id == squad_id
-                )
+                select(cls.model.type, Tour.number)
+                .join(Tour, cls.model.tour_id == Tour.id)
+                .where(cls.model.squad_id == squad_id)
             )
             used_boosts = used_boosts.all()
 
-            used_boosts_dict = {boost_type: tour_number for boost_type, tour_number in used_boosts}
+            used_boosts_dict = {
+                boost_type: tour_number for boost_type, tour_number in used_boosts
+            }
 
             all_boost_types = [boost_type.value for boost_type in BoostType]
             boosts = []
             for boost_type in all_boost_types:
-                available = not used_in_tour and (boost_type not in used_boosts_dict)
+                available = not used_in_tour and (
+                    boost_type not in used_boosts_dict
+                )
                 used_in_tour_number = used_boosts_dict.get(boost_type)
 
-                boosts.append({
-                    "type": boost_type,
-                    "description": cls._get_boost_description(boost_type),
-                    "available": available,
-                    "used_in_tour_number": used_in_tour_number
-                })
+                boosts.append(
+                    {
+                        "type": boost_type,
+                        "description": cls._get_boost_description(boost_type),
+                        "available": available,
+                        "used_in_tour_number": used_in_tour_number,
+                    }
+                )
 
-            return {
-                "used_in_current_tour": bool(used_in_tour),
-                "boosts": boosts
-            }
+            return {"used_in_current_tour": bool(used_in_tour), "boosts": boosts}
 
     @classmethod
     def _get_boost_description(cls, boost_type: str) -> str:
@@ -91,7 +100,7 @@ class BoostService(BaseService):
             "triple_captain": "Утраивает очки капитана",
             "transfers_plus": "Дополнительные трансферы",
             "gold_tour": "Золотой тур",
-            "double_bet": "Двойная ставка"
+            "double_bet": "Двойная ставка",
         }
         return descriptions.get(boost_type, "")
 
@@ -101,9 +110,7 @@ class BoostService(BaseService):
             stmt = (
                 select(cls.model)
                 .where(cls.model.squad_id == squad_id)
-                .options(
-                    joinedload(cls.model.tour)
-                )
+                .options(joinedload(cls.model.tour))
                 .order_by(cls.model.used_at.desc())
             )
             result = await session.execute(stmt)
@@ -112,7 +119,6 @@ class BoostService(BaseService):
 
     @classmethod
     async def remove_boost(cls, squad_id: int, tour_id: int):
-
         async with async_session_maker() as session:
             stmt = select(cls.model).where(
                 cls.model.squad_id == squad_id,
@@ -122,7 +128,9 @@ class BoostService(BaseService):
             boost = result.scalars().first()
 
             if not boost:
-                raise ResourceNotFoundException("Boost not found for this squad and tour")
+                raise ResourceNotFoundException(
+                    "Boost not found for this squad and tour"
+                )
 
             await session.execute(
                 delete(cls.model).where(

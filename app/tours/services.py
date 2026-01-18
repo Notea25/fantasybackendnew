@@ -140,7 +140,6 @@ class TourService(BaseService):
         now = datetime.utcnow().replace(tzinfo=timezone.utc)
 
         async with async_session_maker() as session:
-            # Загружаем все туры с их ассоциациями матчей
             stmt = (
                 select(Tour)
                 .where(Tour.league_id == league_id)
@@ -158,7 +157,6 @@ class TourService(BaseService):
                 if not tour.matches_association:
                     continue
 
-                # Вычисляем start_date и end_date на основе матчей
                 start_date = min(association.match.date for association in tour.matches_association)
                 end_date = max(association.match.date for association in tour.matches_association)
 
@@ -169,13 +167,10 @@ class TourService(BaseService):
                 elif start_date > now:
                     next_tours.append((tour, start_date))
 
-            # Определяем ближайший предыдущий тур
             previous_tour = max(previous_tours, key=lambda x: x[1], default=None)
             previous_tour = previous_tour[0] if previous_tour else None
 
-            # Определяем ближайший следующий тур
             next_tour = min(next_tours, key=lambda x: x[1], default=None)
             next_tour = next_tour[0] if next_tour else None
 
             return previous_tour, current_tour, next_tour
-

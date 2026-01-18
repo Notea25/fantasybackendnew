@@ -1,14 +1,19 @@
 import logging
 
-from sqlalchemy.future import select
-from app.teams.models import Team
-from app.database import async_session_maker
-from app.utils.external_api import external_api
-from app.utils.base_service import BaseService
-from app.utils.exceptions import ExternalAPIErrorException, FailedOperationException
 import httpx
+from sqlalchemy.future import select
+
+from app.database import async_session_maker
+from app.teams.models import Team
+from app.utils.base_service import BaseService
+from app.utils.exceptions import (
+    ExternalAPIErrorException,
+    FailedOperationException,
+)
+from app.utils.external_api import external_api
 
 logger = logging.getLogger(__name__)
+
 
 class TeamService(BaseService):
     model = Team
@@ -37,32 +42,42 @@ class TeamService(BaseService):
                     result = await session.execute(stmt)
                     existing_team = result.scalar_one_or_none()
                     if existing_team:
-                        logger.debug(f"Team {team_data['id']} already exists, skipping...")
+                        logger.debug(
+                            f"Team {team_data['id']} already exists, skipping..."
+                        )
                         continue
 
                     team = cls.model(
                         id=team_data["id"],
                         name=team_data["name"],
                         logo=team_data.get("logo"),
-                        league_id=league_id
+                        league_id=league_id,
                     )
                     session.add(team)
-                    logger.debug(f"Added team: {team_data['name']} (ID: {team_data['id']})")
+                    logger.debug(
+                        f"Added team: {team_data['name']} (ID: {team_data['id']})"
+                    )
                 except KeyError as e:
                     logger.error(f"Missing key in team data: {e}")
                     await session.rollback()
-                    raise FailedOperationException(msg=f"Missing key in team data: {e}")
+                    raise FailedOperationException(
+                        msg=f"Missing key in team data: {e}"
+                    )
                 except Exception as e:
-                    logger.error(f"Error processing team {team_data.get('id', 'unknown')}: {e}")
+                    logger.error(
+                        f"Error processing team {team_data.get('id', 'unknown')}: {e}"
+                    )
                     await session.rollback()
-                    raise FailedOperationException(msg=f"Error processing team: {e}")
+                    raise FailedOperationException(
+                        msg=f"Error processing team: {e}"
+                    )
 
             try:
                 await session.commit()
                 logger.debug("Teams committed to DB successfully")
             except Exception as e:
                 await session.rollback()
-                logger.error(f"Failed to commit teams for league {league_id}: {e}")
+                logger.error(
+                    f"Failed to commit teams for league {league_id}: {e}"
+                )
                 raise FailedOperationException(msg=f"Failed to commit teams: {e}")
-
-

@@ -10,8 +10,11 @@ from urllib.parse import parse_qsl, unquote
 from jose import JWTError, jwt
 
 from app.config import settings
-from app.utils.exceptions import (AuthenticationFailedException,
-                                  InvalidDataException, InvalidSignatureException)
+from app.utils.exceptions import (
+    AuthenticationFailedException,
+    InvalidDataException,
+    InvalidSignatureException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +84,13 @@ def validate_telegram_data(init_data: str) -> dict:
 
 def create_access_token(data: Dict[str, Any]) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
 
 
 def verify_token(token: str):
