@@ -76,7 +76,7 @@ async def delete_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/list/my-squad-leagues", response_model=List[UserLeagueWithStatsSchema])
+@router.get("/list/my_squad_leagues", response_model=List[UserLeagueWithStatsSchema])
 async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
     try:
         leagues = await UserLeagueService.get_my_squad_leagues(current_user.id)
