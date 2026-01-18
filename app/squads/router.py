@@ -214,3 +214,7 @@ async def get_squad_history(squad_id: int, user: User = Depends(get_current_user
 @router.get("/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
 async def get_leaderboard(tour_id: int) -> List[Dict[str, Any]]:
     return await SquadService.get_leaderboard(tour_id)
+
+@router.get("/leaderboard/{tour_id}/by-fav-team/{fav_team_id}", response_model=List[Dict[str, Any]])
+async def get_leaderboard_by_fav_team(tour_id: int, fav_team_id: int) -> List[Dict[str, Any]]:
+    return await SquadService.get_leaderboard_by_fav_team(tour_id, fav_team_id)

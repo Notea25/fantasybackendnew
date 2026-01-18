@@ -716,3 +716,52 @@ class SquadService(BaseService):
                 "remaining_replacements": squad.replacements,
                 "max_replacements": 3
             }
+
+@classmethod
+async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> List[Dict[str, Any]]:
+    async with async_session_maker() as session:
+        # Загружаем все составы (squads) для указанного тура с фильтрацией по fav_team_id
+        stmt = (
+            select(SquadTour)
+            .join(SquadTour.squad)
+            .where(
+                SquadTour.tour_id == tour_id,
+                Squad.fav_team_id == fav_team_id
+            )
+            .options(
+                joinedload(SquadTour.squad).joinedload(Squad.user)
+            )
+            .order_by(desc(SquadTour.points))
+        )
+        result = await session.execute(stmt)
+        squad_tours = result.unique().scalars().all()
+
+        # Получаем общее количество очков для каждого состава за все туры
+        total_points_stmt = (
+            select(
+                SquadTour.squad_id,
+                func.sum(SquadTour.points).label("total_points")
+            )
+            .join(SquadTour.squad)
+            .where(Squad.fav_team_id == fav_team_id)
+            .group_by(SquadTour.squad_id)
+        )
+        total_points_result = await session.execute(total_points_stmt)
+        total_points = {row.squad_id: row.total_points for row in total_points_result}
+
+        leaderboard = []
+        for index, squad_tour in enumerate(squad_tours, start=1):
+            squad = squad_tour.squad
+
+            leaderboard.append({
+                "place": index,
+                "squad_id": squad.id,
+                "squad_name": squad.name,
+                "user_id": squad.user.id,
+                "username": squad.user.username,
+                "tour_points": squad_tour.points,
+                "total_points": total_points.get(squad.id, 0),
+                "fav_team_id": squad.fav_team_id,
+            })
+
+        return leaderboard
