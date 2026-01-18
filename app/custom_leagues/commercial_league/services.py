@@ -23,10 +23,21 @@ class CommercialLeagueService:
             if league_id:
                 stmt = stmt.where(CommercialLeague.league_id == league_id).options(
                     joinedload(CommercialLeague.tours),
-                    joinedload(CommercialLeague.squads)
+                    joinedload(CommercialLeague.squads),
+                    joinedload(CommercialLeague.winner)
                 )
             result = await session.execute(stmt)
-            return result.unique().scalars().all()
+            leagues = result.unique().scalars().all()
+
+            leagues_with_winner_name = []
+            for league in leagues:
+                winner_name = league.winner.name if league.winner else None
+                leagues_with_winner_name.append({
+                    **league.__dict__,
+                    "winner_name": winner_name
+                })
+
+            return leagues_with_winner_name
 
     @classmethod
     async def get_commercial_league_by_id(cls, commercial_league_id: int) -> CommercialLeague:

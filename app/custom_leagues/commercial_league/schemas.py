@@ -17,6 +17,7 @@ class CommercialLeagueSchema(BaseModel):
     prize: Optional[str]
     logo: Optional[str]
     winner_id: Optional[int]
+    winner_name: Optional[str]
     registration_start: Optional[datetime]
     registration_end: Optional[datetime]
     tours: List[TourSchema] = []
@@ -25,5 +26,3 @@ class CommercialLeagueSchema(BaseModel):
     class Config:
         from_attributes = True
 
-    class Config:
-        from_attributes = True
