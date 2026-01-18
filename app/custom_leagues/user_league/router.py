@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from app.custom_leagues.user_league.schemas import UserLeagueSchema, UserLeagueWithStatsSchema
+from app.custom_leagues.user_league.schemas import UserLeagueSchema, UserLeagueWithStatsSchema, UserLeagueCreateSchema
 from app.custom_leagues.user_league.services import UserLeagueService
 from app.users.dependencies import get_current_user
 from app.users.models import User
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/user_leagues", tags=["User Leagues"])
 
 @router.post("/", response_model=UserLeagueSchema)
 async def create_user_league(
-    data: UserLeagueSchema,
+    data: UserLeagueCreateSchema,
     current_user: User = Depends(get_current_user)
 ):
     try:

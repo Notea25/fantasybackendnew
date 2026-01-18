@@ -35,7 +35,7 @@ class UserLeagueService:
                 if existing_league:
                     raise NotAllowedException("You already have a league for this competition")
 
-                # Создание лиги
+                # Создание лиги с автоматическим creator_id
                 user_league = UserLeague(**data, creator_id=user_id)
                 session.add(user_league)
                 await session.commit()

@@ -31,3 +31,11 @@ class UserLeagueWithStatsSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserLeagueCreateSchema(BaseModel):
+    name: str
+    league_id: int
+
+
+    class Config:
+        from_attributes = True
