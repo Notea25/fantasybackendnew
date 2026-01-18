@@ -9,6 +9,7 @@ from app.database import async_session_maker
 from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.leagues.models import League
 from app.squads.models import Squad, SquadTour
+from app.tours.models import Tour, user_league_tours
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 
 logger = logging.getLogger(__name__)
@@ -31,14 +32,18 @@ class UserLeagueService:
                 session.add(user_league)
                 await session.commit()
 
-                # Загружаем объект с связанными данными
-                stmt = (
-                    select(UserLeague)
-                    .where(UserLeague.id == user_league.id)
-                    .options(joinedload(UserLeague.tours), joinedload(UserLeague.squads))
-                )
+                # Получаем все туры из связанной лиги
+                stmt = select(Tour).where(Tour.league_id == data.get("league_id"))
                 result = await session.execute(stmt)
-                user_league = result.scalars().first()
+                tours = result.scalars().all()
+
+                # Добавляем все туры в промежуточную таблицу user_league_tours
+                for tour in tours:
+                    insert_stmt = user_league_tours.insert().values(
+                        user_league_id=user_league.id,
+                        tour_id=tour.id
+                    )
+                    await session.execute(insert_stmt)
 
                 # Автоматическое добавление сквада текущего пользователя в лигу
                 stmt = select(Squad).where(Squad.user_id == user_id, Squad.league_id == data.get("league_id"))
@@ -59,7 +64,17 @@ class UserLeagueService:
                             squad_id=squad.id
                         )
                         await session.execute(insert_stmt)
-                        await session.commit()
+
+                await session.commit()
+
+                # Повторно загружаем объект с актуальными связанными данными
+                stmt = (
+                    select(UserLeague)
+                    .where(UserLeague.id == user_league.id)
+                    .options(joinedload(UserLeague.tours), joinedload(UserLeague.squads))
+                )
+                result = await session.execute(stmt)
+                user_league = result.unique().scalars().first()
 
                 return user_league
 
