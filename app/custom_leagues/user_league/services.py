@@ -14,6 +14,7 @@ from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 logger = logging.getLogger(__name__)
 
 class UserLeagueService:
+
     @classmethod
     async def create_user_league(cls, data: dict, user_id: int) -> UserLeague:
         async with async_session_maker() as session:
@@ -25,20 +26,41 @@ class UserLeagueService:
                 if not league:
                     raise ResourceNotFoundException(f"League with id {data.get('league_id')} not found")
 
-                # Проверка на существование лиги у пользователя
-                stmt = select(UserLeague).where(
-                    UserLeague.creator_id == user_id,
-                    UserLeague.league_id == data.get("league_id")
-                )
-                result = await session.execute(stmt)
-                existing_league = result.scalars().first()
-                if existing_league:
-                    raise NotAllowedException("You already have a league for this competition")
-
-                # Создание лиги с автоматическим creator_id
+                # Создание лиги
                 user_league = UserLeague(**data, creator_id=user_id)
                 session.add(user_league)
                 await session.commit()
+
+                # Загружаем объект с связанными данными
+                stmt = (
+                    select(UserLeague)
+                    .where(UserLeague.id == user_league.id)
+                    .options(joinedload(UserLeague.tours), joinedload(UserLeague.squads))
+                )
+                result = await session.execute(stmt)
+                user_league = result.scalars().first()
+
+                # Автоматическое добавление сквада текущего пользователя в лигу
+                stmt = select(Squad).where(Squad.user_id == user_id, Squad.league_id == data.get("league_id"))
+                result = await session.execute(stmt)
+                squad = result.scalars().first()
+
+                if squad:
+                    # Проверка, что сквад еще не добавлен в эту лигу
+                    stmt = select(user_league_squads).where(
+                        user_league_squads.c.user_league_id == user_league.id,
+                        user_league_squads.c.squad_id == squad.id
+                    )
+                    result = await session.execute(stmt)
+                    if not result.first():
+                        # Добавление сквада в пользовательскую лигу
+                        insert_stmt = user_league_squads.insert().values(
+                            user_league_id=user_league.id,
+                            squad_id=squad.id
+                        )
+                        await session.execute(insert_stmt)
+                        await session.commit()
+
                 return user_league
 
             except IntegrityError as e:
@@ -53,12 +75,13 @@ class UserLeagueService:
     @classmethod
     async def get_user_leagues(cls, user_id: int) -> List[UserLeague]:
         async with async_session_maker() as session:
-            stmt = select(UserLeague).where(UserLeague.creator_id == user_id).options(
-                joinedload(UserLeague.tours),
-                joinedload(UserLeague.squads)
+            stmt = (
+                select(UserLeague)
+                .where(UserLeague.creator_id == user_id)
+                .options(joinedload(UserLeague.tours), joinedload(UserLeague.squads))
             )
             result = await session.execute(stmt)
-            return result.scalars().all()
+            return result.unique().scalars().all()  # Используйте .unique()
 
     @classmethod
     async def get_user_league_by_id(cls, user_league_id: int) -> UserLeague:
@@ -77,37 +100,50 @@ class UserLeagueService:
     @classmethod
     async def join_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
         async with async_session_maker() as session:
-            # Проверка существования пользовательской лиги
-            stmt = select(UserLeague).where(UserLeague.id == user_league_id)
-            result = await session.execute(stmt)
-            user_league = result.scalars().first()
-            if not user_league:
-                raise ResourceNotFoundException("User league not found")
+            try:
+                # Проверка существования пользовательской лиги
+                stmt = select(UserLeague).where(UserLeague.id == user_league_id)
+                result = await session.execute(stmt)
+                user_league = result.scalars().first()
+                if not user_league:
+                    raise ResourceNotFoundException("User league not found")
 
-            # Проверка существования сквада
-            stmt = select(Squad).where(Squad.id == squad_id)
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-            if not squad:
-                raise ResourceNotFoundException("Squad not found")
+                # Проверка существования сквада
+                stmt = select(Squad).where(Squad.id == squad_id)
+                result = await session.execute(stmt)
+                squad = result.scalars().first()
+                if not squad:
+                    raise ResourceNotFoundException("Squad not found")
 
-            # Проверка, что сквад принадлежит пользователю
-            if squad.user_id != user_id:
-                raise NotAllowedException("You can only add your own squad to a user league")
+                # Проверка, что сквад принадлежит пользователю
+                if squad.user_id != user_id:
+                    raise NotAllowedException("You can only add your own squad to a user league")
 
-            # Проверка, что сквад еще не добавлен в эту лигу
-            stmt = select(user_league_squads).where(
-                user_league_squads.c.user_league_id == user_league_id,
-                user_league_squads.c.squad_id == squad_id
-            )
-            result = await session.execute(stmt)
-            if result.first():
-                raise NotAllowedException("Squad is already in this user league")
+                # Проверка, что сквад еще не добавлен в эту лигу
+                stmt = select(user_league_squads).where(
+                    user_league_squads.c.user_league_id == user_league_id,
+                    user_league_squads.c.squad_id == squad_id
+                )
+                result = await session.execute(stmt)
+                if result.first():
+                    raise NotAllowedException("Squad is already in this user league")
 
-            # Добавление сквада в пользовательскую лигу
-            user_league.squads.append(squad)
-            await session.commit()
-            return user_league
+                # Добавление сквада в пользовательскую лигу
+                insert_stmt = user_league_squads.insert().values(
+                    user_league_id=user_league_id,
+                    squad_id=squad_id
+                )
+                await session.execute(insert_stmt)
+                await session.commit()
+
+                # Повторно загружаем объект с актуальными данными
+                await session.refresh(user_league)
+                return user_league
+
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Error while joining user league: {e}")
+                raise
 
     @classmethod
     async def leave_user_league(cls, user_league_id: int, squad_id: int, user_id: int) -> UserLeague:
@@ -160,63 +196,72 @@ class UserLeagueService:
     @classmethod
     async def get_my_squad_leagues(cls, user_id: int) -> List[UserLeagueWithStatsSchema]:
         async with async_session_maker() as session:
-            # 1. Получаем все сквады текущего пользователя
-            stmt = select(Squad).where(Squad.user_id == user_id)
-            result = await session.execute(stmt)
-            squads = result.scalars().all()
+            try:
+                leagues_data = []
 
-            leagues_data = []
-            for squad in squads:
-                # 2. Получаем все пользовательские лиги, в которых участвует сквад
-                stmt = (
-                    select(user_league_squads.c.user_league_id)
-                    .where(user_league_squads.c.squad_id == squad.id)
-                )
+                # Получаем все сквады текущего пользователя
+                stmt = select(Squad).where(Squad.user_id == user_id)
                 result = await session.execute(stmt)
-                user_league_ids = [row.user_league_id for row in result.all()]
+                squads = result.unique().scalars().all()  # Используем .unique()
 
-                for user_league_id in user_league_ids:
-                    # 3. Получаем информацию о лиге
+                for squad in squads:
+                    # Получаем все пользовательские лиги, в которых участвует сквад
                     stmt = (
-                        select(UserLeague)
-                        .where(UserLeague.id == user_league_id)
-                        .options(joinedload(UserLeague.league))
+                        select(user_league_squads.c.user_league_id)
+                        .where(user_league_squads.c.squad_id == squad.id)
                     )
                     result = await session.execute(stmt)
-                    user_league = result.scalars().first()
+                    user_league_ids = [row.user_league_id for row in result.unique().all()]  # Используем .unique()
 
-                    # 4. Получаем всех сквадов в лиге
-                    stmt = (
-                        select(user_league_squads.c.squad_id)
-                        .where(user_league_squads.c.user_league_id == user_league_id)
-                    )
-                    result = await session.execute(stmt)
-                    squad_ids_in_league = [row.squad_id for row in result.all()]
-
-                    # 5. Получаем очки всех сквадов в лиге
-                    stmt = (
-                        select(SquadTour.squad_id, func.sum(SquadTour.points).label("total_points"))
-                        .where(SquadTour.squad_id.in_(squad_ids_in_league))
-                        .group_by(SquadTour.squad_id)
-                    )
-                    result = await session.execute(stmt)
-                    squad_points = {row.squad_id: row.total_points for row in result.all()}
-
-                    # 6. Сортируем сквады по очкам
-                    sorted_squads = sorted(squad_points.items(), key=lambda x: x[1], reverse=True)
-                    squad_place = next((i + 1 for i, (s_id, _) in enumerate(sorted_squads) if s_id == squad.id), len(squad_ids_in_league))
-
-                    # 7. Формируем ответ
-                    leagues_data.append(
-                        UserLeagueWithStatsSchema(
-                            user_league_id=user_league.id,
-                            league_name=user_league.league.name,
-                            total_players=len(squad_ids_in_league),
-                            squad_place=squad_place,
-                            is_creator=user_league.creator_id == user_id,
-                            squad_id=squad.id,
-                            squad_name=squad.name,
+                    for user_league_id in user_league_ids:
+                        # Получаем информацию о лиге
+                        stmt = (
+                            select(UserLeague)
+                            .where(UserLeague.id == user_league_id)
+                            .options(joinedload(UserLeague.league))
                         )
-                    )
+                        result = await session.execute(stmt)
+                        user_league = result.unique().scalars().first()  # Используем .unique()
 
-            return leagues_data
+                        if not user_league:
+                            continue  # Если лига не найдена, пропускаем
+
+                        # Получаем всех сквадов в лиге
+                        stmt = (
+                            select(user_league_squads.c.squad_id)
+                            .where(user_league_squads.c.user_league_id == user_league_id)
+                        )
+                        result = await session.execute(stmt)
+                        squad_ids_in_league = [row.squad_id for row in result.unique().all()]  # Используем .unique()
+
+                        # Получаем очки всех сквадов в лиге
+                        stmt = (
+                            select(SquadTour.squad_id, func.sum(SquadTour.points).label("total_points"))
+                            .where(SquadTour.squad_id.in_(squad_ids_in_league))
+                            .group_by(SquadTour.squad_id)
+                        )
+                        result = await session.execute(stmt)
+                        squad_points = {row.squad_id: row.total_points for row in
+                                        result.unique().all()}  # Используем .unique()
+
+                        sorted_squads = sorted(squad_points.items(), key=lambda x: x[1], reverse=True)
+                        squad_place = next((i + 1 for i, (s_id, _) in enumerate(sorted_squads) if s_id == squad.id),
+                                           len(squad_ids_in_league))
+
+                        leagues_data.append(
+                            UserLeagueWithStatsSchema(
+                                user_league_id=user_league.id,
+                                league_name=user_league.league.name,
+                                total_players=len(squad_ids_in_league),
+                                squad_place=squad_place,
+                                is_creator=user_league.creator_id == user_id,
+                                squad_id=squad.id,
+                                squad_name=squad.name,
+                            )
+                        )
+
+                return leagues_data
+
+            except Exception as e:
+                logger.error(f"Error in get_my_squad_leagues: {e}")
+                raise

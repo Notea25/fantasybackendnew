@@ -14,8 +14,8 @@ class UserLeagueSchema(BaseModel):
     name: str
     league_id: int
     creator_id: int
-    tours: List[TourSchema] = []
-    squads: List[SquadSchema] = []
+    tours: Optional[List[TourSchema]] = None
+    squads: Optional[List[SquadSchema]] = None
 
     class Config:
         from_attributes = True

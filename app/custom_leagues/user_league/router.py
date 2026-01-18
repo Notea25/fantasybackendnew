@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from app.custom_leagues.user_league.schemas import UserLeagueSchema, UserLeagueWithStatsSchema, UserLeagueCreateSchema
+from app.custom_leagues.user_league.schemas import (
+    UserLeagueSchema,
+    UserLeagueWithStatsSchema,
+    UserLeagueCreateSchema,
+)
 from app.custom_leagues.user_league.services import UserLeagueService
 from app.users.dependencies import get_current_user
 from app.users.models import User
 
-
 router = APIRouter(prefix="/user_leagues", tags=["User Leagues"])
 
-@router.post("/", response_model=UserLeagueSchema)
+@router.post("/create", response_model=UserLeagueSchema)
 async def create_user_league(
     data: UserLeagueCreateSchema,
     current_user: User = Depends(get_current_user)
@@ -20,12 +23,15 @@ async def create_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/", response_model=List[UserLeagueSchema])
+@router.get("/list", response_model=List[UserLeagueSchema])
 async def get_user_leagues(
     current_user: User = Depends(get_current_user)
 ):
-    user_leagues = await UserLeagueService.get_user_leagues(current_user.id)
-    return user_leagues
+    try:
+        user_leagues = await UserLeagueService.get_user_leagues(current_user.id)
+        return user_leagues
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{user_league_id}", response_model=UserLeagueSchema)
 async def get_user_league_by_id(user_league_id: int):
@@ -35,7 +41,7 @@ async def get_user_league_by_id(user_league_id: int):
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.post("/{user_league_id}/squads/{squad_id}")
+@router.post("/{user_league_id}/squads/{squad_id}/join")
 async def join_user_league(
     user_league_id: int,
     squad_id: int,
@@ -47,7 +53,7 @@ async def join_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{user_league_id}/squads/{squad_id}")
+@router.delete("/{user_league_id}/squads/{squad_id}/leave")
 async def leave_user_league(
     user_league_id: int,
     squad_id: int,
@@ -59,7 +65,7 @@ async def leave_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{user_league_id}")
+@router.delete("/{user_league_id}/delete")
 async def delete_user_league(
     user_league_id: int,
     current_user: User = Depends(get_current_user)
@@ -70,7 +76,10 @@ async def delete_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/my-squad-leagues", response_model=List[UserLeagueWithStatsSchema])
+@router.get("/list/my-squad-leagues", response_model=List[UserLeagueWithStatsSchema])
 async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
-    leagues = await UserLeagueService.get_my_squad_leagues(current_user.id)
-    return leagues
+    try:
+        leagues = await UserLeagueService.get_my_squad_leagues(current_user.id)
+        return leagues
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
