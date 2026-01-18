@@ -729,7 +729,8 @@ class SquadService(BaseService):
                     Squad.fav_team_id == fav_team_id
                 )
                 .options(
-                    joinedload(SquadTour.squad).joinedload(Squad.user)
+                    joinedload(SquadTour.squad).joinedload(Squad.user),
+                    joinedload(SquadTour.squad).joinedload(Squad.fav_team)  # Подгружаем связанную команду
                 )
                 .order_by(desc(SquadTour.points))
             )
@@ -762,6 +763,8 @@ class SquadService(BaseService):
                     "tour_points": squad_tour.points,
                     "total_points": total_points.get(squad.id, 0),
                     "fav_team_id": squad.fav_team_id,
+                    "fav_team_name": squad.fav_team.name,
                 })
 
             return leaderboard
+
