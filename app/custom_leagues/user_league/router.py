@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from typing import List, Dict, Any
 
 from app.custom_leagues.user_league.schemas import (
     UserLeagueSchema,
@@ -83,3 +83,11 @@ async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
         return leagues
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+async def get_user_league_leaderboard(user_league_id: int, tour_id: int):
+    leaderboard = await UserLeagueService.get_user_league_leaderboard(user_league_id, tour_id)
+    if not leaderboard:
+        raise HTTPException(status_code=404, detail="No data found for this user league and tour")
+    return leaderboard
