@@ -75,6 +75,7 @@ class Squad(Base):
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
 
+    fav_team: Mapped["Team"] = relationship(back_populates="squads")
     user: Mapped["User"] = relationship(back_populates="squads")
     league: Mapped["League"] = relationship(back_populates="squads")
     current_main_players: Mapped[List["Player"]] = relationship(
