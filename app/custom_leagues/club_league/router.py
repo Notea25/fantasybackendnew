@@ -56,6 +56,13 @@ async def get_club_leagues_by_league_id(league_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/by-team/{team_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+async def get_club_league_leaderboard_by_team(team_id: int, tour_id: int):
+    leaderboard = await ClubLeagueService.get_club_league_leaderboard_by_team(team_id, tour_id)
+    if not leaderboard:
+        raise HTTPException(status_code=404, detail="No data found for this club league and tour")
+    return leaderboard
+
 
 @router.post("/add-squad-by-team/{team_id}/{squad_id}")
 async def add_squad_to_club_league_by_team_id(
