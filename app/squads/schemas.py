@@ -1,60 +1,107 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional
 
-class SquadRead(BaseModel):
+from pydantic import BaseModel, ConfigDict
+
+
+class PlayerInSquadSchema(BaseModel):
     id: int
     name: str
+    position: Optional[str]
+    team_id: int
+    team_name: str
+    team_logo: Optional[str]
+    market_value: int
+    photo: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SquadReadSchema(BaseModel):
+    id: int
+    name: str
+    user_id: int
+    username: str
+    league_id: int
+    fav_team_id: int
     budget: int
     replacements: int
-    user_id: int
-    league_id: int
-    points: int = 0
-    fav_team_id: int
-    current_tour_id: Optional[int] = None
-    captain_id: Optional[int] = None
-    vice_captain_id: Optional[int] = None
-    main_player_ids: List[int] = []
-    bench_player_ids: List[int] = []
+    points: int
+    captain_id: Optional[int]
+    vice_captain_id: Optional[int]
+    main_players: list[PlayerInSquadSchema]
+    bench_players: list[PlayerInSquadSchema]
 
     model_config = ConfigDict(from_attributes=True)
 
-class SquadCreate(BaseModel):
+
+class SquadCreateSchema(BaseModel):
     name: str
     league_id: int
     fav_team_id: int
     captain_id: Optional[int] = None
     vice_captain_id: Optional[int] = None
-    main_player_ids: List[int]
-    bench_player_ids: List[int]
+    main_player_ids: list[int]
+    bench_player_ids: list[int]
 
-class UpdateSquadPlayersSchema(BaseModel):
+
+class SquadUpdatePlayersSchema(BaseModel):
     captain_id: Optional[int] = None
     vice_captain_id: Optional[int] = None
-    main_player_ids: List[int]
-    bench_player_ids: List[int]
+    main_player_ids: list[int]
+    bench_player_ids: list[int]
 
-class SquadTourSchema(BaseModel):
-    id: int
-    tour_id: int
-    is_current: bool
-    used_boost: Optional[str] = None
-    points: int
-    captain_id: Optional[int] = None
-    vice_captain_id: Optional[int] = None
-    main_player_ids: List[int] = []
-    bench_player_ids: List[int] = []
 
-    model_config = ConfigDict(from_attributes=True)
+class SquadReplacePlayersResponseSchema(BaseModel):
+    status: str
+    message: str
+    remaining_replacements: int
+    squad: SquadReadSchema
 
-class ReplacementInfo(BaseModel):
+
+class SquadUpdateResponseSchema(BaseModel):
+    status: str
+    message: str
+    squad: SquadReadSchema
+
+
+class ReplacementInfoSchema(BaseModel):
     available_replacements: int
     budget: int
     current_players_cost: int
 
     model_config = ConfigDict(from_attributes=True)
 
-class SquadRenameSchema(BaseModel):
-    name: str
 
-    class Config:
-        from_attributes = True
+class SquadRenameSchema(BaseModel):
+    id: int
+    name: str
+    user_id: int
+    league_id: int
+    fav_team_id: int
+    budget: int
+    replacements: int
+    captain_id: Optional[int]
+    vice_captain_id: Optional[int]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SquadTourHistorySchema(BaseModel):
+    tour_id: int
+    tour_number: int
+    points: int
+    used_boost: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeaderboardEntrySchema(BaseModel):
+    rank: int
+    squad_id: int
+    squad_name: str
+    user_id: int
+    username: str
+    points: int
+    fav_team_id: int
+
+    model_config = ConfigDict(from_attributes=True)

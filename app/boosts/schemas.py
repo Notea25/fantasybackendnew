@@ -1,4 +1,3 @@
-from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel
@@ -12,25 +11,7 @@ class BoostType(str, Enum):
     DOUBLE_BET = "double_bet"
 
 
-class BoostBase(BaseModel):
+class BoostCreate(BaseModel):
     squad_id: int
     tour_id: int
     type: BoostType
-
-
-class BoostCreate(BoostBase):
-    pass
-
-
-class Boost(BoostBase):
-    id: int
-    used_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class BoostInfo(BaseModel):
-    type: BoostType
-    description: str
-    available: bool

@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional
+
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
@@ -29,8 +30,8 @@ class SquadService(BaseService):
         fav_team_id: int,
         captain_id: Optional[int] = None,
         vice_captain_id: Optional[int] = None,
-        main_player_ids: List[int] = [],
-        bench_player_ids: List[int] = []
+        main_player_ids: list[int] = [],
+        bench_player_ids: list[int] = []
     ):
         logger.info(f"Creating squad {name} for user {user_id} in league {league_id}")
         async with async_session_maker() as session:
@@ -221,25 +222,51 @@ class SquadService(BaseService):
                     result = await session.execute(stmt)
                     return result.scalar() or 0
 
-                main_players_data = []
-                for player in main_players:
-                    points = await get_player_points(player.id)
-                    main_players_data.append({
-                        "id": player.id,
-                        "name": player.name,
-                        "team_id": player.team_id,
-                        "points": points
-                    })
+                main_players_stmt_full = (
+                    select(Player)
+                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
+                    .where(squad_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
+                )
+                main_players_result_full = await session.execute(main_players_stmt_full)
+                main_players_full = main_players_result_full.unique().scalars().all()
 
-                bench_players_data = []
-                for player in bench_players:
-                    points = await get_player_points(player.id)
-                    bench_players_data.append({
+                main_players_data = [
+                    {
                         "id": player.id,
                         "name": player.name,
+                        "position": player.position,
                         "team_id": player.team_id,
-                        "points": points
-                    })
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in main_players_full
+                ]
+
+                bench_players_stmt_full = (
+                    select(Player)
+                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
+                    .where(squad_bench_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
+                )
+                bench_players_result_full = await session.execute(bench_players_stmt_full)
+                bench_players_full = bench_players_result_full.unique().scalars().all()
+
+                bench_players_data = [
+                    {
+                        "id": player.id,
+                        "name": player.name,
+                        "position": player.position,
+                        "team_id": player.team_id,
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in bench_players_full
+                ]
 
                 squad.main_players_data = main_players_data
                 squad.bench_players_data = bench_players_data
@@ -269,45 +296,47 @@ class SquadService(BaseService):
                     select(Player)
                     .join(squad_players_association, Player.id == squad_players_association.c.player_id)
                     .where(squad_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
                 )
                 main_players_result = await session.execute(main_players_stmt)
-                main_players = main_players_result.scalars().all()
+                main_players = main_players_result.unique().scalars().all()
 
                 bench_players_stmt = (
                     select(Player)
                     .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
                     .where(squad_bench_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
                 )
                 bench_players_result = await session.execute(bench_players_stmt)
-                bench_players = bench_players_result.scalars().all()
+                bench_players = bench_players_result.unique().scalars().all()
 
-                async def get_player_points(player_id: int) -> int:
-                    stmt = (
-                        select(func.sum(PlayerMatchStats.points))
-                        .where(PlayerMatchStats.player_id == player_id)
-                    )
-                    result = await session.execute(stmt)
-                    return result.scalar() or 0
-
-                main_players_data = []
-                for player in main_players:
-                    points = await get_player_points(player.id)
-                    main_players_data.append({
+                main_players_data = [
+                    {
                         "id": player.id,
                         "name": player.name,
+                        "position": player.position,
                         "team_id": player.team_id,
-                        "points": points
-                    })
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in main_players
+                ]
 
-                bench_players_data = []
-                for player in bench_players:
-                    points = await get_player_points(player.id)
-                    bench_players_data.append({
+                bench_players_data = [
+                    {
                         "id": player.id,
                         "name": player.name,
+                        "position": player.position,
                         "team_id": player.team_id,
-                        "points": points
-                    })
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in bench_players
+                ]
 
                 squad.main_players_data = main_players_data
                 squad.bench_players_data = bench_players_data
@@ -337,45 +366,47 @@ class SquadService(BaseService):
                     select(Player)
                     .join(squad_players_association, Player.id == squad_players_association.c.player_id)
                     .where(squad_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
                 )
                 main_players_result = await session.execute(main_players_stmt)
-                main_players = main_players_result.scalars().all()
+                main_players = main_players_result.unique().scalars().all()
 
                 bench_players_stmt = (
                     select(Player)
                     .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
                     .where(squad_bench_players_association.c.squad_id == squad.id)
+                    .options(joinedload(Player.team))
                 )
                 bench_players_result = await session.execute(bench_players_stmt)
-                bench_players = bench_players_result.scalars().all()
+                bench_players = bench_players_result.unique().scalars().all()
 
-                async def get_player_points(player_id: int) -> int:
-                    stmt = (
-                        select(func.sum(PlayerMatchStats.points))
-                        .where(PlayerMatchStats.player_id == player_id)
-                    )
-                    result = await session.execute(stmt)
-                    return result.scalar() or 0
-
-                main_players_data = []
-                for player in main_players:
-                    points = await get_player_points(player.id)
-                    main_players_data.append({
+                main_players_data = [
+                    {
                         "id": player.id,
                         "name": player.name,
+                        "position": player.position,
                         "team_id": player.team_id,
-                        "points": points
-                    })
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in main_players
+                ]
 
-                bench_players_data = []
-                for player in bench_players:
-                    points = await get_player_points(player.id)
-                    bench_players_data.append({
+                bench_players_data = [
+                    {
                         "id": player.id,
                         "name": player.name,
+                        "position": player.position,
                         "team_id": player.team_id,
-                        "points": points
-                    })
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                    }
+                    for player in bench_players
+                ]
 
                 squad.main_players_data = main_players_data
                 squad.bench_players_data = bench_players_data
@@ -390,8 +421,8 @@ class SquadService(BaseService):
             squad_id: int,
             captain_id: Optional[int] = None,
             vice_captain_id: Optional[int] = None,
-            main_player_ids: List[int] = [],
-            bench_player_ids: List[int] = []
+            main_player_ids: list[int] = [],
+            bench_player_ids: list[int] = []
     ):
         logger.info(f"Updating players for squad {squad_id}")
         async with async_session_maker() as session:
@@ -543,7 +574,7 @@ class SquadService(BaseService):
                 raise FailedOperationException(f"Failed to rename squad: {str(e)}")
 
     @classmethod
-    async def get_leaderboard(cls, tour_id: int) -> List[Dict[str, Any]]:
+    async def get_leaderboard(cls, tour_id: int) -> list[dict]:
         async with async_session_maker() as session:
             stmt = (
                 select(SquadTour)
@@ -571,13 +602,13 @@ class SquadService(BaseService):
                 squad = squad_tour.squad
 
                 leaderboard.append({
-                    "place": index,
+                    "rank": index,
                     "squad_id": squad.id,
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
+                    "points": squad_tour.points,
+                    "fav_team_id": squad.fav_team_id,
                 })
 
             return leaderboard
@@ -590,8 +621,8 @@ class SquadService(BaseService):
             squad_id: int,
             captain_id: Optional[int] = None,
             vice_captain_id: Optional[int] = None,
-            new_main_players: List[int] = [],
-            new_bench_players: List[int] = []
+            new_main_players: list[int] = [],
+            new_bench_players: list[int] = []
     ):
         async with async_session_maker() as session:
             stmt = select(Player).where(Player.id.in_(new_main_players + new_bench_players))
@@ -675,7 +706,7 @@ class SquadService(BaseService):
             return squad
 
     @classmethod
-    async def get_replacement_info(cls, squad_id: int) -> Dict[str, Any]:
+    async def get_replacement_info(cls, squad_id: int) -> dict:
         async with async_session_maker() as session:
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
@@ -694,7 +725,7 @@ class SquadService(BaseService):
             }
 
     @classmethod
-    async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> List[Dict[str, Any]]:
+    async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> list[dict]:
         async with async_session_maker() as session:
             stmt = (
                 select(SquadTour)
@@ -729,15 +760,13 @@ class SquadService(BaseService):
                 squad = squad_tour.squad
 
                 leaderboard.append({
-                    "place": index,
+                    "rank": index,
                     "squad_id": squad.id,
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
+                    "points": squad_tour.points,
                     "fav_team_id": squad.fav_team_id,
-                    "fav_team_name": squad.fav_team.name,
                 })
 
             return leaderboard

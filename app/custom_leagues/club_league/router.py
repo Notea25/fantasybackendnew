@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.custom_leagues.club_league.schemas import ClubLeagueSchema, ClubLeagueListSchema
 from app.custom_leagues.club_league.services import ClubLeagueService
@@ -10,7 +9,7 @@ from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 router = APIRouter(prefix="/club_leagues", tags=["Club Leagues"])
 
 
-@router.get("/", response_model=List[ClubLeagueSchema])
+@router.get("/", response_model=list[ClubLeagueSchema])
 async def get_club_league(league_id: int = None, team_id: int = None):
     try:
         club_leagues = await ClubLeagueService.get_club_league(league_id, team_id)
@@ -41,14 +40,14 @@ async def add_squad_to_club_league(
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.get("/{club_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+@router.get("/{club_league_id}/leaderboard/{tour_id}", response_model=list[dict])
 async def get_club_league_leaderboard(club_league_id: int, tour_id: int):
     leaderboard = await ClubLeagueService.get_club_league_leaderboard(club_league_id, tour_id)
     if not leaderboard:
         raise HTTPException(status_code=404, detail="No data found for this club league and tour")
     return leaderboard
 
-@router.get("/by-league/{league_id}", response_model=List[ClubLeagueListSchema])
+@router.get("/by-league/{league_id}", response_model=list[ClubLeagueListSchema])
 async def get_club_leagues_by_league_id(league_id: int):
     try:
         club_leagues = await ClubLeagueService.get_club_leagues_by_league_id(league_id)
@@ -56,7 +55,7 @@ async def get_club_leagues_by_league_id(league_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/by-team/{team_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+@router.get("/by-team/{team_id}/leaderboard/{tour_id}", response_model=list[dict])
 async def get_club_league_leaderboard_by_team(team_id: int, tour_id: int):
     leaderboard = await ClubLeagueService.get_club_league_leaderboard_by_team(team_id, tour_id)
     if not leaderboard:

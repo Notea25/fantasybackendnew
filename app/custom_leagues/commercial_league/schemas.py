@@ -1,14 +1,8 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional
 
-class TourSchema(BaseModel):
-    id: int
-    number: int
+from pydantic import BaseModel
 
-class SquadSchema(BaseModel):
-    id: int
-    name: str
 
 class CommercialLeagueSchema(BaseModel):
     id: int
@@ -20,8 +14,6 @@ class CommercialLeagueSchema(BaseModel):
     winner_name: Optional[str]
     registration_start: Optional[datetime]
     registration_end: Optional[datetime]
-    tours: List[TourSchema] = []
-    squads: List[SquadSchema] = []
 
     class Config:
         from_attributes = True

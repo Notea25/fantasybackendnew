@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -66,9 +66,9 @@ def tour_to_dict(tour: Tour) -> dict:
 
 @router.get(
     "/get_previous_current_next_tour/{league_id}",
-    response_model=Optional[Dict[str, Optional[TourReadWithType]]]
+    response_model=Optional[dict[str, Optional[TourReadWithType]]]
 )
-async def get_previous_current_next_tour(league_id: int) -> Dict[str, Optional[TourReadWithType]]:
+async def get_previous_current_next_tour(league_id: int) -> dict[str, Optional[TourReadWithType]]:
     previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(league_id=league_id)
 
     def tour_to_read_with_type(tour: Optional[Tour], tour_type: str) -> Optional[TourReadWithType]:

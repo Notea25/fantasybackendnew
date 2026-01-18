@@ -6,13 +6,6 @@ from datetime import datetime
 from app.matches.schemas import MatchInTourSchema
 
 
-class TourBase(BaseModel):
-    number: int
-    league_id: int
-    start_date: Optional[datetime]
-    end_date: Optional[datetime]
-    deadline: Optional[datetime]
-
 class TourRead(BaseModel):
     id: int
     number: int

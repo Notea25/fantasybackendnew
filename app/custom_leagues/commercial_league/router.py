@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any, Optional
 
 from app.custom_leagues.commercial_league.schemas import CommercialLeagueSchema
 from app.custom_leagues.commercial_league.services import CommercialLeagueService
@@ -10,7 +9,7 @@ from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 
 router = APIRouter(prefix="/commercial_leagues", tags=["Commercial Leagues"])
 
-@router.get("/", response_model=List[CommercialLeagueSchema])
+@router.get("/", response_model=list[CommercialLeagueSchema])
 async def get_commercial_leagues(league_id: int = None):
     try:
         commercial_leagues = await CommercialLeagueService.get_commercial_leagues(league_id)
@@ -27,7 +26,7 @@ async def get_commercial_league_by_id(commercial_league_id: int):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/{commercial_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+@router.get("/{commercial_league_id}/leaderboard/{tour_id}", response_model=list[dict])
 async def get_commercial_league_leaderboard(commercial_league_id: int, tour_id: int):
     leaderboard = await CommercialLeagueService.get_commercial_league_leaderboard(commercial_league_id, tour_id)
     if not leaderboard:

@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
 
 from app.custom_leagues.user_league.schemas import (
     UserLeagueSchema,
@@ -23,7 +22,7 @@ async def create_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/list", response_model=List[UserLeagueSchema])
+@router.get("/list", response_model=list[UserLeagueSchema])
 async def get_user_leagues(
     current_user: User = Depends(get_current_user)
 ):
@@ -76,7 +75,7 @@ async def delete_user_league(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/list/my_squad_leagues", response_model=List[UserLeagueWithStatsSchema])
+@router.get("/list/my_squad_leagues", response_model=list[UserLeagueWithStatsSchema])
 async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
     try:
         leagues = await UserLeagueService.get_my_squad_leagues(current_user.id)
@@ -85,7 +84,7 @@ async def get_my_squad_leagues(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{user_league_id}/leaderboard/{tour_id}", response_model=List[Dict[str, Any]])
+@router.get("/{user_league_id}/leaderboard/{tour_id}", response_model=list[dict])
 async def get_user_league_leaderboard(user_league_id: int, tour_id: int):
     leaderboard = await UserLeagueService.get_user_league_leaderboard(user_league_id, tour_id)
     if not leaderboard:
