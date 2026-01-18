@@ -9,7 +9,6 @@ class User(Base):
     username: Mapped[str] = mapped_column(unique=True)
     photo_url: Mapped[Optional[str]] = mapped_column(nullable=True)
     emblem_url: Mapped[Optional[str]] = mapped_column(nullable=True)
-    birth_date: Mapped[Optional[date]]
 
     squads: Mapped[list["Squad"]] = relationship(back_populates="user")
     user_leagues: Mapped[list["UserLeague"]] = relationship(back_populates="creator")

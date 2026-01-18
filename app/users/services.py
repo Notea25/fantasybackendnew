@@ -1,11 +1,8 @@
 import logging
-import random
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
-from app.utils.exceptions import UsernameGenerationFailedException
 from app.users.models import User
 from app.users.schemas import UserCreateSchema, UserUpdateSchema
 
