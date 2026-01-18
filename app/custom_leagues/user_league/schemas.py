@@ -22,7 +22,7 @@ class UserLeagueSchema(BaseModel):
 
 class UserLeagueWithStatsSchema(BaseModel):
     user_league_id: int
-    league_name: str
+    user_league_name: str
     total_players: int
     squad_place: int
     is_creator: bool
@@ -31,6 +31,7 @@ class UserLeagueWithStatsSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class UserLeagueCreateSchema(BaseModel):
     name: str

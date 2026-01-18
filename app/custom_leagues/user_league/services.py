@@ -202,7 +202,7 @@ class UserLeagueService:
                 # Получаем все сквады текущего пользователя
                 stmt = select(Squad).where(Squad.user_id == user_id)
                 result = await session.execute(stmt)
-                squads = result.unique().scalars().all()  # Используем .unique()
+                squads = result.unique().scalars().all()
 
                 for squad in squads:
                     # Получаем все пользовательские лиги, в которых участвует сквад
@@ -211,7 +211,7 @@ class UserLeagueService:
                         .where(user_league_squads.c.squad_id == squad.id)
                     )
                     result = await session.execute(stmt)
-                    user_league_ids = [row.user_league_id for row in result.unique().all()]  # Используем .unique()
+                    user_league_ids = [row.user_league_id for row in result.unique().all()]
 
                     for user_league_id in user_league_ids:
                         # Получаем информацию о лиге
@@ -221,7 +221,7 @@ class UserLeagueService:
                             .options(joinedload(UserLeague.league))
                         )
                         result = await session.execute(stmt)
-                        user_league = result.unique().scalars().first()  # Используем .unique()
+                        user_league = result.unique().scalars().first()
 
                         if not user_league:
                             continue  # Если лига не найдена, пропускаем
@@ -232,7 +232,7 @@ class UserLeagueService:
                             .where(user_league_squads.c.user_league_id == user_league_id)
                         )
                         result = await session.execute(stmt)
-                        squad_ids_in_league = [row.squad_id for row in result.unique().all()]  # Используем .unique()
+                        squad_ids_in_league = [row.squad_id for row in result.unique().all()]
 
                         # Получаем очки всех сквадов в лиге
                         stmt = (
@@ -241,17 +241,18 @@ class UserLeagueService:
                             .group_by(SquadTour.squad_id)
                         )
                         result = await session.execute(stmt)
-                        squad_points = {row.squad_id: row.total_points for row in
-                                        result.unique().all()}  # Используем .unique()
+                        squad_points = {row.squad_id: row.total_points for row in result.unique().all()}
 
+                        # Сортируем сквады по очкам
                         sorted_squads = sorted(squad_points.items(), key=lambda x: x[1], reverse=True)
                         squad_place = next((i + 1 for i, (s_id, _) in enumerate(sorted_squads) if s_id == squad.id),
                                            len(squad_ids_in_league))
 
+                        # Формируем ответ
                         leagues_data.append(
                             UserLeagueWithStatsSchema(
                                 user_league_id=user_league.id,
-                                league_name=user_league.league.name,
+                                user_league_name=user_league.name,  # Используем user_league.name
                                 total_players=len(squad_ids_in_league),
                                 squad_place=squad_place,
                                 is_creator=user_league.creator_id == user_id,
