@@ -244,10 +244,6 @@ class PlayerService(BaseService):
 
             return avg_points, rank
 
-    from sqlalchemy import case, func, select, desc, distinct
-
-    from sqlalchemy import case, func, select, desc, distinct, cast, Numeric
-
     @classmethod
     async def _get_squad_presence_percentage(cls, player_id: int, league_id: int) -> tuple[float, int]:
         async with async_session_maker() as session:
