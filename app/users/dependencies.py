@@ -59,11 +59,13 @@ async def get_current_user(request: Request):
         user = await UserService.get_by_telegram_id(telegram_id)
         if not user:
             logger.info(f"Creating new user with Telegram ID: {telegram_id}")
-            user_create_data = {
-                "id": telegram_id,
-                "photo_url": user_data.get("photo_url", "").replace("\\/", "/"),
-            }
-            user = await UserService.add_one(**user_create_data)
+            username = user_data.get("username") or f"user_{telegram_id}"
+            user_create_schema = UserCreateSchema(
+                username=username,
+                photo_url=user_data.get("photo_url", "").replace("\\/", "/"),
+                emblem_url=None,
+            )
+            user = await UserService.add_one(user_data=user_create_schema, id=telegram_id)
             logger.info(f"New user created: ID={user.id}")
         return user
     except InvalidDataException as e:

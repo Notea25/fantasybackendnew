@@ -6,7 +6,7 @@ from app.config import settings
 from app.users.dependencies import get_current_user
 from app.users.schemas import UserCreateSchema, UserSchema, UserUpdateSchema
 from app.users.services import UserService
-from app.users.utils import create_access_token
+from app.users.utils import create_access_token, create_refresh_token, verify_token
 from app.utils.exceptions import (
     AuthenticationFailedException,
     InvalidDataException,
@@ -23,6 +23,7 @@ async def login(request: Request, response: Response):
         user = await get_current_user(request)
 
         access_token = create_access_token(data={"sub": str(user.id)})
+        refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
         response.set_cookie(
             key="access_token",
@@ -33,8 +34,22 @@ async def login(request: Request, response: Response):
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
-        logger.debug(f"User authenticated: {user.id}, token refreshed")
-        return {"status": "ok", "user": UserSchema.model_validate(user)}
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=30 * 24 * 60 * 60,
+        )
+
+        logger.debug(f"User authenticated: {user.id}, tokens issued")
+        return {
+            "status": "ok",
+            "user": UserSchema.model_validate(user),
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
     except (InvalidDataException, AuthenticationFailedException) as e:
         raise e
     except Exception as e:
@@ -54,9 +69,28 @@ async def protected_route(user: UserSchema = Depends(get_current_user)):
 @router.post("/refresh")
 async def refresh(request: Request, response: Response):
     try:
-        user = await get_current_user(request)
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            logger.debug("No refresh token cookie provided")
+            raise AuthenticationFailedException()
+
+        payload = verify_token(refresh_token)
+        if not payload or payload.get("type") != "refresh":
+            logger.debug("Invalid refresh token payload")
+            raise AuthenticationFailedException()
+
+        user_id = payload.get("sub")
+        if not user_id:
+            logger.debug("No user id in refresh token")
+            raise AuthenticationFailedException()
+
+        user = await UserService.get_by_telegram_id(int(user_id))
+        if not user:
+            logger.debug(f"User not found for refresh token (ID: {user_id})")
+            raise AuthenticationFailedException()
 
         access_token = create_access_token(data={"sub": str(user.id)})
+        new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
         response.set_cookie(
             key="access_token",
@@ -67,8 +101,25 @@ async def refresh(request: Request, response: Response):
             max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
-        return {"status": "ok", "message": "Token refreshed"}
-    except Exception:
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=30 * 24 * 60 * 60,
+        )
+
+        return {
+            "status": "ok",
+            "message": "Token refreshed",
+            "access_token": access_token,
+            "refresh_token": new_refresh_token,
+        }
+    except AuthenticationFailedException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during refresh: {str(e)}", exc_info=True)
         raise AuthenticationFailedException()
 
 
