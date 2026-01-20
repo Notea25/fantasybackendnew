@@ -155,7 +155,7 @@ class SquadAdmin(ModelView, model=Squad):
             return f"Tour {value.number}"
         return super().format(attr, value)
 
-    def on_model_delete(self, model):
+    def on_model_delete(self, model, request):
         # Перед удалением сквада чистим все ссылки на него, которые могут
         # нарушить ограничения внешних ключей.
         # 1) winner_id в коммерческих лигах
@@ -177,7 +177,7 @@ class SquadAdmin(ModelView, model=Squad):
         logger.debug(f"Удаление команды: {model.id}")
         return super().on_model_delete(model)
 
-    def after_model_delete(self, model):
+    def after_model_delete(self, model, request):
         logger.debug(f"После удаления команды: {model.id}")
         return super().after_model_delete(model)
 
