@@ -342,8 +342,9 @@ class SquadService(BaseService):
                     for player in bench_players
                 ]
 
-                squad.main_players_data = main_players_data
-                squad.bench_players_data = bench_players_data
+                squad.username = squad.user.username if squad.user else ""
+                squad.main_players = main_players_data
+                squad.bench_players = bench_players_data
                 logger.debug(
                     f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players for squad {squad.id}")
 
@@ -412,8 +413,9 @@ class SquadService(BaseService):
                     for player in bench_players
                 ]
 
-                squad.main_players_data = main_players_data
-                squad.bench_players_data = bench_players_data
+                squad.username = squad.user.username if squad.user else ""
+                squad.main_players = main_players_data
+                squad.bench_players = bench_players_data
                 logger.debug(
                     f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players for squad {squad.id}")
 
