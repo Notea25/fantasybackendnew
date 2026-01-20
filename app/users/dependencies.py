@@ -59,8 +59,15 @@ async def get_current_user(request: Request):
             except Exception as e:
                 logger.warning(f"Token verification failed: {str(e)}")
 
-        # 3. Если токена нет/невалиден — старая логика с initData
-        logger.debug("Token invalid or missing, falling back to init_data")
+        # 3. Если токена нет/невалиден
+        # Для большинства эндпоинтов просто считаем пользователя неавторизованным.
+        # Fallback на Telegram initData разрешаем только для эндпоинта логина.
+        path = request.url.path or ""
+        if "/users/login" not in path:
+            logger.debug("No valid JWT token and not a login endpoint - raising auth error")
+            raise AuthenticationFailedException()
+
+        logger.debug("Token invalid or missing on /users/login, falling back to init_data")
         init_data = await request.body()
         init_data_str = init_data.decode("utf-8")
         data = validate_telegram_data(init_data_str)
