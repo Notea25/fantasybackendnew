@@ -155,31 +155,36 @@ class SquadAdmin(ModelView, model=Squad):
             return f"Tour {value.number}"
         return super().format(attr, value)
 
-    def on_model_delete(self, model, request):
+    async def on_model_delete(self, model, request):
         # Перед удалением сквада чистим все ссылки на него, которые могут
         # нарушить ограничения внешних ключей.
-        # 1) winner_id в коммерческих лигах
-        self.session.execute(
-            update(CommercialLeague)
-            .where(CommercialLeague.winner_id == model.id)
-            .values(winner_id=None)
-        )
-        # 2) связи сквада с коммерческими лигами
-        self.session.execute(
-            delete(commercial_league_squads)
-            .where(commercial_league_squads.c.squad_id == model.id)
-        )
-        # 3) все бусты этого сквада
-        self.session.execute(
-            delete(Boost)
-            .where(Boost.squad_id == model.id)
-        )
-        logger.debug(f"Удаление команды: {model.id}")
-        return super().on_model_delete(model)
+        from app.database import async_session_maker
 
-    def after_model_delete(self, model, request):
+        async with async_session_maker() as session:
+            # 1) winner_id в коммерческих лигах
+            await session.execute(
+                update(CommercialLeague)
+                .where(CommercialLeague.winner_id == model.id)
+                .values(winner_id=None)
+            )
+            # 2) связи сквада с коммерческими лигами
+            await session.execute(
+                delete(commercial_league_squads)
+                .where(commercial_league_squads.c.squad_id == model.id)
+            )
+            # 3) все бусты этого сквада
+            await session.execute(
+                delete(Boost)
+                .where(Boost.squad_id == model.id)
+            )
+            await session.commit()
+
+        logger.debug(f"Удаление команды: {model.id}")
+        return await super().on_model_delete(model, request)
+
+    async def after_model_delete(self, model, request):
         logger.debug(f"После удаления команды: {model.id}")
-        return super().after_model_delete(model)
+        return await super().after_model_delete(model, request)
 
     name = "Squad"
     name_plural = "Squads"
