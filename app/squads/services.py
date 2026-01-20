@@ -36,15 +36,18 @@ class SquadService(BaseService):
         logger.info(f"Creating squad {name} for user {user_id} in league {league_id}")
         async with async_session_maker() as session:
             try:
-                existing_squad = await session.execute(
+                existing_squad_result = await session.execute(
                     select(cls.model).where(
                         cls.model.user_id == user_id,
                         cls.model.league_id == league_id
                     )
                 )
-                if existing_squad.scalars().first():
-                    logger.warning(f"User {user_id} already has a squad in league {league_id}")
-                    raise FailedOperationException("User already has a squad in this league")
+                existing_squad = existing_squad_result.scalars().first()
+                if existing_squad:
+                    logger.warning(
+                        f"User {user_id} already has a squad in league {league_id}, returning existing squad {existing_squad.id}"
+                    )
+                    return existing_squad
 
                 next_tour = await cls._get_next_tour(league_id)
                 logger.debug(f"Next tour for league {league_id}: {next_tour}")
