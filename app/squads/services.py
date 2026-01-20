@@ -268,8 +268,12 @@ class SquadService(BaseService):
                     for player in bench_players_full
                 ]
 
-                squad.main_players_data = main_players_data
-                squad.bench_players_data = bench_players_data
+                # Подготавливаем объект сквада под SquadReadSchema
+                # (schema ждет поля username, main_players, bench_players)
+                squad.username = squad.user.username if squad.user else ""
+                squad.main_players = main_players_data
+                squad.bench_players = bench_players_data
+
                 logger.debug(
                     f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players")
             else:
