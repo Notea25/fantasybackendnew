@@ -10,6 +10,8 @@ from app.squads.schemas import (
     SquadReplacePlayersResponseSchema,
     SquadTourHistorySchema,
     SquadUpdateResponseSchema,
+    SquadCreateSchema,
+    SquadUpdatePlayersSchema,
 )
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
@@ -25,24 +27,18 @@ async def list_squads() -> list[SquadReadSchema]:
 
 @router.post("/create", response_model=SquadReadSchema)
 async def create_squad(
-    name: str,
-    league_id: int,
-    fav_team_id: int,
-    captain_id: Optional[int] = None,
-    vice_captain_id: Optional[int] = None,
-    main_player_ids: list[int] = [],
-    bench_player_ids: list[int] = [],
-    user: User = Depends(get_current_user)
+    squad_data: SquadCreateSchema,
+    user: User = Depends(get_current_user),
 ) -> SquadReadSchema:
     squad = await SquadService.create_squad(
-        name=name,
+        name=squad_data.name,
         user_id=user.id,
-        league_id=league_id,
-        fav_team_id=fav_team_id,
-        captain_id=captain_id,
-        vice_captain_id=vice_captain_id,
-        main_player_ids=main_player_ids,
-        bench_player_ids=bench_player_ids,
+        league_id=squad_data.league_id,
+        fav_team_id=squad_data.fav_team_id,
+        captain_id=squad_data.captain_id,
+        vice_captain_id=squad_data.vice_captain_id,
+        main_player_ids=squad_data.main_player_ids,
+        bench_player_ids=squad_data.bench_player_ids,
     )
     squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
     return squad_with_relations
@@ -62,18 +58,18 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Sq
 @router.put("/update_players/{squad_id}", response_model=SquadUpdateResponseSchema)
 async def update_squad_players(
     squad_id: int,
-    captain_id: Optional[int] = None,
-    vice_captain_id: Optional[int] = None,
-    main_player_ids: list[int] = [],
-    bench_player_ids: list[int] = [],
-    user: User = Depends(get_current_user)
+    payload: SquadUpdatePlayersSchema,
+    user: User = Depends(get_current_user),
 ) -> SquadUpdateResponseSchema:
+    main_player_ids = payload.main_player_ids or []
+    bench_player_ids = payload.bench_player_ids or []
+
     squad = await SquadService.update_squad_players(
         squad_id=squad_id,
-        captain_id=captain_id,
-        vice_captain_id=vice_captain_id,
+        captain_id=payload.captain_id,
+        vice_captain_id=payload.vice_captain_id,
         main_player_ids=main_player_ids,
-        bench_player_ids=bench_player_ids
+        bench_player_ids=bench_player_ids,
     )
     squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
     return SquadUpdateResponseSchema(
@@ -87,16 +83,19 @@ async def replace_players(
     squad_id: int,
     captain_id: Optional[int] = None,
     vice_captain_id: Optional[int] = None,
-    main_player_ids: list[int] = [],
-    bench_player_ids: list[int] = [],
-    user: User = Depends(get_current_user)
+    payload: SquadUpdatePlayersSchema = None,
+    user: User = Depends(get_current_user),
 ) -> SquadReplacePlayersResponseSchema:
+    payload = payload or SquadUpdatePlayersSchema()
+    main_player_ids = payload.main_player_ids or []
+    bench_player_ids = payload.bench_player_ids or []
+
     squad = await SquadService.replace_players(
         squad_id=squad_id,
         captain_id=captain_id,
         vice_captain_id=vice_captain_id,
         new_main_players=main_player_ids,
-        new_bench_players=bench_player_ids
+        new_bench_players=bench_player_ids,
     )
     squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
     return SquadReplacePlayersResponseSchema(

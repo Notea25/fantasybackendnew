@@ -47,8 +47,10 @@ class SquadCreateSchema(BaseModel):
 class SquadUpdatePlayersSchema(BaseModel):
     captain_id: Optional[int] = None
     vice_captain_id: Optional[int] = None
-    main_player_ids: list[int]
-    bench_player_ids: list[int]
+    # Для обновления/замены игроков поля могут быть частичными,
+    # поэтому делаем списки опциональными.
+    main_player_ids: Optional[list[int]] = None
+    bench_player_ids: Optional[list[int]] = None
 
 
 class SquadReplacePlayersResponseSchema(BaseModel):
