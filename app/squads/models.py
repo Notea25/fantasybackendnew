@@ -88,7 +88,9 @@ class Squad(Base):
         back_populates="bench_squads",
         lazy="joined",
     )
-    tour_history: Mapped[List["SquadTour"]] = relationship(back_populates="squad")
+    tour_history: Mapped[List["SquadTour"]] = relationship(
+        back_populates="squad", cascade="all, delete-orphan"
+    )
     used_boosts: Mapped[List["Boost"]] = relationship(back_populates="squad")
 
     user_leagues: Mapped[List["UserLeague"]] = relationship(
@@ -178,9 +180,10 @@ class SquadTour(Base):
     __tablename__ = "squad_tours"
     id: Mapped[int] = mapped_column(primary_key=True)
     squad_id: Mapped[int] = mapped_column(
-        ForeignKey("squads.id", ondelete="CASCADE")
+        ForeignKey("squads.id", ondelete="CASCADE"),
+        nullable=False,
     )
-    tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id"))
+    tour_id: Mapped[int] = mapped_column(ForeignKey("tours.id", ondelete="CASCADE"))
     is_current: Mapped[bool] = mapped_column(default=False)
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)

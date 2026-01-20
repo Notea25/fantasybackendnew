@@ -84,7 +84,9 @@ class Tour(Base):
         cascade="all, delete-orphan",
     )
     boosts: Mapped[list["Boost"]] = relationship(back_populates="tour")
-    squads: Mapped[list["SquadTour"]] = relationship(back_populates="tour")
+    squads: Mapped[list["SquadTour"]] = relationship(
+        back_populates="tour", cascade="all, delete-orphan"
+    )
 
     @property
     def start_date(self) -> Optional[datetime]:
