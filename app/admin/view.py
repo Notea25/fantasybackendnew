@@ -156,17 +156,23 @@ class SquadAdmin(ModelView, model=Squad):
         return super().format(attr, value)
 
     def on_model_delete(self, model):
-        # Перед удалением сквада обнуляем ссылки на него в коммерческих лигах
-        # и убираем его из таблицы связей commercial_league_squads, чтобы
-        # не нарушать ограничения внешних ключей.
+        # Перед удалением сквада чистим все ссылки на него, которые могут
+        # нарушить ограничения внешних ключей.
+        # 1) winner_id в коммерческих лигах
         self.session.execute(
             update(CommercialLeague)
             .where(CommercialLeague.winner_id == model.id)
             .values(winner_id=None)
         )
+        # 2) связи сквада с коммерческими лигами
         self.session.execute(
             delete(commercial_league_squads)
             .where(commercial_league_squads.c.squad_id == model.id)
+        )
+        # 3) все бусты этого сквада
+        self.session.execute(
+            delete(Boost)
+            .where(Boost.squad_id == model.id)
         )
         logger.debug(f"Удаление команды: {model.id}")
         return super().on_model_delete(model)
