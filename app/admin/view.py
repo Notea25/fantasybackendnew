@@ -1,9 +1,12 @@
+import logging
+
 from sqladmin import ModelView
+from sqlalchemy import update, delete
 from sqlalchemy.orm import joinedload
 
 from app.boosts.models import Boost
 from app.custom_leagues.club_league.models import ClubLeague
-from app.custom_leagues.commercial_league.models import CommercialLeague
+from app.custom_leagues.commercial_league.models import CommercialLeague, commercial_league_squads
 from app.custom_leagues.user_league.models import UserLeague
 from app.leagues.models import League
 from app.matches.models import Match
@@ -14,6 +17,8 @@ from app.teams.models import Team
 from app.tours.models import Tour, TourMatchAssociation
 from app.users.models import User
 
+
+logger = logging.getLogger(__name__)
 
 
 class UserAdmin(ModelView, model=User):
@@ -149,6 +154,32 @@ class SquadAdmin(ModelView, model=Squad):
         if attr == "current_tour_id" and value is not None:
             return f"Tour {value.number}"
         return super().format(attr, value)
+
+    def on_model_delete(self, model):
+        # Перед удалением сквада чистим все ссылки на него, которые могут
+        # нарушить ограничения внешних ключей.
+        # 1) winner_id в коммерческих лигах
+        self.session.execute(
+            update(CommercialLeague)
+            .where(CommercialLeague.winner_id == model.id)
+            .values(winner_id=None)
+        )
+        # 2) связи сквада с коммерческими лигами
+        self.session.execute(
+            delete(commercial_league_squads)
+            .where(commercial_league_squads.c.squad_id == model.id)
+        )
+        # 3) все бусты этого сквада
+        self.session.execute(
+            delete(Boost)
+            .where(Boost.squad_id == model.id)
+        )
+        logger.debug(f"Удаление команды: {model.id}")
+        return super().on_model_delete(model)
+
+    def after_model_delete(self, model):
+        logger.debug(f"После удаления команды: {model.id}")
+        return super().after_model_delete(model)
 
     name = "Squad"
     name_plural = "Squads"

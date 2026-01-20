@@ -71,11 +71,9 @@ class SquadService(BaseService):
 
                 total_cost = sum(p.market_value for p in players)
                 logger.debug(f"Total players cost: {total_cost}")
-                if total_cost > 100_000:
-                    logger.error(f"Total players cost {total_cost} exceeds squad budget 100000")
-                    raise FailedOperationException("Total players cost exceeds squad budget")
 
-                for player in players:
+                # Бюджет больше не валидируем на этапе создания сквада,
+                # но продолжаем его рассчитывать и сохранять.
                     if player.league_id != league_id:
                         logger.error(f"Player {player.id} is not from league {league_id}")
                         raise FailedOperationException("All players must be from the same league")
@@ -89,9 +87,6 @@ class SquadService(BaseService):
 
                 budget = 100_000 - total_cost
                 logger.debug(f"Calculated budget: {budget}")
-                if budget < 0:
-                    logger.error(f"Budget cannot be negative: {budget}")
-                    raise FailedOperationException("Budget cannot be negative")
 
                 squad = cls.model(
                     name=name,
@@ -659,11 +654,7 @@ class SquadService(BaseService):
             total_cost = sum(p.market_value for p in players)
             new_budget = 100_000 - total_cost
 
-            if new_budget < 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Budget cannot be negative"
-                )
+            # При заменах больше не валидируем бюджет, разрешаем уходить в минус.
 
             squad.captain_id = captain_id
             squad.vice_captain_id = vice_captain_id
