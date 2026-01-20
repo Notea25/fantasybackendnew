@@ -30,12 +30,23 @@ async def get_current_user(request: Request):
         return await get_dev_user()
 
     try:
-        token = request.cookies.get("access_token")
+        # 1. Пытаемся достать токен из заголовка Authorization
+        token: str | None = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+        # 2. Если в заголовке нет — пробуем куку access_token
+        if not token:
+            cookie_token = request.cookies.get("access_token")
+            if cookie_token:
+                if cookie_token.startswith("Bearer "):
+                    cookie_token = cookie_token[7:]
+                token = cookie_token
+
         if token:
-            logger.debug("Found token in cookies, attempting to verify")
+            logger.debug("Found token, attempting to verify")
             try:
-                if token.startswith("Bearer "):
-                    token = token[7:]
                 payload = verify_token(token)
                 if payload:
                     user_id = payload.get("sub")
@@ -47,6 +58,8 @@ async def get_current_user(request: Request):
                         logger.warning(f"User not found for valid token (ID: {user_id})")
             except Exception as e:
                 logger.warning(f"Token verification failed: {str(e)}")
+
+        # 3. Если токена нет/невалиден — старая логика с initData
         logger.debug("Token invalid or missing, falling back to init_data")
         init_data = await request.body()
         init_data_str = init_data.decode("utf-8")
