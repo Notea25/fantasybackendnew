@@ -1,3 +1,5 @@
+import logging
+
 from sqladmin import ModelView
 from sqlalchemy.orm import joinedload
 
@@ -14,6 +16,8 @@ from app.teams.models import Team
 from app.tours.models import Tour, TourMatchAssociation
 from app.users.models import User
 
+
+logger = logging.getLogger(__name__)
 
 
 class UserAdmin(ModelView, model=User):
@@ -149,6 +153,14 @@ class SquadAdmin(ModelView, model=Squad):
         if attr == "current_tour_id" and value is not None:
             return f"Tour {value.number}"
         return super().format(attr, value)
+
+    def on_model_delete(self, model):
+        logger.debug(f"Удаление команды: {model.id}")
+        return super().on_model_delete(model)
+
+    def after_model_delete(self, model):
+        logger.debug(f"После удаления команды: {model.id}")
+        return super().after_model_delete(model)
 
     name = "Squad"
     name_plural = "Squads"
