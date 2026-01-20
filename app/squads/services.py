@@ -74,6 +74,8 @@ class SquadService(BaseService):
 
                 # Бюджет больше не валидируем на этапе создания сквада,
                 # но продолжаем его рассчитывать и сохранять.
+
+                for player in players:
                     if player.league_id != league_id:
                         logger.error(f"Player {player.id} is not from league {league_id}")
                         raise FailedOperationException("All players must be from the same league")
