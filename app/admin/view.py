@@ -1,11 +1,12 @@
 import logging
 
 from sqladmin import ModelView
+from sqlalchemy import update, delete
 from sqlalchemy.orm import joinedload
 
 from app.boosts.models import Boost
 from app.custom_leagues.club_league.models import ClubLeague
-from app.custom_leagues.commercial_league.models import CommercialLeague
+from app.custom_leagues.commercial_league.models import CommercialLeague, commercial_league_squads
 from app.custom_leagues.user_league.models import UserLeague
 from app.leagues.models import League
 from app.matches.models import Match
@@ -155,6 +156,18 @@ class SquadAdmin(ModelView, model=Squad):
         return super().format(attr, value)
 
     def on_model_delete(self, model):
+        # Перед удалением сквада обнуляем ссылки на него в коммерческих лигах
+        # и убираем его из таблицы связей commercial_league_squads, чтобы
+        # не нарушать ограничения внешних ключей.
+        self.session.execute(
+            update(CommercialLeague)
+            .where(CommercialLeague.winner_id == model.id)
+            .values(winner_id=None)
+        )
+        self.session.execute(
+            delete(commercial_league_squads)
+            .where(commercial_league_squads.c.squad_id == model.id)
+        )
         logger.debug(f"Удаление команды: {model.id}")
         return super().on_model_delete(model)
 
