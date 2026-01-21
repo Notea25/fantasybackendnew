@@ -11,6 +11,7 @@ from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
+from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.tours.models import Tour, tour_matches_association
 from app.tours.services import TourService
 from app.database import async_session_maker
@@ -155,6 +156,33 @@ class SquadService(BaseService):
                     logger.info(f"Created SquadTour for squad {squad.id} and tour {active_tour_id}")
                 else:
                     logger.warning(f"No active tour found for league {league_id}, SquadTour not created")
+
+                # Автоматически добавляем сквад создателя во все его пользовательские лиги
+                # для этой основной лиги.
+                user_leagues_stmt = select(UserLeague).where(
+                    UserLeague.league_id == league_id,
+                    UserLeague.creator_id == user_id,
+                )
+                user_leagues_result = await session.execute(user_leagues_stmt)
+                user_leagues = user_leagues_result.scalars().all()
+
+                for user_league in user_leagues:
+                    link_check_stmt = select(user_league_squads).where(
+                        user_league_squads.c.user_league_id == user_league.id,
+                        user_league_squads.c.squad_id == squad.id,
+                    )
+                    link_check_result = await session.execute(link_check_stmt)
+                    if not link_check_result.first():
+                        insert_link_stmt = user_league_squads.insert().values(
+                            user_league_id=user_league.id,
+                            squad_id=squad.id,
+                        )
+                        await session.execute(insert_link_stmt)
+                        logger.debug(
+                            f"Auto-joined squad {squad.id} to user league {user_league.id} for user {user_id}"
+                        )
+
+                await session.commit()
 
                 return squad
 
