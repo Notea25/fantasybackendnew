@@ -12,6 +12,7 @@ from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
 from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
 from app.tours.models import Tour, tour_matches_association
+from app.tours.services import TourService
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
@@ -49,8 +50,14 @@ class SquadService(BaseService):
                     )
                     return existing_squad
 
-                next_tour = await cls._get_next_tour(league_id)
-                logger.debug(f"Next tour for league {league_id}: {next_tour}")
+                # Определяем актуальный тур для сквада
+                previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(league_id)
+                logger.debug(f"Tours for league {league_id}: previous={previous_tour}, current={current_tour}, next={next_tour}")
+                
+                # Правило: если есть текущий тур (матчи идут сейчас) - используем его, иначе - следующий
+                active_tour = current_tour if current_tour else next_tour
+                active_tour_id = active_tour.id if active_tour else None
+                logger.debug(f"Active tour for new squad: {active_tour_id}")
 
                 all_player_ids = main_player_ids + bench_player_ids
                 players = await session.execute(
@@ -98,7 +105,7 @@ class SquadService(BaseService):
                     user_id=user_id,
                     league_id=league_id,
                     fav_team_id=fav_team_id,
-                    current_tour_id=next_tour.id if next_tour else None,
+                    current_tour_id=active_tour_id,
                     budget=budget,
                     replacements=3,
                     captain_id=captain_id,
@@ -128,19 +135,26 @@ class SquadService(BaseService):
                 await session.commit()
                 logger.debug(f"Committed player associations for squad {squad.id}")
 
-                if next_tour:
+                # Создаём SquadTour для актуального тура
+                if active_tour_id:
+                    main_players = [player_by_id[pid] for pid in main_player_ids]
+                    bench_players = [player_by_id[pid] for pid in bench_player_ids]
+                    
                     squad_tour = SquadTour(
                         squad_id=squad.id,
-                        tour_id=next_tour.id,
+                        tour_id=active_tour_id,
                         is_current=True,
                         captain_id=captain_id,
                         vice_captain_id=vice_captain_id,
-                        main_players=players[:11],
-                        bench_players=players[11:],
+                        main_players=main_players,
+                        bench_players=bench_players,
+                        points=0,
                     )
                     session.add(squad_tour)
                     await session.commit()
-                    logger.debug(f"Created squad tour for squad {squad.id} and tour {next_tour.id}")
+                    logger.info(f"Created SquadTour for squad {squad.id} and tour {active_tour_id}")
+                else:
+                    logger.warning(f"No active tour found for league {league_id}, SquadTour not created")
 
                 return squad
 
@@ -528,22 +542,7 @@ class SquadService(BaseService):
             squad_tour = result.scalars().first()
 
             if squad_tour:
-                main_players_stmt = (
-                    select(Player)
-                    .join(player_squad_tours, Player.id == player_squad_tours.c.player_id)
-                    .where(player_squad_tours.c.squad_tour_id == squad_tour.id)
-                )
-                main_players_result = await session.execute(main_players_stmt)
-                main_players = main_players_result.scalars().all()
-
-                bench_players_stmt = (
-                    select(Player)
-                    .join(player_bench_squad_tours, Player.id == player_bench_squad_tours.c.player_id)
-                    .where(player_bench_squad_tours.c.squad_tour_id == squad_tour.id)
-                )
-                bench_players_result = await session.execute(bench_players_stmt)
-                bench_players = bench_players_result.scalars().all()
-
+                # SquadTour существует - обновляем его
                 squad_tour.points = await squad.calculate_points(session)
                 squad_tour.captain_id = squad.captain_id
                 squad_tour.vice_captain_id = squad.vice_captain_id
@@ -551,7 +550,45 @@ class SquadService(BaseService):
                 await session.commit()
                 logger.debug(f"Updated squad tour for squad {squad_id}")
             else:
-                logger.warning(f"No squad tour found for squad {squad_id} and tour {squad.current_tour_id}")
+                # SquadTour не найден - создаём его на лету
+                logger.info(f"Creating missing SquadTour for squad {squad_id} and tour {squad.current_tour_id}")
+                
+                # Получаем текущий состав из squad
+                main_players_stmt = (
+                    select(Player)
+                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
+                    .where(squad_players_association.c.squad_id == squad_id)
+                )
+                main_players_result = await session.execute(main_players_stmt)
+                main_players = main_players_result.scalars().all()
+                
+                bench_players_stmt = (
+                    select(Player)
+                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
+                    .where(squad_bench_players_association.c.squad_id == squad_id)
+                )
+                bench_players_result = await session.execute(bench_players_stmt)
+                bench_players = bench_players_result.scalars().all()
+                
+                # Создаём новый SquadTour
+                new_squad_tour = SquadTour(
+                    squad_id=squad_id,
+                    tour_id=squad.current_tour_id,
+                    is_current=True,
+                    captain_id=squad.captain_id,
+                    vice_captain_id=squad.vice_captain_id,
+                    main_players=main_players,
+                    bench_players=bench_players,
+                    points=0,
+                )
+                session.add(new_squad_tour)
+                await session.flush()  # Чтобы получить ID
+                
+                # Пересчитываем очки
+                new_squad_tour.points = await squad.calculate_points(session)
+                
+                await session.commit()
+                logger.info(f"Created and saved SquadTour for squad {squad_id} and tour {squad.current_tour_id}")
 
     @classmethod
     async def rename_squad(cls, squad_id: int, user_id: int, new_name: str):
