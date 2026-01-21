@@ -107,3 +107,23 @@ class LeaderboardEntrySchema(BaseModel):
     fav_team_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicLeaderboardEntrySchema(BaseModel):
+    """Схема для публичного API лидерборда, соответствующая фронтенду.
+
+    Поля:
+    - place: порядковое место в туре
+    - tour_points: очки за конкретный тур
+    - total_points: суммарные очки за все туры
+    """
+
+    place: int
+    squad_id: int
+    squad_name: str
+    user_id: int
+    username: str
+    tour_points: int
+    total_points: int
+
+    model_config = ConfigDict(from_attributes=True)

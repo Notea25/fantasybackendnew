@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.squads.schemas import (
     LeaderboardEntrySchema,
+    PublicLeaderboardEntrySchema,
     ReplacementInfoSchema,
     SquadReadSchema,
     SquadRenameSchema,
@@ -124,8 +125,8 @@ async def get_squad_history(squad_id: int, user: User = Depends(get_current_user
         raise ResourceNotFoundException()
     return squad.tour_history
 
-@router.get("/leaderboard/{tour_id}", response_model=list[LeaderboardEntrySchema])
-async def get_leaderboard(tour_id: int) -> list[LeaderboardEntrySchema]:
+@router.get("/leaderboard/{tour_id}", response_model=list[PublicLeaderboardEntrySchema])
+async def get_leaderboard(tour_id: int) -> list[PublicLeaderboardEntrySchema]:
     return await SquadService.get_leaderboard(tour_id)
 
 @router.get("/leaderboard/{tour_id}/by-fav-team/{fav_team_id}", response_model=list[LeaderboardEntrySchema])

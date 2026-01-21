@@ -668,18 +668,19 @@ class SquadService(BaseService):
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
 
-            leaderboard = []
+            leaderboard: list[dict] = []
             for index, squad_tour in enumerate(squad_tours, start=1):
                 squad = squad_tour.squad
 
+                # Формат, соответствующий ожиданиям фронтенда (см. LeaderboardEntry в tele-mini-sparkle)
                 leaderboard.append({
-                    "rank": index,
+                    "place": index,
                     "squad_id": squad.id,
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "points": squad_tour.points,
-                    "fav_team_id": squad.fav_team_id,
+                    "tour_points": squad_tour.points,
+                    "total_points": int(total_points.get(squad.id, 0) or 0),
                 })
 
             return leaderboard
