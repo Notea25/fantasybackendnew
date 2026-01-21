@@ -127,3 +127,23 @@ class PublicLeaderboardEntrySchema(BaseModel):
     total_points: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicClubLeaderboardEntrySchema(BaseModel):
+    """Лидерборд клубной лиги (по fav_team_id), формат для фронта.
+
+    Используется для эндпоинта /squads/leaderboard/{tour_id}/by-fav-team/{fav_team_id}
+    и соответствует типу CustomLeagueLeaderboardEntry на фронтенде.
+    """
+
+    place: int
+    squad_id: int
+    squad_name: str
+    user_id: int
+    username: str
+    tour_points: int
+    total_points: int
+    fav_team_id: int
+    fav_team_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)

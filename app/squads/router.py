@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.squads.schemas import (
     LeaderboardEntrySchema,
     PublicLeaderboardEntrySchema,
+    PublicClubLeaderboardEntrySchema,
     ReplacementInfoSchema,
     SquadReadSchema,
     SquadRenameSchema,
@@ -129,6 +130,6 @@ async def get_squad_history(squad_id: int, user: User = Depends(get_current_user
 async def get_leaderboard(tour_id: int) -> list[PublicLeaderboardEntrySchema]:
     return await SquadService.get_leaderboard(tour_id)
 
-@router.get("/leaderboard/{tour_id}/by-fav-team/{fav_team_id}", response_model=list[LeaderboardEntrySchema])
-async def get_leaderboard_by_fav_team(tour_id: int, fav_team_id: int) -> list[LeaderboardEntrySchema]:
+@router.get("/leaderboard/{tour_id}/by-fav-team/{fav_team_id}", response_model=list[PublicClubLeaderboardEntrySchema])
+async def get_leaderboard_by_fav_team(tour_id: int, fav_team_id: int) -> list[PublicClubLeaderboardEntrySchema]:
     return await SquadService.get_leaderboard_by_fav_team(tour_id, fav_team_id)

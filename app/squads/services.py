@@ -794,17 +794,23 @@ class SquadService(BaseService):
 
     @classmethod
     async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> list[dict]:
+        """Лидерборд по клубной лиге (по fav_team_id).
+
+        Формат соответствует типу CustomLeagueLeaderboardEntry на фронтенде:
+        place, squad_id, squad_name, user_id, username, tour_points, total_points,
+        fav_team_id, fav_team_name.
+        """
         async with async_session_maker() as session:
             stmt = (
                 select(SquadTour)
                 .join(SquadTour.squad)
                 .where(
                     SquadTour.tour_id == tour_id,
-                    Squad.fav_team_id == fav_team_id
+                    Squad.fav_team_id == fav_team_id,
                 )
                 .options(
                     joinedload(SquadTour.squad).joinedload(Squad.user),
-                    joinedload(SquadTour.squad).joinedload(Squad.fav_team)
+                    joinedload(SquadTour.squad).joinedload(Squad.fav_team),
                 )
                 .order_by(desc(SquadTour.points))
             )
@@ -814,7 +820,7 @@ class SquadService(BaseService):
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
+                    func.sum(SquadTour.points).label("total_points"),
                 )
                 .join(SquadTour.squad)
                 .where(Squad.fav_team_id == fav_team_id)
@@ -823,18 +829,21 @@ class SquadService(BaseService):
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
 
-            leaderboard = []
+            leaderboard: list[dict] = []
             for index, squad_tour in enumerate(squad_tours, start=1):
                 squad = squad_tour.squad
+                fav_team = getattr(squad, "fav_team", None)
 
                 leaderboard.append({
-                    "rank": index,
+                    "place": index,
                     "squad_id": squad.id,
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "points": squad_tour.points,
+                    "tour_points": squad_tour.points,
+                    "total_points": int(total_points.get(squad.id, 0) or 0),
                     "fav_team_id": squad.fav_team_id,
+                    "fav_team_name": fav_team.name if fav_team is not None else None,
                 })
 
             return leaderboard
