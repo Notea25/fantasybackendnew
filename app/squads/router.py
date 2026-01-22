@@ -57,6 +57,19 @@ async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> Sq
         raise ResourceNotFoundException()
     return squad
 
+
+@router.get("/get_squad_by_id/{squad_id}", response_model=SquadReadSchema)
+async def get_squad_by_id(squad_id: int) -> SquadReadSchema:
+    """Публичный эндпоинт для получения сквада по ID без проверки пользователя.
+
+    Удобен для отладки и внутренних сервисов (например, BackendTest).
+    """
+    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
+    if not squad:
+        raise ResourceNotFoundException()
+    return squad
+
+
 @router.put("/update_players/{squad_id}", response_model=SquadUpdateResponseSchema)
 async def update_squad_players(
     squad_id: int,
