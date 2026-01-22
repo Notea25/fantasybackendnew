@@ -98,25 +98,52 @@ class SquadService(BaseService):
                         logger.error(f"Cannot have more than 3 players from the same club {player.team_id}")
                         raise FailedOperationException("Cannot have more than 3 players from the same club")
                 
-                # Validate main squad positions - must have at least 1 of each position
+                # Validate main squad positions - must match valid formation with exactly 1 GK
                 main_players = [player_by_id[pid] for pid in main_player_ids]
+                bench_players = [player_by_id[pid] for pid in bench_player_ids]
+                
                 main_position_counts = {}
                 for player in main_players:
                     position = player.position
                     main_position_counts[position] = main_position_counts.get(position, 0) + 1
                 
-                if main_position_counts.get("Goalkeeper", 0) < 1:
-                    logger.error("Main squad must have at least 1 Goalkeeper")
-                    raise FailedOperationException("Main squad must have at least 1 Goalkeeper")
-                if main_position_counts.get("Defender", 0) < 1:
-                    logger.error("Main squad must have at least 1 Defender")
-                    raise FailedOperationException("Main squad must have at least 1 Defender")
-                if main_position_counts.get("Midfielder", 0) < 1:
-                    logger.error("Main squad must have at least 1 Midfielder")
-                    raise FailedOperationException("Main squad must have at least 1 Midfielder")
-                if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
-                    logger.error("Main squad must have at least 1 Attacker or Forward")
-                    raise FailedOperationException("Main squad must have at least 1 Attacker or Forward")
+                bench_position_counts = {}
+                for player in bench_players:
+                    position = player.position
+                    bench_position_counts[position] = bench_position_counts.get(position, 0) + 1
+                
+                # Must have exactly 1 GK on field and 1 on bench
+                if main_position_counts.get("Goalkeeper", 0) != 1:
+                    logger.error("Main squad must have exactly 1 Goalkeeper")
+                    raise FailedOperationException("Main squad must have exactly 1 Goalkeeper")
+                if bench_position_counts.get("Goalkeeper", 0) != 1:
+                    logger.error("Bench must have exactly 1 Goalkeeper")
+                    raise FailedOperationException("Bench must have exactly 1 Goalkeeper")
+                
+                # Check if formation is valid
+                valid_formations = [
+                    {"DEF": 3, "MID": 4, "FWD": 3},
+                    {"DEF": 3, "MID": 5, "FWD": 2},
+                    {"DEF": 4, "MID": 3, "FWD": 3},
+                    {"DEF": 4, "MID": 4, "FWD": 2},
+                    {"DEF": 4, "MID": 5, "FWD": 1},
+                    {"DEF": 5, "MID": 2, "FWD": 3},
+                    {"DEF": 5, "MID": 3, "FWD": 2},
+                    {"DEF": 5, "MID": 4, "FWD": 1},
+                ]
+                
+                defenders = main_position_counts.get("Defender", 0)
+                midfielders = main_position_counts.get("Midfielder", 0)
+                forwards = main_position_counts.get("Attacker", 0) + main_position_counts.get("Forward", 0)
+                
+                is_valid = any(
+                    f["DEF"] == defenders and f["MID"] == midfielders and f["FWD"] == forwards
+                    for f in valid_formations
+                )
+                
+                if not is_valid:
+                    logger.error(f"Invalid formation: {defenders}-{midfielders}-{forwards}")
+                    raise FailedOperationException(f"Invalid formation ({defenders}-{midfielders}-{forwards}). Valid formations: 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-2-3, 5-3-2, 5-4-1")
 
                 budget = 100_000 - total_cost
                 logger.debug(f"Calculated budget: {budget}")
