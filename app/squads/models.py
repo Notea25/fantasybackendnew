@@ -127,6 +127,22 @@ class Squad(Base):
         if len(bench_players) != 4:
             raise ValueError("Bench must have exactly 4 players")
 
+        # Check that main squad has at least 1 player of each position
+        main_position_counts = {}
+        for player in main_players:
+            position = player.position
+            main_position_counts[position] = main_position_counts.get(position, 0) + 1
+        
+        # Required: at least 1 Goalkeeper, 1 Defender, 1 Midfielder, 1 Attacker
+        if main_position_counts.get("Goalkeeper", 0) < 1:
+            raise ValueError("Main squad must have at least 1 Goalkeeper")
+        if main_position_counts.get("Defender", 0) < 1:
+            raise ValueError("Main squad must have at least 1 Defender")
+        if main_position_counts.get("Midfielder", 0) < 1:
+            raise ValueError("Main squad must have at least 1 Midfielder")
+        if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
+            raise ValueError("Main squad must have at least 1 Attacker or Forward")
+
         total_cost = sum(p.market_value for p in main_players + bench_players)
         if total_cost > self.budget:
             raise ValueError("Total players cost exceeds squad budget")

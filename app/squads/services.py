@@ -97,6 +97,26 @@ class SquadService(BaseService):
                     if club_counts[player.team_id] > 3:
                         logger.error(f"Cannot have more than 3 players from the same club {player.team_id}")
                         raise FailedOperationException("Cannot have more than 3 players from the same club")
+                
+                # Validate main squad positions - must have at least 1 of each position
+                main_players = [player_by_id[pid] for pid in main_player_ids]
+                main_position_counts = {}
+                for player in main_players:
+                    position = player.position
+                    main_position_counts[position] = main_position_counts.get(position, 0) + 1
+                
+                if main_position_counts.get("Goalkeeper", 0) < 1:
+                    logger.error("Main squad must have at least 1 Goalkeeper")
+                    raise FailedOperationException("Main squad must have at least 1 Goalkeeper")
+                if main_position_counts.get("Defender", 0) < 1:
+                    logger.error("Main squad must have at least 1 Defender")
+                    raise FailedOperationException("Main squad must have at least 1 Defender")
+                if main_position_counts.get("Midfielder", 0) < 1:
+                    logger.error("Main squad must have at least 1 Midfielder")
+                    raise FailedOperationException("Main squad must have at least 1 Midfielder")
+                if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
+                    logger.error("Main squad must have at least 1 Attacker or Forward")
+                    raise FailedOperationException("Main squad must have at least 1 Attacker or Forward")
 
                 budget = 100_000 - total_cost
                 logger.debug(f"Calculated budget: {budget}")
@@ -138,7 +158,6 @@ class SquadService(BaseService):
 
                 # Создаём SquadTour для актуального тура
                 if active_tour_id:
-                    main_players = [player_by_id[pid] for pid in main_player_ids]
                     bench_players = [player_by_id[pid] for pid in bench_player_ids]
                     
                     squad_tour = SquadTour(
@@ -513,6 +532,26 @@ class SquadService(BaseService):
             if len(bench_player_ids) > 4:
                 logger.error(f"Cannot add more than 4 players to the bench, got {len(bench_player_ids)}")
                 raise FailedOperationException("Cannot add more than 4 players to the bench")
+            
+            # Validate main squad positions
+            main_players = [player_by_id[pid] for pid in main_player_ids]
+            main_position_counts = {}
+            for player in main_players:
+                position = player.position
+                main_position_counts[position] = main_position_counts.get(position, 0) + 1
+            
+            if main_position_counts.get("Goalkeeper", 0) < 1:
+                logger.error("Main squad must have at least 1 Goalkeeper")
+                raise FailedOperationException("Main squad must have at least 1 Goalkeeper")
+            if main_position_counts.get("Defender", 0) < 1:
+                logger.error("Main squad must have at least 1 Defender")
+                raise FailedOperationException("Main squad must have at least 1 Defender")
+            if main_position_counts.get("Midfielder", 0) < 1:
+                logger.error("Main squad must have at least 1 Midfielder")
+                raise FailedOperationException("Main squad must have at least 1 Midfielder")
+            if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
+                logger.error("Main squad must have at least 1 Attacker or Forward")
+                raise FailedOperationException("Main squad must have at least 1 Attacker or Forward")
 
             await session.execute(
                 delete(squad_players_association).where(
@@ -728,6 +767,35 @@ class SquadService(BaseService):
                     detail="Vice-captain must be in main or bench players"
                 )
 
+            # Validate main squad positions
+            player_by_id = {p.id: p for p in players}
+            main_players_obj = [player_by_id[pid] for pid in new_main_players]
+            main_position_counts = {}
+            for player in main_players_obj:
+                position = player.position
+                main_position_counts[position] = main_position_counts.get(position, 0) + 1
+            
+            if main_position_counts.get("Goalkeeper", 0) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Main squad must have at least 1 Goalkeeper"
+                )
+            if main_position_counts.get("Defender", 0) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Main squad must have at least 1 Defender"
+                )
+            if main_position_counts.get("Midfielder", 0) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Main squad must have at least 1 Midfielder"
+                )
+            if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Main squad must have at least 1 Attacker or Forward"
+                )
+            
             total_cost = sum(p.market_value for p in players)
             new_budget = 100_000 - total_cost
 
