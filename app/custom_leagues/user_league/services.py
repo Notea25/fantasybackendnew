@@ -181,8 +181,21 @@ class UserLeagueService:
             if not user_league:
                 raise ResourceNotFoundException("User league not found")
 
+            # Only the creator can delete the league
             if user_league.creator_id != user_id:
                 raise NotAllowedException("Only the creator can delete the user league")
+
+            # League can be deleted only if there is exactly one participant (the creator's squad)
+            participants_stmt = (
+                select(func.count(user_league_squads.c.squad_id))
+                .where(user_league_squads.c.user_league_id == user_league_id)
+            )
+            participants_count = await session.scalar(participants_stmt)
+
+            if participants_count is not None and participants_count > 1:
+                raise NotAllowedException(
+                    "League cannot be deleted while there are other participants"
+                )
 
             await session.delete(user_league)
             await session.commit()
