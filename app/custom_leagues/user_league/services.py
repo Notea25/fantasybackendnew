@@ -155,6 +155,10 @@ class UserLeagueService:
             if not user_league:
                 raise ResourceNotFoundException("User league not found")
 
+            # Creator of the league cannot "leave" it — they must delete it instead
+            if user_league.creator_id == user_id:
+                raise NotAllowedException("Creator cannot leave the league; delete it instead")
+
             stmt = select(Squad).where(Squad.id == squad_id)
             result = await session.execute(stmt)
             squad = result.scalars().first()
