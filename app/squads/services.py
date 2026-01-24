@@ -128,6 +128,8 @@ class SquadService(BaseService):
                     {"DEF": 5, "MID": 4, "FWD": 1},
                     {"DEF": 3, "MID": 4, "FWD": 3},
                     {"DEF": 4, "MID": 5, "FWD": 1},
+                    {"DEF": 5, "MID": 2, "FWD": 3},
+                    {"DEF": 5, "MID": 3, "FWD": 2},
                 ]
                 
                 defenders = main_position_counts.get("Defender", 0)
@@ -141,7 +143,7 @@ class SquadService(BaseService):
                 
                 if not is_valid:
                     logger.error(f"Invalid formation: {defenders}-{midfielders}-{forwards}")
-                    raise FailedOperationException(f"Invalid formation ({defenders}-{midfielders}-{forwards}). Valid formations: 4-3-3, 4-4-2, 3-5-2, 5-4-1, 3-4-3, 4-5-1")
+                    raise FailedOperationException(f"Invalid formation ({defenders}-{midfielders}-{forwards}). Valid formations: 4-3-3, 4-4-2, 3-5-2, 5-4-1, 3-4-3, 4-5-1, 5-2-3, 5-3-2")
 
                 budget = 100_000 - total_cost
                 logger.debug(f"Calculated budget: {budget}")
