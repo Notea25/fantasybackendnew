@@ -11,6 +11,8 @@ from app.utils.exceptions import (
     FailedOperationException,
     ResourceNotFoundException,
 )
+from app.tours.models import Tour
+from app.tours.services import TourService
 
 
 class BoostService(BaseService):
@@ -19,6 +21,29 @@ class BoostService(BaseService):
     @classmethod
     async def apply_boost(cls, squad_id: int, tour_id: int, boost_type: str):
         async with async_session_maker() as session:
+            # Проверяем, что сквад существует
+            squad = await session.get(Squad, squad_id)
+            if not squad:
+                raise ResourceNotFoundException("Squad not found")
+
+            # Определяем previous/current/next туры для лиги сквада
+            previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(
+                league_id=squad.league_id
+            )
+
+            if not next_tour:
+                # Нет следующего тура — бусты использовать нельзя
+                raise FailedOperationException(
+                    "Boosts can only be applied when there is a next tour"
+                )
+
+            if tour_id != next_tour.id:
+                # Бусты можно использовать только для следующего тура
+                raise FailedOperationException(
+                    "Boosts can only be applied for the next tour"
+                )
+
+            # В этом туре уже есть какой-то буст
             stmt = select(cls.model).where(
                 cls.model.squad_id == squad_id,
                 cls.model.tour_id == tour_id
@@ -29,6 +54,7 @@ class BoostService(BaseService):
                     "Boost already used in this tour"
                 )
 
+            # Этот тип уже использовался когда-либо
             used_boost_type = await session.scalar(
                 select(func.count(cls.model.id)).where(
                     cls.model.squad_id == squad_id,
@@ -41,60 +67,78 @@ class BoostService(BaseService):
                 )
 
             boost = cls.model(
-                squad_id=squad_id, tour_id=tour_id, type=boost_type
+                squad_id=squad_id,
+                tour_id=tour_id,
+                type=boost_type,
             )
             session.add(boost)
             await session.commit()
+            await session.refresh(boost)
             return boost
 
     @classmethod
     async def get_available_boosts(cls, squad_id: int, tour_id: int):
         async with async_session_maker() as session:
-            from app.tours.models import Tour
-
             squad = await session.get(Squad, squad_id)
             if not squad:
                 raise ResourceNotFoundException("Squad not found")
 
-            used_in_tour = await session.scalar(
-                select(func.count(cls.model.id)).where(
-                    cls.model.squad_id == squad_id,
-                    cls.model.tour_id == tour_id
-                )
+            # Определяем previous/current/next туры для лиги сквада
+            previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(
+                league_id=squad.league_id
             )
 
+            next_tour_id = next_tour.id if next_tour else None
+
+            # Все использованные бусты для сквада: type, номер тура, id тура
             used_boosts = await session.execute(
-                select(cls.model.type, Tour.number)
+                select(cls.model.type, Tour.number, cls.model.tour_id)
                 .join(Tour, cls.model.tour_id == Tour.id)
                 .where(cls.model.squad_id == squad_id)
             )
-            used_boosts = used_boosts.all()
+            used_rows = used_boosts.all()
 
+            # type -> (tour_number, tour_id)
             used_boosts_dict = {
-                boost_type: tour_number for boost_type, tour_number in used_boosts
+                boost_type: (tour_number, t_id)
+                for boost_type, tour_number, t_id in used_rows
             }
 
+            # Уже есть буст на следующий тур?
+            used_for_next_tour = False
+            if next_tour_id is not None:
+                used_for_next_tour = any(t_id == next_tour_id for _, (_, t_id) in used_boosts_dict.items())
+
             all_boost_types = [boost_type.value for boost_type in BoostType]
-            boosts = []
+            boosts: list[dict] = []
+
             for boost_type in all_boost_types:
-                available = not used_in_tour and (
-                    boost_type not in used_boosts_dict
+                used_info = used_boosts_dict.get(boost_type)
+                used_in_tour_number = used_info[0] if used_info else None
+
+                # Доступен, только если:
+                # - есть следующий тур
+                # - этот тип ещё никогда не использовался
+                # - на следующий тур ещё не назначен никакой буст
+                available = (
+                    next_tour_id is not None
+                    and used_info is None
+                    and not used_for_next_tour
                 )
-                used_in_tour_number = used_boosts_dict.get(boost_type)
 
                 boosts.append(
                     {
                         "type": boost_type,
-                        "description": cls._get_boost_description(boost_type),
                         "available": available,
                         "used_in_tour_number": used_in_tour_number,
                     }
                 )
 
-            return {"used_in_current_tour": bool(used_in_tour), "boosts": boosts}
+            return {"used_for_next_tour": bool(used_for_next_tour), "boosts": boosts}
 
     @classmethod
     def _get_boost_description(cls, boost_type: str) -> str:
+        # Оставлено для обратной совместимости, сейчас описание не используется в API
         descriptions = {
             "bench_boost": "Увеличивает очки запасных игроков",
             "triple_captain": "Утраивает очки капитана",
@@ -131,6 +175,10 @@ class BoostService(BaseService):
                 raise ResourceNotFoundException(
                     "Boost not found for this squad and tour"
                 )
+
+            # Трансферные бусты нельзя отменять
+            if boost.type in (BoostType.TRANSFERS_PLUS.value, BoostType.GOLD_TOUR.value):
+                raise FailedOperationException("This boost cannot be removed")
 
             await session.execute(
                 delete(cls.model).where(
