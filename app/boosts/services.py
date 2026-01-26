@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import delete, func
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
@@ -42,6 +44,17 @@ class BoostService(BaseService):
                 raise FailedOperationException(
                     "Boosts can only be applied for the next tour"
                 )
+
+            # Разрешаем использовать бусты только до дедлайна тура
+            deadline = next_tour.deadline
+            if deadline is not None:
+                now = datetime.utcnow().replace(tzinfo=timezone.utc)
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if now > deadline:
+                    raise FailedOperationException(
+                        "Boosts can only be applied before the tour deadline"
+                    )
 
             # В этом туре уже есть какой-то буст
             stmt = select(cls.model).where(
@@ -175,6 +188,18 @@ class BoostService(BaseService):
                 raise ResourceNotFoundException(
                     "Boost not found for this squad and tour"
                 )
+
+            # Проверяем дедлайн тура: бусты можно отменять только до дедлайна
+            tour = await session.get(Tour, tour_id)
+            if tour and tour.deadline is not None:
+                deadline = tour.deadline
+                now = datetime.utcnow().replace(tzinfo=timezone.utc)
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if now > deadline:
+                    raise FailedOperationException(
+                        "Boosts can only be removed before the tour deadline"
+                    )
 
             # Трансферные бусты нельзя отменять
             if boost.type in (BoostType.TRANSFERS_PLUS.value, BoostType.GOLD_TOUR.value):
