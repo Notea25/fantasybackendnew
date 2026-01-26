@@ -49,16 +49,16 @@ logging.basicConfig(
 
 app = FastAPI()
 
-if settings.MODE == "DEVFRONT":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# if settings.MODE == "DEVFRONT":
+#     app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=[
+#             "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com"
+#         ],
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
 
     # @app.middleware("http")
     # async def check_origin(request: Request, call_next):
