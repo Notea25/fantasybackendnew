@@ -60,20 +60,20 @@ if settings.MODE == "DEVFRONT":
         allow_headers=["*"],
     )
 
-    @app.middleware("http")
-    async def check_origin(request: Request, call_next):
-        allowed_origin = (
-            "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com",
-            "https://tele-mini-sparkle.vercel.app"
-        )
-        if (request.url.path.startswith("/api") or
-                request.url.path == "/docs") and \
-                request.headers.get("origin") != allowed_origin:
-            raise HTTPException(
-                status_code=403,
-                detail="Forbidden: Access only from React app"
-            )
-        return await call_next(request)
+    # @app.middleware("http")
+    # async def check_origin(request: Request, call_next):
+    #     allowed_origin = (
+    #         "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com",
+    #         "https://tele-mini-sparkle.vercel.app"
+    #     )
+    #     if (request.url.path.startswith("/api") or
+    #             request.url.path == "/docs") and \
+    #             request.headers.get("origin") != allowed_origin:
+    #         raise HTTPException(
+    #             status_code=403,
+    #             detail="Forbidden: Access only from React app"
+    #         )
+    #     return await call_next(request)
 
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
