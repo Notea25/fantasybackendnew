@@ -87,7 +87,7 @@ class UserAdmin(ModelView, model=User):
                     .values(winner_id=None)
                 )
 
-                # 1b) links in commercial/user/club league association tables
+                # 1c) links in commercial/user/club league association tables
                 await session.execute(
                     delete(commercial_league_squads)
                     .where(commercial_league_squads.c.squad_id.in_(squad_ids))
@@ -101,7 +101,7 @@ class UserAdmin(ModelView, model=User):
                     .where(club_league_squads.c.squad_id.in_(squad_ids))
                 )
 
-                # 1c) squad <-> players associations (current main & bench)
+                # 1d) squad <-> players associations (current main & bench)
                 await session.execute(
                     delete(squad_players_association)
                     .where(squad_players_association.c.squad_id.in_(squad_ids))
@@ -111,14 +111,9 @@ class UserAdmin(ModelView, model=User):
                     .where(squad_bench_players_association.c.squad_id.in_(squad_ids))
                 )
 
-                # 1d) all boosts for these squads
+                # 1e) all boosts for these squads
                 await session.execute(
                     delete(Boost).where(Boost.squad_id.in_(squad_ids))
-                )
-
-                # 1e) finally delete the squads themselves
-                await session.execute(
-                    delete(Squad).where(Squad.id.in_(squad_ids))
                 )
 
             # 1f) If there were squad_tours, clean up their player associations and
@@ -135,6 +130,12 @@ class UserAdmin(ModelView, model=User):
                 )
                 await session.execute(
                     delete(SquadTour).where(SquadTour.id.in_(squad_tour_ids))
+                )
+
+            # 1g) finally delete the squads themselves
+            if squad_ids:
+                await session.execute(
+                    delete(Squad).where(Squad.id.in_(squad_ids))
                 )
 
             # 2) Delete user leagues created by this user
