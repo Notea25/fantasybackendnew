@@ -19,7 +19,12 @@ from app.leagues.models import League
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
-from app.squads.models import Squad, SquadTour
+from app.squads.models import (
+    Squad,
+    SquadTour,
+    squad_players_association,
+    squad_bench_players_association,
+)
 from app.teams.models import Team
 from app.tours.models import Tour, TourMatchAssociation
 from app.users.models import User
@@ -86,12 +91,22 @@ class UserAdmin(ModelView, model=User):
                     .where(club_league_squads.c.squad_id.in_(squad_ids))
                 )
 
-                # 1c) all boosts for these squads
+                # 1c) squad <-> players associations (current main & bench)
+                await session.execute(
+                    delete(squad_players_association)
+                    .where(squad_players_association.c.squad_id.in_(squad_ids))
+                )
+                await session.execute(
+                    delete(squad_bench_players_association)
+                    .where(squad_bench_players_association.c.squad_id.in_(squad_ids))
+                )
+
+                # 1d) all boosts for these squads
                 await session.execute(
                     delete(Boost).where(Boost.squad_id.in_(squad_ids))
                 )
 
-                # 1d) finally delete the squads themselves
+                # 1e) finally delete the squads themselves
                 await session.execute(
                     delete(Squad).where(Squad.id.in_(squad_ids))
                 )
