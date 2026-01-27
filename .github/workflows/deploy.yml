@@ -21,10 +21,11 @@ jobs:
         run: |
           ssh-keyscan -H 31.222.229.78 >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_rsa
+          ls -la ~/.ssh/
 
       - name: Deploy to VPS
         run: |
-          ssh root@31.222.229.78 << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes root@31.222.229.78 << 'EOF'
             set -e
             cd sporttg
             git pull origin main
