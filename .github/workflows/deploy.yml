@@ -12,7 +12,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Adding Known Hosts
-        run: ssh-keyscan -H 31.222.229.78 >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 31.222.229.78 >> ~/.ssh/known_hosts
 
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
