@@ -26,10 +26,12 @@ class UserAdmin(ModelView, model=User):
         User.id,
         User.username,
         User.photo_url,
-        User.emblem_url,
+        User.birth_date,
+        User.registration_date,
     ]
     column_searchable_list = ["username"]
-    can_delete = False
+    # Allow deleting users from the admin panel.
+    can_delete = True
     name = "User"
     name_plural = "Users"
     icon = "fa-solid fa-user"

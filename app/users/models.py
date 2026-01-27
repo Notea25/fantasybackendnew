@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date, datetime
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,7 +11,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     photo_url: Mapped[Optional[str]] = mapped_column(nullable=True)
-    emblem_url: Mapped[Optional[str]] = mapped_column(nullable=True)
+    birth_date: Mapped[Optional[date]] = mapped_column(nullable=True)
+    registration_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
     squads: Mapped[list["Squad"]] = relationship(back_populates="user")
     user_leagues: Mapped[list["UserLeague"]] = relationship(

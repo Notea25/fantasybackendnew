@@ -59,10 +59,17 @@ async def login(request: Request, response: Response):
 
 @router.get("/protected")
 async def protected_route(user: UserSchema = Depends(get_current_user)):
+    """Return basic info about the currently authenticated user.
+
+    In addition to the previous payload, this now returns the full user schema
+    so the frontend can decide whether the registration/onboarding flow is
+    complete based on username and birth_date.
+    """
     return {
         "message": f"Hello, {user.username}!",
         "user_id": user.id,
         "authenticated": True,
+        "user": UserSchema.model_validate(user),
     }
 
 
@@ -147,6 +154,10 @@ async def update_user(
     user_data: UserUpdateSchema,
     current_user: UserSchema = Depends(get_current_user),
 ):
+    """Update current user's profile fields (username, photo_url, birth_date).
+
+    Access is restricted so that a user can update only their own data.
+    """
     try:
         if current_user.id != user_id:
             raise HTTPException(status_code=403, detail="Forbidden")
@@ -155,6 +166,35 @@ async def update_user(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return {"status": "ok", "user": UserSchema.model_validate(user)}
+    except HTTPException:
+        # Re-raise explicit HTTP errors without masking them
+        raise
     except Exception as e:
         logger.error(f"Update error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}", response_model=UserSchema)
+async def get_user_by_id(
+    user_id: int,
+    current_user: UserSchema = Depends(get_current_user),
+):
+    """Return full information about a user by id.
+
+    For security reasons the current implementation allows users to fetch only
+    their own profile. If another id is requested, 403 is returned.
+    """
+    try:
+        if current_user.id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
+        user = await UserService.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return UserSchema.model_validate(user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get user error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

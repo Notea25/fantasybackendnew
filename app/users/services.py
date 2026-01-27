@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from sqlalchemy.future import select
 
@@ -27,7 +28,11 @@ class UserService(BaseService):
         logger.debug(f"Creating new user with data: {user_data}")
         async with async_session_maker() as session:
             try:
-                user = cls.model(id=id, **user_data.model_dump(exclude_unset=True))
+                user = cls.model(
+                    id=id,
+                    registration_date=datetime.utcnow(),
+                    **user_data.model_dump(exclude_unset=True),
+                )
                 session.add(user)
                 await session.commit()
                 await session.refresh(user)
