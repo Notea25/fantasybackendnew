@@ -1,13 +1,20 @@
 import logging
 
 from sqladmin import ModelView
-from sqlalchemy import update, delete
+from sqlalchemy import update, delete, select
 from sqlalchemy.orm import joinedload
 
 from app.boosts.models import Boost
-from app.custom_leagues.club_league.models import ClubLeague
-from app.custom_leagues.commercial_league.models import CommercialLeague, commercial_league_squads
-from app.custom_leagues.user_league.models import UserLeague
+from app.custom_leagues.club_league.models import ClubLeague, club_league_squads
+from app.custom_leagues.commercial_league.models import (
+    CommercialLeague,
+    commercial_league_squads,
+)
+from app.custom_leagues.user_league.models import (
+    UserLeague,
+    user_league_squads,
+    user_league_tours,
+)
 from app.leagues.models import League
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
@@ -35,6 +42,86 @@ class UserAdmin(ModelView, model=User):
     name = "User"
     name_plural = "Users"
     icon = "fa-solid fa-user"
+
+    async def on_model_delete(self, model, request):
+        """Cascade-delete all data related to a user before removing it.
+
+        When a user is deleted we want to remove:
+        - all squads belonging to this user and everything bound to those squads
+          (boosts, links to commercial leagues, user leagues, club leagues,
+          winner references in commercial leagues),
+        - all user leagues where this user is the creator, together with their
+          tour and squad associations.
+        """
+        from app.database import async_session_maker
+
+        user_id = model.id
+
+        async with async_session_maker() as session:
+            # 1) Find all squads of this user
+            result = await session.execute(
+                select(Squad.id).where(Squad.user_id == user_id)
+            )
+            squad_ids = [row[0] for row in result.fetchall()]
+
+            if squad_ids:
+                # 1a) winner_id in commercial leagues pointing to these squads -> NULL
+                await session.execute(
+                    update(CommercialLeague)
+                    .where(CommercialLeague.winner_id.in_(squad_ids))
+                    .values(winner_id=None)
+                )
+
+                # 1b) links in commercial/user/club league association tables
+                await session.execute(
+                    delete(commercial_league_squads)
+                    .where(commercial_league_squads.c.squad_id.in_(squad_ids))
+                )
+                await session.execute(
+                    delete(user_league_squads)
+                    .where(user_league_squads.c.squad_id.in_(squad_ids))
+                )
+                await session.execute(
+                    delete(club_league_squads)
+                    .where(club_league_squads.c.squad_id.in_(squad_ids))
+                )
+
+                # 1c) all boosts for these squads
+                await session.execute(
+                    delete(Boost).where(Boost.squad_id.in_(squad_ids))
+                )
+
+                # 1d) finally delete the squads themselves
+                await session.execute(
+                    delete(Squad).where(Squad.id.in_(squad_ids))
+                )
+
+            # 2) Delete user leagues created by this user
+            result = await session.execute(
+                select(UserLeague.id).where(UserLeague.creator_id == user_id)
+            )
+            user_league_ids = [row[0] for row in result.fetchall()]
+
+            if user_league_ids:
+                # 2a) remove associations with tours and squads
+                await session.execute(
+                    delete(user_league_tours)
+                    .where(user_league_tours.c.user_league_id.in_(user_league_ids))
+                )
+                await session.execute(
+                    delete(user_league_squads)
+                    .where(user_league_squads.c.user_league_id.in_(user_league_ids))
+                )
+
+                # 2b) delete the user leagues themselves
+                await session.execute(
+                    delete(UserLeague).where(UserLeague.id.in_(user_league_ids))
+                )
+
+            await session.commit()
+
+        logger.debug(f"Удаление пользователя: {model.id}")
+        return await super().on_model_delete(model, request)
 
 
 class LeagueAdmin(ModelView, model=League):
