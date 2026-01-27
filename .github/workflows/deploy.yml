@@ -20,7 +20,7 @@ jobs:
       - name: Deploy to VPS
         run: |
           ssh -o StrictHostKeyChecking=no root@31.222.229.78 "
-          cd /root/projects/sporttg &&
+          cd sporttg &&
           git pull origin main &&
           docker compose down &&
           docker compose up -d --build
