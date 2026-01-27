@@ -24,6 +24,8 @@ from app.squads.models import (
     SquadTour,
     squad_players_association,
     squad_bench_players_association,
+    squad_tour_players,
+    squad_tour_bench_players,
 )
 from app.teams.models import Team
 from app.tours.models import Tour, TourMatchAssociation
@@ -69,8 +71,16 @@ class UserAdmin(ModelView, model=User):
             )
             squad_ids = [row[0] for row in result.fetchall()]
 
+            # 1a) Find all squad_tours for these squads (history per tour)
+            squad_tour_ids: list[int] = []
             if squad_ids:
-                # 1a) winner_id in commercial leagues pointing to these squads -> NULL
+                result = await session.execute(
+                    select(SquadTour.id).where(SquadTour.squad_id.in_(squad_ids))
+                )
+                squad_tour_ids = [row[0] for row in result.fetchall()]
+
+            if squad_ids:
+                # 1b) winner_id in commercial leagues pointing to these squads -> NULL
                 await session.execute(
                     update(CommercialLeague)
                     .where(CommercialLeague.winner_id.in_(squad_ids))
@@ -109,6 +119,22 @@ class UserAdmin(ModelView, model=User):
                 # 1e) finally delete the squads themselves
                 await session.execute(
                     delete(Squad).where(Squad.id.in_(squad_ids))
+                )
+
+            # 1f) If there were squad_tours, clean up their player associations and
+            #     the squad_tours themselves (defensive in case cascade is not
+            #     configured at DB level).
+            if squad_tour_ids:
+                await session.execute(
+                    delete(squad_tour_players)
+                    .where(squad_tour_players.c.squad_tour_id.in_(squad_tour_ids))
+                )
+                await session.execute(
+                    delete(squad_tour_bench_players)
+                    .where(squad_tour_bench_players.c.squad_tour_id.in_(squad_tour_ids))
+                )
+                await session.execute(
+                    delete(SquadTour).where(SquadTour.id.in_(squad_tour_ids))
                 )
 
             # 2) Delete user leagues created by this user
