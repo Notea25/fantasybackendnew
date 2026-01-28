@@ -38,8 +38,8 @@ class SquadCreateSchema(BaseModel):
     name: str
     league_id: int
     fav_team_id: int
-    captain_id: Optional[int] = None
-    vice_captain_id: Optional[int] = None
+    captain_id: int
+    vice_captain_id: int
     main_player_ids: list[int]
     bench_player_ids: list[int]
 
