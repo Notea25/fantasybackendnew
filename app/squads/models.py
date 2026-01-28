@@ -81,12 +81,12 @@ class Squad(Base):
     current_main_players: Mapped[List["Player"]] = relationship(
         secondary="squad_players_association",
         back_populates="main_squads",
-        lazy="joined",
+        lazy="selectin",
     )
     current_bench_players: Mapped[List["Player"]] = relationship(
         secondary="squad_bench_players_association",
         back_populates="bench_squads",
-        lazy="joined",
+        lazy="selectin",
     )
     tour_history: Mapped[List["SquadTour"]] = relationship(
         back_populates="squad", cascade="all, delete-orphan"
