@@ -462,6 +462,10 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
         "tours": "Tours",
         "squads": "Squads",
     }
+    column_details_exclude_list = [
+        "tours",
+        "squads",
+    ]
 
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
@@ -477,6 +481,24 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
     name = "User League"
     name_plural = "User Leagues"
     icon = "fa-solid fa-user"
+
+    def get_query(self):
+        return (
+            self.session.query(self.model)
+            .options(
+                joinedload(UserLeague.league),
+                joinedload(UserLeague.creator),
+                joinedload(UserLeague.tours),
+                joinedload(UserLeague.squads)
+            )
+            .execution_options(populate_existing=True)
+        ).unique()
+
+    def get_one(self, ident):
+        return (
+            self.get_query()
+            .filter(self.model.id == ident)
+        ).unique().one()
 
 
 class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
@@ -495,6 +517,34 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
         "league_id": "League",
         "winner_id": "Winner Squad",
     }
+    column_details_exclude_list = [
+        "tours",
+        "squads",
+    ]
+    
+    form_columns = [
+        CommercialLeague.name,
+        CommercialLeague.league_id,
+        CommercialLeague.prize,
+        CommercialLeague.logo,
+        CommercialLeague.winner_id,
+        CommercialLeague.registration_start,
+        CommercialLeague.registration_end,
+        CommercialLeague.tours,
+        CommercialLeague.squads,
+    ]
+    
+    # Используем AJAX для загрузки связанных объектов в формах
+    form_ajax_refs = {
+        "tours": {
+            "fields": ("number",),
+            "order_by": "number",
+        },
+        "squads": {
+            "fields": ("name",),
+            "order_by": "name",
+        },
+    }
 
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
@@ -508,16 +558,29 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     icon = "fa-solid fa-money-bill"
 
     def get_query(self):
-        return self.session.query(self.model).execution_options(populate_existing=True).unique()
+        return (
+            self.session.query(self.model)
+            .options(
+                joinedload(CommercialLeague.tours),
+                joinedload(CommercialLeague.squads),
+                joinedload(CommercialLeague.winner),
+                joinedload(CommercialLeague.league)
+            )
+            .execution_options(populate_existing=True)
+        ).unique()
 
     def get_one(self, ident):
         return (
             self.session.query(self.model)
             .filter(self.model.id == ident)
+            .options(
+                joinedload(CommercialLeague.tours),
+                joinedload(CommercialLeague.squads),
+                joinedload(CommercialLeague.winner),
+                joinedload(CommercialLeague.league)
+            )
             .execution_options(populate_existing=True)
-            .unique()
-            .first()
-        )
+        ).unique().first()
 
 
 
@@ -533,6 +596,10 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
         "league_id": "League",
         "team_id": "Team",
     }
+    column_details_exclude_list = [
+        "tours",
+        "squads",
+    ]
 
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
@@ -546,12 +613,22 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
     icon = "fa-solid fa-trophy"
 
     def get_query(self):
-        return self.session.query(self.model).options(
-            joinedload(ClubLeague.league), joinedload(ClubLeague.team)
-        )
+        return (
+            self.session.query(self.model)
+            .options(
+                joinedload(ClubLeague.league),
+                joinedload(ClubLeague.team),
+                joinedload(ClubLeague.tours),
+                joinedload(ClubLeague.squads)
+            )
+            .execution_options(populate_existing=True)
+        ).unique()
 
     def get_one(self, ident):
-        return self.get_query().filter(self.model.id == ident).one()
+        return (
+            self.get_query()
+            .filter(self.model.id == ident)
+        ).unique().one()
 
 
 class TourMatchesAdmin(ModelView, model=TourMatchAssociation):
