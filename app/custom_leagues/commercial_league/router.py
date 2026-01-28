@@ -21,7 +21,24 @@ async def get_commercial_leagues(league_id: int = None):
 async def get_commercial_league_by_id(commercial_league_id: int):
     try:
         commercial_league = await CommercialLeagueService.get_commercial_league_by_id(commercial_league_id)
-        return commercial_league
+        # Manually add winner_name to the response
+        winner_name = commercial_league.winner.name if commercial_league.winner else None
+        
+        # Convert to dict and add winner_name
+        league_dict = {
+            "id": commercial_league.id,
+            "name": commercial_league.name,
+            "league_id": commercial_league.league_id,
+            "prize": commercial_league.prize,
+            "logo": commercial_league.logo,
+            "winner_id": commercial_league.winner_id,
+            "winner_name": winner_name,
+            "registration_start": commercial_league.registration_start,
+            "registration_end": commercial_league.registration_end,
+            "tours": [{"id": tour.id, "number": tour.number} for tour in commercial_league.tours],
+            "squads": [{"squad_id": squad.id, "squad_name": squad.name} for squad in commercial_league.squads]
+        }
+        return league_dict
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 

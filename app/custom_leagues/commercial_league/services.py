@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.custom_leagues.commercial_league.models import CommercialLeague, commercial_league_squads
 from app.database import async_session_maker
 from app.leagues.models import League
+from app.tours.models import Tour
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 from app.squads.models import Squad
 
@@ -46,12 +47,13 @@ class CommercialLeagueService:
                 select(CommercialLeague)
                 .where(CommercialLeague.id == commercial_league_id)
                 .options(
-                    joinedload(CommercialLeague.tours).joinedload(Tour.name),
-                    joinedload(CommercialLeague.squads)
+                    joinedload(CommercialLeague.tours),
+                    joinedload(CommercialLeague.squads),
+                    joinedload(CommercialLeague.winner)
                 )
             )
             result = await session.execute(stmt)
-            league = result.scalars().first()
+            league = result.unique().scalars().first()
             if not league:
                 raise ResourceNotFoundException("Commercial league not found")
             return league

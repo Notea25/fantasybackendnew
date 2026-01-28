@@ -508,12 +508,14 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     icon = "fa-solid fa-money-bill"
 
     def get_query(self):
-        return self.session.query(self.model)
+        return self.session.query(self.model).execution_options(populate_existing=True).unique()
 
     def get_one(self, ident):
         return (
             self.session.query(self.model)
             .filter(self.model.id == ident)
+            .execution_options(populate_existing=True)
+            .unique()
             .first()
         )
 
