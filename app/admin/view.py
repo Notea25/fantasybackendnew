@@ -447,6 +447,14 @@ class TourAdmin(ModelView, model=Tour):
 
 
 class UserLeagueAdmin(ModelView, model=UserLeague):
+    async def _get_model_objects(
+        self,
+        session,
+        stmt,
+    ):
+        """Override to add unique() for eager loaded relationships."""
+        result = await session.execute(stmt)
+        return result.unique().scalars().all()
     column_list = [
         UserLeague.id,
         UserLeague.name,
@@ -502,6 +510,14 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
 
 
 class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
+    async def _get_model_objects(
+        self,
+        session,
+        stmt,
+    ):
+        """Override to add unique() for eager loaded relationships."""
+        result = await session.execute(stmt)
+        return result.unique().scalars().all()
     column_list = [
         CommercialLeague.id,
         CommercialLeague.name,
@@ -585,6 +601,14 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
 
 
 class ClubLeagueAdmin(ModelView, model=ClubLeague):
+    async def _get_model_objects(
+        self,
+        session,
+        stmt,
+    ):
+        """Override to add unique() for eager loaded relationships."""
+        result = await session.execute(stmt)
+        return result.unique().scalars().all()
     column_list = [
         ClubLeague.id,
         ClubLeague.name,
