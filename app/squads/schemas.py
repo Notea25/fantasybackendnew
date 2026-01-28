@@ -58,6 +58,12 @@ class SquadReplacePlayersResponseSchema(BaseModel):
     message: str
     remaining_replacements: int
     squad: SquadReadSchema
+    # Информация о трансферах
+    transfers_applied: Optional[int] = None
+    free_transfers_used: Optional[int] = None
+    paid_transfers: Optional[int] = None
+    penalty: Optional[int] = None
+    new_total_points: Optional[int] = None
 
 
 class SquadUpdateResponseSchema(BaseModel):

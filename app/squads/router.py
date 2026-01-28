@@ -1,6 +1,9 @@
 from typing import Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+
+logger = logging.getLogger(__name__)
 
 from app.squads.schemas import (
     LeaderboardEntrySchema,
@@ -105,19 +108,38 @@ async def replace_players(
     main_player_ids = payload.main_player_ids or []
     bench_player_ids = payload.bench_player_ids or []
 
-    squad = await SquadService.replace_players(
+    result = await SquadService.replace_players(
         squad_id=squad_id,
         captain_id=captain_id,
         vice_captain_id=vice_captain_id,
         new_main_players=main_player_ids,
         new_bench_players=bench_player_ids,
     )
+    
+    squad = result["squad"]
     squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
+    
+    # Log the result for debugging
+    logger.info(
+        f"Squad {squad_id} transfers completed: "
+        f"transfers={result['transfers_applied']}, "
+        f"free={result['free_transfers_used']}, "
+        f"paid={result['paid_transfers']}, "
+        f"penalty={result['penalty']}, "
+        f"new_points={squad.points}, "
+        f"remaining_replacements={squad.replacements}"
+    )
+    
     return SquadReplacePlayersResponseSchema(
         status="success",
         message="Players replaced successfully",
         remaining_replacements=squad.replacements,
-        squad=squad_with_relations
+        squad=squad_with_relations,
+        transfers_applied=result["transfers_applied"],
+        free_transfers_used=result["free_transfers_used"],
+        paid_transfers=result["paid_transfers"],
+        penalty=result["penalty"],
+        new_total_points=squad.points,
     )
 
 @router.get("/{squad_id}/replacement_info", response_model=ReplacementInfoSchema)

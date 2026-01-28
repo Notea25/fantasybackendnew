@@ -832,13 +832,42 @@ class SquadService(BaseService):
             squad.vice_captain_id = vice_captain_id
             squad.budget = new_budget
 
-            if squad.replacements > 0:
-                squad.replacements -= 1
-            else:
-                raise HTTPException(
-                    status_code=400,
-                    detail="No replacements left"
-                )
+            # Подсчитываем количество реальных трансферов (замен)
+            current_main_ids = {p.id for p in squad.current_main_players}
+            current_bench_ids = {p.id for p in squad.current_bench_players}
+            new_main_ids_set = set(new_main_players)
+            new_bench_ids_set = set(new_bench_players)
+            
+            # Игроки, которых убрали из состава
+            removed_players = (current_main_ids | current_bench_ids) - (new_main_ids_set | new_bench_ids_set)
+            transfer_count = len(removed_players)
+            
+            # Логика платных/бесплатных трансферов
+            free_transfers_used = 0
+            paid_transfers = 0
+            penalty = 0
+            
+            logger.info(
+                f"Squad {squad_id} transfer calculation: "
+                f"transfer_count={transfer_count}, "
+                f"available_replacements={squad.replacements}, "
+                f"current_points={squad.points}"
+            )
+            
+            if transfer_count > 0:
+                if squad.replacements >= transfer_count:
+                    # Все трансферы бесплатные
+                    free_transfers_used = transfer_count
+                    squad.replacements -= transfer_count
+                else:
+                    # Часть бесплатных, часть платных
+                    free_transfers_used = squad.replacements
+                    paid_transfers = transfer_count - squad.replacements
+                    penalty = paid_transfers * 4  # 4 очка за каждый платный трансфер
+                    
+                    squad.replacements = 0
+                    # Вычитаем штраф из общего количества очков (может уйти в минус)
+                    squad.points -= penalty
 
             await session.execute(
                 delete(squad_players_association).where(
@@ -866,7 +895,14 @@ class SquadService(BaseService):
             await session.commit()
             await session.refresh(squad)
 
-            return squad
+            # Возвращаем squad и информацию о трансферах
+            return {
+                "squad": squad,
+                "transfers_applied": transfer_count,
+                "free_transfers_used": free_transfers_used,
+                "paid_transfers": paid_transfers,
+                "penalty": penalty,
+            }
 
     @classmethod
     async def get_replacement_info(cls, squad_id: int) -> dict:
