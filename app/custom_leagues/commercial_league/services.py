@@ -34,8 +34,17 @@ class CommercialLeagueService:
             for league in leagues:
                 winner_name = league.winner.name if league.winner else None
                 leagues_with_winner_name.append({
-                    **league.__dict__,
-                    "winner_name": winner_name
+                    "id": league.id,
+                    "name": league.name,
+                    "league_id": league.league_id,
+                    "prize": league.prize,
+                    "logo": league.logo,
+                    "winner_id": league.winner_id,
+                    "winner_name": winner_name,
+                    "registration_start": league.registration_start,
+                    "registration_end": league.registration_end,
+                    "tours": [{"id": tour.id, "number": tour.number} for tour in league.tours],
+                    "squads": [{"squad_id": squad.id, "squad_name": squad.name} for squad in league.squads]
                 })
 
             return leagues_with_winner_name
