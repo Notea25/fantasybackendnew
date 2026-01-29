@@ -523,20 +523,21 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
         CommercialLeague.name,
         CommercialLeague.league_id,
         CommercialLeague.prize,
-        CommercialLeague.logo,
         CommercialLeague.winner_id,
         CommercialLeague.registration_start,
         CommercialLeague.registration_end,
+        CommercialLeague.tours,
+        CommercialLeague.squads,
     ]
     column_searchable_list = ["name"]
     column_labels = {
         "league_id": "League",
         "winner_id": "Winner Squad",
+        "tours": "Tours",
+        "squads": "Squads",
+        "registration_start": "Registration Start",
+        "registration_end": "Registration End",
     }
-    column_details_exclude_list = [
-        "tours",
-        "squads",
-    ]
     
     form_columns = [
         CommercialLeague.name,
@@ -554,11 +555,11 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     form_ajax_refs = {
         "tours": {
             "fields": ("number",),
-            "order_by": "number",
+            "order_by": ("number",),
         },
         "squads": {
             "fields": ("name",),
-            "order_by": "name",
+            "order_by": ("name",),
         },
     }
 
@@ -567,6 +568,10 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
             return value.name
         if attr == "winner_id" and value is not None:
             return value.name
+        if attr == "tours" and value:
+            return ", ".join(f"Tour {tour.number}" for tour in value)
+        if attr == "squads" and value:
+            return ", ".join(squad.name for squad in value)
         return super().format(attr, value)
 
     name = "Commercial League"
