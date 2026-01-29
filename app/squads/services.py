@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
 from sqlalchemy import delete, func, desc
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
@@ -270,6 +270,78 @@ class SquadService(BaseService):
             return next_tour
 
     @classmethod
+    async def _get_player_total_points(cls, session, player_id: int) -> int:
+        """Получить общее количество очков игрока за все матчи."""
+        stmt = (
+            select(func.coalesce(func.sum(PlayerMatchStats.points), 0))
+            .where(PlayerMatchStats.player_id == player_id)
+        )
+        result = await session.execute(stmt)
+        return result.scalar() or 0
+
+    @classmethod
+    async def _get_player_tour_points(cls, session, player_id: int, tour_id: int) -> int:
+        """Получить очки игрока за конкретный тур."""
+        from app.matches.models import Match
+        from app.tours.models import tour_matches_association
+        
+        # Получаем матчи тура
+        matches_stmt = (
+            select(Match.id)
+            .join(tour_matches_association, Match.id == tour_matches_association.c.match_id)
+            .where(tour_matches_association.c.tour_id == tour_id)
+        )
+        matches_result = await session.execute(matches_stmt)
+        match_ids = [row[0] for row in matches_result.all()]
+        
+        if not match_ids:
+            return 0
+        
+        # Получаем очки игрока за эти матчи
+        points_stmt = (
+            select(func.coalesce(func.sum(PlayerMatchStats.points), 0))
+            .where(
+                PlayerMatchStats.player_id == player_id,
+                PlayerMatchStats.match_id.in_(match_ids)
+            )
+        )
+        result = await session.execute(points_stmt)
+        return result.scalar() or 0
+
+    @classmethod
+    async def _get_current_or_last_tour_id(cls, session, league_id: int) -> Optional[int]:
+        """Получить ID текущего или последнего тура.
+        
+        Логика:
+        - Если есть текущий тур (идущий сейчас) - возвращаем его
+        - Если текущего тура нет, но дедлайн следующего прошел - возвращаем следующий
+        - Иначе возвращаем последний завершенный тур
+        """
+        previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(league_id)
+        
+        # Если идет текущий тур - возвращаем его
+        if current_tour:
+            return current_tour.id
+        
+        # Если есть следующий тур и его дедлайн прошел - возвращаем его
+        if next_tour:
+            from datetime import datetime, timezone
+            now = datetime.utcnow().replace(tzinfo=timezone.utc)
+            
+            if next_tour.matches_association:
+                start_date = min(association.match.date for association in next_tour.matches_association)
+                deadline = start_date - timedelta(hours=2)
+                
+                if now >= deadline:
+                    return next_tour.id
+        
+        # Возвращаем последний завершенный тур
+        if previous_tour:
+            return previous_tour.id
+        
+        return None
+
+    @classmethod
     async def find_one_or_none_with_relations(cls, **filter_by):
         logger.info(f"Fetching squad with relations, filter: {filter_by}")
         async with async_session_maker() as session:
@@ -319,8 +391,17 @@ class SquadService(BaseService):
                 main_players_result_full = await session.execute(main_players_stmt_full)
                 main_players_full = main_players_result_full.unique().scalars().all()
 
-                main_players_data = [
-                    {
+                # Определяем текущий/последний тур
+                current_or_last_tour_id = await cls._get_current_or_last_tour_id(session, squad.league_id)
+
+                main_players_data = []
+                for player in main_players_full:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    main_players_data.append({
                         "id": player.id,
                         "name": player.name,
                         "position": player.position,
@@ -329,9 +410,9 @@ class SquadService(BaseService):
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
-                    }
-                    for player in main_players_full
-                ]
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
 
                 bench_players_stmt_full = (
                     select(Player)
@@ -342,8 +423,14 @@ class SquadService(BaseService):
                 bench_players_result_full = await session.execute(bench_players_stmt_full)
                 bench_players_full = bench_players_result_full.unique().scalars().all()
 
-                bench_players_data = [
-                    {
+                bench_players_data = []
+                for player in bench_players_full:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    bench_players_data.append({
                         "id": player.id,
                         "name": player.name,
                         "position": player.position,
@@ -352,9 +439,9 @@ class SquadService(BaseService):
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
-                    }
-                    for player in bench_players_full
-                ]
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
 
                 # Подготавливаем объект сквада под SquadReadSchema
                 # (schema ждет поля username, main_players, bench_players)
@@ -402,22 +489,17 @@ class SquadService(BaseService):
                 bench_players_result = await session.execute(bench_players_stmt)
                 bench_players = bench_players_result.unique().scalars().all()
 
-                main_players_data = [
-                    {
-                        "id": player.id,
-                        "name": player.name,
-                        "position": player.position,
-                        "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
-                        "team_logo": player.team.logo if player.team else None,
-                        "market_value": player.market_value,
-                        "photo": player.photo,
-                    }
-                    for player in main_players
-                ]
+                # Определяем текущий/последний тур
+                current_or_last_tour_id = await cls._get_current_or_last_tour_id(session, squad.league_id)
 
-                bench_players_data = [
-                    {
+                main_players_data = []
+                for player in main_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    main_players_data.append({
                         "id": player.id,
                         "name": player.name,
                         "position": player.position,
@@ -426,9 +508,29 @@ class SquadService(BaseService):
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
-                    }
-                    for player in bench_players
-                ]
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
+
+                bench_players_data = []
+                for player in bench_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "position": player.position,
+                        "team_id": player.team_id,
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
 
                 squad.username = squad.user.username if squad.user else ""
                 squad.main_players = main_players_data
@@ -473,22 +575,17 @@ class SquadService(BaseService):
                 bench_players_result = await session.execute(bench_players_stmt)
                 bench_players = bench_players_result.unique().scalars().all()
 
-                main_players_data = [
-                    {
-                        "id": player.id,
-                        "name": player.name,
-                        "position": player.position,
-                        "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
-                        "team_logo": player.team.logo if player.team else None,
-                        "market_value": player.market_value,
-                        "photo": player.photo,
-                    }
-                    for player in main_players
-                ]
+                # Определяем текущий/последний тур
+                current_or_last_tour_id = await cls._get_current_or_last_tour_id(session, squad.league_id)
 
-                bench_players_data = [
-                    {
+                main_players_data = []
+                for player in main_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    main_players_data.append({
                         "id": player.id,
                         "name": player.name,
                         "position": player.position,
@@ -497,9 +594,29 @@ class SquadService(BaseService):
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
-                    }
-                    for player in bench_players
-                ]
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
+
+                bench_players_data = []
+                for player in bench_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = 0
+                    if current_or_last_tour_id:
+                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
+                    
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "position": player.position,
+                        "team_id": player.team_id,
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
 
                 squad.username = squad.user.username if squad.user else ""
                 squad.main_players = main_players_data

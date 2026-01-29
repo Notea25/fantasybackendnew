@@ -12,6 +12,8 @@ class PlayerInSquadSchema(BaseModel):
     team_logo: Optional[str]
     market_value: int
     photo: Optional[str]
+    total_points: int = 0  # Сумма очков за все туры
+    tour_points: int = 0   # Очки за последний/текущий тур
 
     model_config = ConfigDict(from_attributes=True)
 
