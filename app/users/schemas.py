@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class UserSchema(BaseModel):
     id: int
     username: str
+    tg_username: Optional[str] = None
     photo_url: Optional[str]
     birth_date: Optional[date] = None
     registration_date: Optional[datetime] = None
@@ -17,11 +18,13 @@ class UserSchema(BaseModel):
 
 class UserCreateSchema(BaseModel):
     username: str
+    tg_username: Optional[str] = None
     photo_url: Optional[str] = None
     birth_date: Optional[date] = None
 
 
 class UserUpdateSchema(BaseModel):
     username: Optional[str] = None
+    tg_username: Optional[str] = None
     photo_url: Optional[str] = None
     birth_date: Optional[date] = None

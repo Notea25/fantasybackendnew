@@ -10,6 +10,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
+    tg_username: Mapped[Optional[str]] = mapped_column(nullable=True)
     photo_url: Mapped[Optional[str]] = mapped_column(nullable=True)
     birth_date: Mapped[Optional[date]] = mapped_column(nullable=True)
     registration_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
