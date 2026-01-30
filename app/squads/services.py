@@ -1011,6 +1011,9 @@ class SquadService(BaseService):
 
             await session.commit()
             await session.refresh(squad)
+            
+            # Сохраняем snapshot текущего состава для текущего тура
+            await cls._save_current_squad(squad_id)
 
             # Возвращаем squad и информацию о трансферах
             return {
@@ -1039,6 +1042,185 @@ class SquadService(BaseService):
                 "remaining_replacements": squad.replacements,
                 "max_replacements": 3
             }
+
+    @classmethod
+    async def finalize_tour_for_all_squads(cls, tour_id: int, next_tour_id: int):
+        """Финализировать тур и создать snapshots для следующего тура.
+        
+        Этот метод должен вызываться при завершении тура (после дедлайна).
+        
+        Для каждого сквада:
+        1. Финализирует SquadTour завершенного тура (is_current = False)
+        2. Создает новый SquadTour для следующего тура
+        3. Обновляет Squad.current_tour_id
+        
+        Args:
+            tour_id: ID завершенного тура
+            next_tour_id: ID следующего тура
+        
+        Returns:
+            dict с информацией о количестве обработанных сквадов
+        """
+        async with async_session_maker() as session:
+            # Находим все сквады, у которых current_tour_id == tour_id
+            stmt = (
+                select(cls.model)
+                .where(cls.model.current_tour_id == tour_id)
+                .options(
+                    joinedload(cls.model.current_main_players),
+                    joinedload(cls.model.current_bench_players),
+                )
+            )
+            result = await session.execute(stmt)
+            squads = result.unique().scalars().all()
+            
+            finalized_count = 0
+            created_count = 0
+            
+            for squad in squads:
+                # 1. Финализируем текущий SquadTour
+                current_squad_tour_stmt = (
+                    select(SquadTour)
+                    .where(
+                        SquadTour.squad_id == squad.id,
+                        SquadTour.tour_id == tour_id,
+                    )
+                )
+                current_squad_tour_result = await session.execute(current_squad_tour_stmt)
+                current_squad_tour = current_squad_tour_result.scalars().first()
+                
+                if current_squad_tour:
+                    current_squad_tour.is_current = False
+                    # Пересчитываем финальные очки
+                    current_squad_tour.points = await squad.calculate_points(session)
+                    finalized_count += 1
+                    logger.info(f"Finalized SquadTour for squad {squad.id}, tour {tour_id}")
+                
+                # 2. Создаем новый SquadTour для следующего тура
+                # Проверяем, не существует ли уже
+                next_squad_tour_check_stmt = (
+                    select(SquadTour)
+                    .where(
+                        SquadTour.squad_id == squad.id,
+                        SquadTour.tour_id == next_tour_id,
+                    )
+                )
+                next_squad_tour_check = await session.execute(next_squad_tour_check_stmt)
+                existing_next_tour = next_squad_tour_check.scalars().first()
+                
+                if not existing_next_tour:
+                    # Копируем текущий состав
+                    new_squad_tour = SquadTour(
+                        squad_id=squad.id,
+                        tour_id=next_tour_id,
+                        is_current=True,
+                        captain_id=squad.captain_id,
+                        vice_captain_id=squad.vice_captain_id,
+                        main_players=list(squad.current_main_players),
+                        bench_players=list(squad.current_bench_players),
+                        points=0,
+                        used_boost=None,
+                    )
+                    session.add(new_squad_tour)
+                    created_count += 1
+                    logger.info(f"Created SquadTour for squad {squad.id}, tour {next_tour_id}")
+                
+                # 3. Обновляем current_tour_id
+                squad.current_tour_id = next_tour_id
+                
+                # Сбрасываем замены на новый тур (например, +1 бесплатная замена)
+                # TODO: Добавить логику пополнения замен если нужно
+                # squad.replacements = min(squad.replacements + 1, 3)
+            
+            await session.commit()
+            
+            logger.info(
+                f"Tour transition completed: tour {tour_id} -> {next_tour_id}. "
+                f"Finalized: {finalized_count}, Created: {created_count}"
+            )
+            
+            return {
+                "finalized_tours": finalized_count,
+                "created_tours": created_count,
+                "total_squads_processed": len(squads),
+            }
+
+    @classmethod
+    async def get_squad_tour_history_with_players(cls, squad_id: int) -> list[dict]:
+        """Получить полную историю туров с составами игроков для каждого тура.
+        
+        Возвращает список snapshots, где каждый snapshot содержит:
+        - Информацию о туре
+        - Очки тура
+        - Капитана и вице-капитана на тот момент
+        - Список игроков основы и скамейки с их очками за этот тур
+        """
+        async with async_session_maker() as session:
+            # Загружаем все SquadTour для данного сквада
+            stmt = (
+                select(SquadTour)
+                .where(SquadTour.squad_id == squad_id)
+                .options(
+                    joinedload(SquadTour.tour),
+                    joinedload(SquadTour.main_players).joinedload(Player.team),
+                    joinedload(SquadTour.bench_players).joinedload(Player.team),
+                )
+                .order_by(SquadTour.tour_id.asc())
+            )
+            result = await session.execute(stmt)
+            squad_tours = result.unique().scalars().all()
+            
+            history = []
+            for squad_tour in squad_tours:
+                # Получаем очки каждого игрока за данный тур
+                main_players_data = []
+                for player in squad_tour.main_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = await cls._get_player_tour_points(session, player.id, squad_tour.tour_id)
+                    
+                    main_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "position": player.position,
+                        "team_id": player.team_id,
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
+                
+                bench_players_data = []
+                for player in squad_tour.bench_players:
+                    total_points = await cls._get_player_total_points(session, player.id)
+                    tour_points = await cls._get_player_tour_points(session, player.id, squad_tour.tour_id)
+                    
+                    bench_players_data.append({
+                        "id": player.id,
+                        "name": player.name,
+                        "position": player.position,
+                        "team_id": player.team_id,
+                        "team_name": player.team.name if player.team else "",
+                        "team_logo": player.team.logo if player.team else None,
+                        "market_value": player.market_value,
+                        "photo": player.photo,
+                        "total_points": total_points,
+                        "tour_points": tour_points,
+                    })
+                
+                history.append({
+                    "tour_id": squad_tour.tour_id,
+                    "tour_number": squad_tour.tour.number,
+                    "points": squad_tour.points,
+                    "used_boost": squad_tour.used_boost,
+                    "captain_id": squad_tour.captain_id,
+                    "vice_captain_id": squad_tour.vice_captain_id,
+                    "main_players": main_players_data,
+                    "bench_players": bench_players_data,
+                })
+            
+            return history
 
     @classmethod
     async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> list[dict]:

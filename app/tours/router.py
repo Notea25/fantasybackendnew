@@ -8,6 +8,8 @@ from app.tours.services import TourService
 from app.users.dependencies import get_current_user
 from app.users.models import User
 from app.utils.exceptions import ResourceNotFoundException
+from app.squads.services import SquadService
+from app.scheduler.config import get_scheduled_jobs
 
 router = APIRouter(prefix="/tours", tags=["Tours"])
 
@@ -82,3 +84,60 @@ async def get_previous_current_next_tour(league_id: int) -> dict[str, Optional[T
         "current_tour": tour_to_read_with_type(current_tour, "current"),
         "next_tour": tour_to_read_with_type(next_tour, "next"),
     }
+
+@router.post("/finalize_tour/{tour_id}")
+async def finalize_tour(
+    tour_id: int,
+    next_tour_id: int,
+    user: User = Depends(get_current_user)
+) -> dict:
+    """Финализировать тур и создать snapshots для следующего тура.
+    
+    Этот эндпоинт должен вызываться администратором после завершения тура.
+    Либо может быть автоматизирован через cron/scheduler.
+    
+    TODO: Добавить проверку прав доступа (только для админов)
+    
+    Args:
+        tour_id: ID завершенного тура
+        next_tour_id: ID следующего тура
+    
+    Returns:
+        Информация о количестве обработанных сквадов
+    """
+    # TODO: Добавить проверку: if not user.is_admin: raise HTTPException(403)
+    
+    try:
+        result = await SquadService.finalize_tour_for_all_squads(
+            tour_id=tour_id,
+            next_tour_id=next_tour_id
+        )
+        return {
+            "status": "success",
+            "message": f"Tour {tour_id} finalized, created snapshots for tour {next_tour_id}",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to finalize tour: {str(e)}"
+        )
+
+@router.get("/scheduler/status")
+async def get_scheduler_status() -> dict:
+    """Получить статус scheduler и список запланированных задач.
+    
+    Полезно для мониторинга и отладки.
+    """
+    try:
+        jobs = get_scheduled_jobs()
+        return {
+            "status": "running",
+            "scheduled_jobs": jobs,
+            "total_jobs": len(jobs)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }

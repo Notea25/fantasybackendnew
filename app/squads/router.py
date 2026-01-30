@@ -156,10 +156,18 @@ async def rename_squad(squad_id: int, new_name: str, user: User = Depends(get_cu
 
 @router.get("/{squad_id}/history", response_model=list[SquadTourHistorySchema])
 async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)) -> list[SquadTourHistorySchema]:
+    """Получить полную историю туров с составами игроков.
+    
+    Каждый тур отображает snapshot состава, который был зафиксирован
+    на момент дедлайна этого тура.
+    """
     squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
-    return squad.tour_history
+    
+    # Используем новый метод для получения полной истории
+    history = await SquadService.get_squad_tour_history_with_players(squad_id)
+    return history
 
 @router.get("/leaderboard/{tour_id}", response_model=list[PublicLeaderboardEntrySchema])
 async def get_leaderboard(tour_id: int) -> list[PublicLeaderboardEntrySchema]:

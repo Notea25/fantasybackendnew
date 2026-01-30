@@ -101,6 +101,10 @@ class SquadTourHistorySchema(BaseModel):
     tour_number: int
     points: int
     used_boost: Optional[str]
+    captain_id: Optional[int]
+    vice_captain_id: Optional[int]
+    main_players: list[PlayerInSquadSchema]
+    bench_players: list[PlayerInSquadSchema]
 
     model_config = ConfigDict(from_attributes=True)
 
