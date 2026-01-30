@@ -20,23 +20,31 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema - Change users.id from INTEGER to BIGINT."""
+    from sqlalchemy import inspect
+    
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    
     # Change users.id to BIGINT
-    op.alter_column('users', 'id',
-                    existing_type=sa.Integer(),
-                    type_=sa.BigInteger(),
-                    existing_nullable=False)
+    if 'users' in inspector.get_table_names():
+        op.alter_column('users', 'id',
+                        existing_type=sa.Integer(),
+                        type_=sa.BigInteger(),
+                        existing_nullable=False)
     
     # Change squads.user_id to BIGINT (foreign key to users.id)
-    op.alter_column('squads', 'user_id',
-                    existing_type=sa.Integer(),
-                    type_=sa.BigInteger(),
-                    existing_nullable=False)
+    if 'squads' in inspector.get_table_names():
+        op.alter_column('squads', 'user_id',
+                        existing_type=sa.Integer(),
+                        type_=sa.BigInteger(),
+                        existing_nullable=False)
     
     # Change custom_leagues.creator_id to BIGINT (foreign key to users.id)
-    op.alter_column('custom_leagues', 'creator_id',
-                    existing_type=sa.Integer(),
-                    type_=sa.BigInteger(),
-                    existing_nullable=True)
+    if 'custom_leagues' in inspector.get_table_names():
+        op.alter_column('custom_leagues', 'creator_id',
+                        existing_type=sa.Integer(),
+                        type_=sa.BigInteger(),
+                        existing_nullable=True)
 
 
 def downgrade() -> None:
