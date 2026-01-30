@@ -40,7 +40,6 @@ from app.teams.router import router as teams_router
 from app.tours.router import router as tours_router
 from app.users.router import router as users_router
 from app.utils.router import router as utils_router
-from app.scheduler.config import start_scheduler, shutdown_scheduler, get_scheduled_jobs
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -49,21 +48,6 @@ logging.basicConfig(
 )
 
 app = FastAPI()
-
-# Lifecycle events для scheduler
-@app.on_event("startup")
-async def startup_event():
-    """Запуск scheduler при старте приложения."""
-    logging.info("Starting application and scheduler...")
-    start_scheduler()
-    logging.info("Application started")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Остановка scheduler при завершении приложения."""
-    logging.info("Shutting down application and scheduler...")
-    shutdown_scheduler()
-    logging.info("Application shutdown complete")
 
 # if settings.MODE == "DEVFRONT":
 #     app.add_middleware(

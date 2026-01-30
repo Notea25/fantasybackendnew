@@ -9,7 +9,6 @@ from app.users.dependencies import get_current_user
 from app.users.models import User
 from app.utils.exceptions import ResourceNotFoundException
 from app.squads.services import SquadService
-from app.scheduler.config import get_scheduled_jobs
 
 router = APIRouter(prefix="/tours", tags=["Tours"])
 
@@ -122,22 +121,3 @@ async def finalize_tour(
             status_code=500,
             detail=f"Failed to finalize tour: {str(e)}"
         )
-
-@router.get("/scheduler/status")
-async def get_scheduler_status() -> dict:
-    """Получить статус scheduler и список запланированных задач.
-    
-    Полезно для мониторинга и отладки.
-    """
-    try:
-        jobs = get_scheduled_jobs()
-        return {
-            "status": "running",
-            "scheduled_jobs": jobs,
-            "total_jobs": len(jobs)
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
