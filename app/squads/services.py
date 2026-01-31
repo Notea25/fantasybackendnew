@@ -1039,27 +1039,83 @@ class SquadService(BaseService):
             new_main_players: list[int] = [],
             new_bench_players: list[int] = []
     ):
+        """Replace players in SquadTour for next available tour.
+        
+        New architecture: All state is in SquadTour, not Squad.
+        Transfers are always for the next open tour (deadline not passed).
+        Penalties applied directly to the tour being edited.
+        """
         async with async_session_maker() as session:
-            stmt = select(Player).where(Player.id.in_(new_main_players + new_bench_players))
-            result = await session.execute(stmt)
-            players = result.scalars().all()
-
-            if len(players) != len(new_main_players) + len(new_bench_players):
-                raise HTTPException(
-                    status_code=404,
-                    detail="One or more players not found"
-                )
-
-            stmt = select(Squad).where(Squad.id == squad_id)
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-
+            # Get Squad metadata
+            squad = await session.execute(
+                select(Squad).where(Squad.id == squad_id)
+            )
+            squad = squad.scalars().first()
             if not squad:
                 raise HTTPException(
                     status_code=404,
                     detail=f"Squad with id {squad_id} not found"
                 )
 
+            # Find next open tour (deadline > now)
+            previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(squad.league_id)
+            target_tour = None
+            
+            # Determine which tour to edit
+            now = datetime.utcnow()
+            if current_tour and current_tour.deadline > now:
+                target_tour = current_tour
+            elif next_tour and next_tour.deadline > now:
+                target_tour = next_tour
+            
+            if not target_tour:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No open tour available for transfers"
+                )
+            
+            logger.info(f"Squad {squad_id} making transfers for tour {target_tour.id}")
+            
+            # Get or create SquadTour for target tour
+            squad_tour = await session.execute(
+                select(SquadTour)
+                .where(SquadTour.squad_id == squad_id)
+                .where(SquadTour.tour_id == target_tour.id)
+                .options(selectinload(SquadTour.main_players))
+                .options(selectinload(SquadTour.bench_players))
+            )
+            squad_tour = squad_tour.scalars().first()
+            
+            if not squad_tour:
+                # Create new SquadTour if doesn't exist
+                squad_tour = SquadTour(
+                    squad_id=squad_id,
+                    tour_id=target_tour.id,
+                    budget=100_000,
+                    replacements=2,
+                    is_finalized=False
+                )
+                session.add(squad_tour)
+                await session.flush()
+            
+            if squad_tour.is_finalized:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot edit finalized tour"
+                )
+            
+            # Validate players
+            players = await session.execute(
+                select(Player).where(Player.id.in_(new_main_players + new_bench_players))
+            )
+            players = players.scalars().all()
+            
+            if len(players) != len(new_main_players) + len(new_bench_players):
+                raise HTTPException(
+                    status_code=404,
+                    detail="One or more players not found"
+                )
+            
             if captain_id and captain_id not in new_main_players + new_bench_players:
                 raise HTTPException(
                     status_code=400,
@@ -1070,114 +1126,92 @@ class SquadService(BaseService):
                     status_code=400,
                     detail="Vice-captain must be in main or bench players"
                 )
-
-            # Validate main squad positions
+            
+            # Validate positions and formation
             player_by_id = {p.id: p for p in players}
             main_players_obj = [player_by_id[pid] for pid in new_main_players]
-            main_position_counts = {}
-            for player in main_players_obj:
-                position = player.position
-                main_position_counts[position] = main_position_counts.get(position, 0) + 1
+            bench_players_obj = [player_by_id[pid] for pid in new_bench_players]
             
-            if main_position_counts.get("Goalkeeper", 0) < 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Main squad must have at least 1 Goalkeeper"
-                )
-            if main_position_counts.get("Defender", 0) < 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Main squad must have at least 1 Defender"
-                )
-            if main_position_counts.get("Midfielder", 0) < 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Main squad must have at least 1 Midfielder"
-                )
-            if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Main squad must have at least 1 Attacker or Forward"
-                )
+            # Use SquadTour's validate_players method
+            try:
+                squad_tour.validate_players(main_players_obj, bench_players_obj)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
             
+            # Calculate new budget
             total_cost = sum(p.market_value for p in players)
             new_budget = 100_000 - total_cost
-
-            # При заменах больше не валидируем бюджет, разрешаем уходить в минус.
-
-            squad.captain_id = captain_id
-            squad.vice_captain_id = vice_captain_id
-            squad.budget = new_budget
-
-            # Подсчитываем количество реальных трансферов (замен)
-            current_main_ids = {p.id for p in squad.current_main_players}
-            current_bench_ids = {p.id for p in squad.current_bench_players}
+            
+            # Count transfers
+            current_main_ids = {p.id for p in squad_tour.main_players}
+            current_bench_ids = {p.id for p in squad_tour.bench_players}
             new_main_ids_set = set(new_main_players)
             new_bench_ids_set = set(new_bench_players)
             
-            # Игроки, которых убрали из состава
             removed_players = (current_main_ids | current_bench_ids) - (new_main_ids_set | new_bench_ids_set)
             transfer_count = len(removed_players)
             
-            # Логика платных/бесплатных трансферов
+            # Calculate penalties
             free_transfers_used = 0
             paid_transfers = 0
             penalty = 0
             
             logger.info(
-                f"Squad {squad_id} transfer calculation: "
-                f"transfer_count={transfer_count}, "
-                f"available_replacements={squad.replacements}, "
-                f"current_points={squad.points}"
+                f"Squad {squad_id} tour {target_tour.id} transfers: "
+                f"count={transfer_count}, available={squad_tour.replacements}"
             )
             
             if transfer_count > 0:
-                if squad.replacements >= transfer_count:
-                    # Все трансферы бесплатные
+                if squad_tour.replacements >= transfer_count:
                     free_transfers_used = transfer_count
-                    squad.replacements -= transfer_count
+                    squad_tour.replacements -= transfer_count
                 else:
-                    # Часть бесплатных, часть платных
-                    free_transfers_used = squad.replacements
-                    paid_transfers = transfer_count - squad.replacements
-                    penalty = paid_transfers * 4  # 4 очка за каждый платный трансфер
+                    free_transfers_used = squad_tour.replacements
+                    paid_transfers = transfer_count - squad_tour.replacements
+                    penalty = paid_transfers * 4
                     
-                    squad.replacements = 0
-                    # Накапливаем штрафы для следующего тура (трансферы делаются для следующего тура)
-                    squad.next_tour_penalty_points += penalty
-
-            await session.execute(
-                delete(squad_players_association).where(
-                    squad_players_association.c.squad_id == squad_id
-                )
-            )
-            await session.execute(
-                delete(squad_bench_players_association).where(
-                    squad_bench_players_association.c.squad_id == squad_id
-                )
-            )
-
-            for player_id in new_main_players:
-                stmt = squad_players_association.insert().values(
-                    squad_id=squad_id, player_id=player_id
-                )
-                await session.execute(stmt)
-
-            for player_id in new_bench_players:
-                stmt = squad_bench_players_association.insert().values(
-                    squad_id=squad_id, player_id=player_id
-                )
-                await session.execute(stmt)
-
-            await session.commit()
-            await session.refresh(squad)
+                    squad_tour.replacements = 0
+                    # Apply penalty directly to this tour
+                    squad_tour.penalty_points += penalty
             
-            # Сохраняем snapshot текущего состава для текущего тура
-            await cls._save_current_squad(squad_id)
-
-            # Возвращаем squad и информацию о трансферах
+            # Update SquadTour
+            squad_tour.captain_id = captain_id
+            squad_tour.vice_captain_id = vice_captain_id
+            squad_tour.budget = new_budget
+            
+            # Update player associations
+            from app.squads.models import squad_tour_players, squad_tour_bench_players
+            
+            await session.execute(
+                delete(squad_tour_players).where(
+                    squad_tour_players.c.squad_tour_id == squad_tour.id
+                )
+            )
+            await session.execute(
+                delete(squad_tour_bench_players).where(
+                    squad_tour_bench_players.c.squad_tour_id == squad_tour.id
+                )
+            )
+            
+            for player_id in new_main_players:
+                await session.execute(
+                    squad_tour_players.insert().values(
+                        squad_tour_id=squad_tour.id, player_id=player_id
+                    )
+                )
+            
+            for player_id in new_bench_players:
+                await session.execute(
+                    squad_tour_bench_players.insert().values(
+                        squad_tour_id=squad_tour.id, player_id=player_id
+                    )
+                )
+            
+            await session.commit()
+            await session.refresh(squad_tour)
+            
             return {
-                "squad": squad,
+                "squad_tour": squad_tour,
                 "transfers_applied": transfer_count,
                 "free_transfers_used": free_transfers_used,
                 "paid_transfers": paid_transfers,
@@ -1204,114 +1238,110 @@ class SquadService(BaseService):
             }
 
     @classmethod
-    async def finalize_tour_for_all_squads(cls, tour_id: int, next_tour_id: int):
-        """Финализировать тур и создать snapshots для следующего тура.
+    async def finalize_tour_for_all_squads(cls, tour_id: int, next_tour_id: Optional[int] = None):
+        """Finalize completed tour and create SquadTours for next tour.
         
-        Этот метод должен вызываться при завершении тура (после дедлайна).
-        
-        Для каждого сквада:
-        1. Финализирует SquadTour завершенного тура (is_current = False)
-        2. Создает новый SquadTour для следующего тура
-        3. Обновляет Squad.current_tour_id
+        New architecture:
+        1. Mark SquadTour as finalized (is_finalized=True)
+        2. Calculate and save points for finalized tour
+        3. Create new SquadTour for next tour (copy state from finalized tour)
         
         Args:
-            tour_id: ID завершенного тура
-            next_tour_id: ID следующего тура
+            tour_id: ID of completed tour
+            next_tour_id: ID of next tour (optional)
         
         Returns:
-            dict с информацией о количестве обработанных сквадов
+            dict with counts of processed squads
         """
         async with async_session_maker() as session:
-            # Находим все сквады, у которых current_tour_id == tour_id
+            # Get all SquadTours for this tour
             stmt = (
-                select(cls.model)
-                .where(cls.model.current_tour_id == tour_id)
+                select(SquadTour)
+                .where(SquadTour.tour_id == tour_id)
+                .where(SquadTour.is_finalized == False)
                 .options(
-                    joinedload(cls.model.current_main_players),
-                    joinedload(cls.model.current_bench_players),
+                    selectinload(SquadTour.main_players),
+                    selectinload(SquadTour.bench_players)
                 )
             )
             result = await session.execute(stmt)
-            squads = result.unique().scalars().all()
+            squad_tours = result.scalars().all()
             
             finalized_count = 0
             created_count = 0
             
-            for squad in squads:
-                # 1. Финализируем текущий SquadTour
-                current_squad_tour_stmt = (
-                    select(SquadTour)
-                    .where(
-                        SquadTour.squad_id == squad.id,
-                        SquadTour.tour_id == tour_id,
-                    )
-                )
-                current_squad_tour_result = await session.execute(current_squad_tour_stmt)
-                current_squad_tour = current_squad_tour_result.scalars().first()
-                
-                if current_squad_tour:
-                    current_squad_tour.is_current = False
-                    # Пересчитываем финальные очки
-                    current_squad_tour.points = await squad.calculate_points(session)
-                    finalized_count += 1
-                    logger.info(f"Finalized SquadTour for squad {squad.id}, tour {tour_id}")
-                
-                # 2. Создаем новый SquadTour для следующего тура
-                # Проверяем, не существует ли уже
-                next_squad_tour_check_stmt = (
-                    select(SquadTour)
-                    .where(
-                        SquadTour.squad_id == squad.id,
-                        SquadTour.tour_id == next_tour_id,
-                    )
-                )
-                next_squad_tour_check = await session.execute(next_squad_tour_check_stmt)
-                existing_next_tour = next_squad_tour_check.scalars().first()
-                
-                if not existing_next_tour:
-                    # Копируем текущий состав
-                    new_squad_tour = SquadTour(
-                        squad_id=squad.id,
-                        tour_id=next_tour_id,
-                        is_current=True,
-                        captain_id=squad.captain_id,
-                        vice_captain_id=squad.vice_captain_id,
-                        main_players=list(squad.current_main_players),
-                        bench_players=list(squad.current_bench_players),
-                        points=0,
-                        penalty_points=0,
-                        used_boost=None,
-                    )
-                    session.add(new_squad_tour)
-                    created_count += 1
-                    logger.info(f"Created SquadTour for squad {squad.id}, tour {next_tour_id}")
-                
-                # 3. Обновляем current_tour_id и применяем штрафы для следующего тура
-                squad.current_tour_id = next_tour_id
-                
-                # Применяем штрафы за трансферы, сделанные для этого тура
-                squad.penalty_points = squad.next_tour_penalty_points
-                squad.next_tour_penalty_points = 0
+            for squad_tour in squad_tours:
+                # 1. Calculate and save final points
+                squad_tour.points = await squad_tour.calculate_points(session)
+                squad_tour.is_finalized = True
+                finalized_count += 1
                 
                 logger.info(
-                    f"Squad {squad.id} tour transition: applied penalty={squad.penalty_points} for tour {next_tour_id}"
+                    f"Finalized SquadTour {squad_tour.id} for squad {squad_tour.squad_id}, "
+                    f"tour {tour_id}: points={squad_tour.points}, penalties={squad_tour.penalty_points}"
                 )
                 
-                # Сбрасываем замены на новый тур (например, +1 бесплатная замена)
-                # TODO: Добавить логику пополнения замен если нужно
-                # squad.replacements = min(squad.replacements + 1, 2)
+                # 2. Create SquadTour for next tour if specified
+                if next_tour_id:
+                    # Check if next tour already exists
+                    existing_next = await session.execute(
+                        select(SquadTour)
+                        .where(SquadTour.squad_id == squad_tour.squad_id)
+                        .where(SquadTour.tour_id == next_tour_id)
+                    )
+                    if not existing_next.scalars().first():
+                        # Copy state from finalized tour
+                        new_squad_tour = SquadTour(
+                            squad_id=squad_tour.squad_id,
+                            tour_id=next_tour_id,
+                            captain_id=squad_tour.captain_id,
+                            vice_captain_id=squad_tour.vice_captain_id,
+                            budget=squad_tour.budget,
+                            replacements=2,  # Reset to 2 free transfers
+                            is_finalized=False,
+                            points=0,
+                            penalty_points=0,
+                            used_boost=None,
+                            created_at=datetime.utcnow()
+                        )
+                        session.add(new_squad_tour)
+                        await session.flush()
+                        
+                        # Copy player associations
+                        from app.squads.models import squad_tour_players, squad_tour_bench_players
+                        
+                        for player in squad_tour.main_players:
+                            await session.execute(
+                                squad_tour_players.insert().values(
+                                    squad_tour_id=new_squad_tour.id,
+                                    player_id=player.id
+                                )
+                            )
+                        
+                        for player in squad_tour.bench_players:
+                            await session.execute(
+                                squad_tour_bench_players.insert().values(
+                                    squad_tour_id=new_squad_tour.id,
+                                    player_id=player.id
+                                )
+                            )
+                        
+                        created_count += 1
+                        logger.info(
+                            f"Created SquadTour for squad {squad_tour.squad_id}, tour {next_tour_id}"
+                        )
             
             await session.commit()
             
             logger.info(
-                f"Tour transition completed: tour {tour_id} -> {next_tour_id}. "
-                f"Finalized: {finalized_count}, Created: {created_count}"
+                f"Tour finalization completed: tour {tour_id}. "
+                f"Finalized: {finalized_count}, Created for next tour: {created_count}"
             )
             
             return {
                 "finalized_tours": finalized_count,
                 "created_tours": created_count,
-                "total_squads_processed": len(squads),
+                "total_squads_processed": len(squad_tours),
             }
 
     @classmethod

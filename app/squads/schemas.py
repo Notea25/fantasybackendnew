@@ -19,21 +19,13 @@ class PlayerInSquadSchema(BaseModel):
 
 
 class SquadReadSchema(BaseModel):
+    """Squad metadata only - state moved to SquadTour"""
     id: int
     name: str
     user_id: int
     username: str
     league_id: int
     fav_team_id: int
-    budget: int
-    replacements: int
-    points: int
-    penalty_points: int
-    next_tour_penalty_points: int
-    captain_id: Optional[int]
-    vice_captain_id: Optional[int]
-    main_players: list[PlayerInSquadSchema]
-    bench_players: list[PlayerInSquadSchema]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -61,13 +53,12 @@ class SquadReplacePlayersResponseSchema(BaseModel):
     status: str
     message: str
     remaining_replacements: int
-    squad: SquadReadSchema
+    squad_tour: SquadTourHistorySchema  # Now returns SquadTour instead of Squad
     # Информация о трансферах
     transfers_applied: Optional[int] = None
     free_transfers_used: Optional[int] = None
     paid_transfers: Optional[int] = None
     penalty: Optional[int] = None
-    new_total_points: Optional[int] = None
 
 
 class SquadUpdateResponseSchema(BaseModel):
@@ -80,6 +71,7 @@ class ReplacementInfoSchema(BaseModel):
     available_replacements: int
     budget: int
     current_players_cost: int
+    tour_id: int  # Which tour this info is for
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,15 +82,12 @@ class SquadRenameSchema(BaseModel):
     user_id: int
     league_id: int
     fav_team_id: int
-    budget: int
-    replacements: int
-    captain_id: Optional[int]
-    vice_captain_id: Optional[int]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SquadTourHistorySchema(BaseModel):
+    """Complete snapshot of squad state for a tour"""
     tour_id: int
     tour_number: int
     points: int
@@ -106,6 +95,9 @@ class SquadTourHistorySchema(BaseModel):
     used_boost: Optional[str]
     captain_id: Optional[int]
     vice_captain_id: Optional[int]
+    budget: int
+    replacements: int
+    is_finalized: bool
     main_players: list[PlayerInSquadSchema]
     bench_players: list[PlayerInSquadSchema]
 
