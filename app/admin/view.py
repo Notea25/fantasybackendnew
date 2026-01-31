@@ -243,22 +243,14 @@ class SquadAdmin(ModelView, model=Squad):
         Squad.name,
         Squad.user_id,
         Squad.fav_team_id,
+        Squad.league_id,
         Squad.budget,
         Squad.replacements,
-        Squad.league_id,
         Squad.points,
+        Squad.penalty_points,
         Squad.current_tour_id,
-    ]
-
-    form_columns = [
-        Squad.name,
-        Squad.user_id,
-        Squad.fav_team_id,
-        Squad.budget,
-        Squad.replacements,
-        Squad.league_id,
-        Squad.points,
-        Squad.current_tour_id,
+        Squad.captain_id,
+        Squad.vice_captain_id,
     ]
 
     column_searchable_list = ["name"]
@@ -266,7 +258,10 @@ class SquadAdmin(ModelView, model=Squad):
         "user_id": "User",
         "fav_team_id": "Favorite Team",
         "league_id": "League",
+        "penalty_points": "Penalty Points",
         "current_tour_id": "Current Tour",
+        "captain_id": "Captain",
+        "vice_captain_id": "Vice Captain",
     }
     column_details_exclude_list = [
         "current_main_players",
@@ -330,11 +325,12 @@ class SquadTourAdmin(ModelView, model=SquadTour):
         SquadTour.is_current,
         SquadTour.used_boost,
         SquadTour.points,
-        SquadTour.points,
+        SquadTour.penalty_points,
     ]
     column_labels = {
         "squad_id": "Squad",
         "tour_id": "Tour",
+        "penalty_points": "Penalty Points",
     }
 
     def format(self, attr, value):
