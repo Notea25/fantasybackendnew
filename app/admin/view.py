@@ -229,19 +229,14 @@ class PlayerAdmin(ModelView, model=Player):
 
 
 class SquadAdmin(ModelView, model=Squad):
+    # NEW ARCHITECTURE: Squad contains only metadata
+    # All state (budget, replacements, players, captain, points) is in SquadTour
     column_list = [
         Squad.id,
         Squad.name,
         Squad.user_id,
         Squad.fav_team_id,
         Squad.league_id,
-        Squad.budget,
-        Squad.replacements,
-        Squad.points,
-        Squad.penalty_points,
-        Squad.current_tour_id,
-        Squad.captain_id,
-        Squad.vice_captain_id,
     ]
 
     column_searchable_list = ["name"]
@@ -249,15 +244,9 @@ class SquadAdmin(ModelView, model=Squad):
         "user_id": "User",
         "fav_team_id": "Favorite Team",
         "league_id": "League",
-        "penalty_points": "Penalty Points",
-        "current_tour_id": "Current Tour",
-        "captain_id": "Captain",
-        "vice_captain_id": "Vice Captain",
     }
     column_details_exclude_list = [
-        "current_main_players",
-        "current_bench_players",
-        "tour_history",
+        "tour_snapshots",
         "used_boosts",
     ]
 
@@ -268,8 +257,6 @@ class SquadAdmin(ModelView, model=Squad):
             return value.name
         if attr == "league_id" and value is not None:
             return value.name
-        if attr == "current_tour_id" and value is not None:
-            return f"Tour {value.number}"
         return super().format(attr, value)
 
     async def on_model_delete(self, model, request):
@@ -309,19 +296,27 @@ class SquadAdmin(ModelView, model=Squad):
 
 
 class SquadTourAdmin(ModelView, model=SquadTour):
+    # NEW ARCHITECTURE: SquadTour contains all tour-specific state
     column_list = [
         SquadTour.id,
         SquadTour.squad_id,
         SquadTour.tour_id,
-        SquadTour.is_current,
+        SquadTour.budget,
+        SquadTour.replacements,
+        SquadTour.captain_id,
+        SquadTour.vice_captain_id,
         SquadTour.used_boost,
         SquadTour.points,
         SquadTour.penalty_points,
+        SquadTour.is_finalized,
     ]
     column_labels = {
         "squad_id": "Squad",
         "tour_id": "Tour",
+        "captain_id": "Captain",
+        "vice_captain_id": "Vice Captain",
         "penalty_points": "Penalty Points",
+        "is_finalized": "Finalized",
     }
 
     def format(self, attr, value):
