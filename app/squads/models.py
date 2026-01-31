@@ -66,16 +66,19 @@ class Squad(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     fav_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), nullable=False)
+
     budget: Mapped[int] = mapped_column(default=100_000)
     replacements: Mapped[int] = mapped_column(default=2)
-    league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
     penalty_points: Mapped[int] = mapped_column(default=0)
-    next_tour_penalty_points: Mapped[int] = mapped_column(default=0)
-    current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
+
+    next_tour_penalty_points: Mapped[int] = mapped_column(default=0)
+    # current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
+
 
     fav_team: Mapped["Team"] = relationship(back_populates="squads")
     user: Mapped["User"] = relationship(back_populates="squads")
