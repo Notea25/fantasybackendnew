@@ -156,6 +156,7 @@ class SquadService(BaseService):
                     current_tour_id=active_tour_id,
                     budget=budget,
                     replacements=3,
+                    penalty_points=0,
                     captain_id=captain_id,
                     vice_captain_id=vice_captain_id,
                 )
@@ -196,6 +197,7 @@ class SquadService(BaseService):
                         main_players=main_players,
                         bench_players=bench_players,
                         points=0,
+                        penalty_points=0,
                     )
                     session.add(squad_tour)
                     await session.commit()
@@ -757,6 +759,8 @@ class SquadService(BaseService):
                 squad_tour.points = await squad.calculate_points(session)
                 squad_tour.captain_id = squad.captain_id
                 squad_tour.vice_captain_id = squad.vice_captain_id
+                # Синхронизируем penalty_points с Squad
+                squad_tour.penalty_points = squad.penalty_points
 
                 await session.commit()
                 logger.debug(f"Updated squad tour for squad {squad_id}")
@@ -791,6 +795,7 @@ class SquadService(BaseService):
                     main_players=main_players,
                     bench_players=bench_players,
                     points=0,
+                    penalty_points=0,
                 )
                 session.add(new_squad_tour)
                 await session.flush()  # Чтобы получить ID
@@ -844,17 +849,39 @@ class SquadService(BaseService):
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
+                    func.sum(SquadTour.points).label("total_points"),
+                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
                 )
                 .group_by(SquadTour.squad_id)
             )
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
+            total_penalty_points = {row.squad_id: row.total_penalty_points for row in total_points_result}
 
-            leaderboard: list[dict] = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
+            # Сортируем по чистым очкам (очки - штрафы)
+            leaderboard_with_net_points = []
+            for squad_tour in squad_tours:
                 squad = squad_tour.squad
-
+                total_pts = int(total_points.get(squad.id, 0) or 0)
+                total_pen = int(total_penalty_points.get(squad.id, 0) or 0)
+                net_points = total_pts - total_pen
+                
+                leaderboard_with_net_points.append({
+                    "squad_tour": squad_tour,
+                    "squad": squad,
+                    "total_points": total_pts,
+                    "penalty_points": total_pen,
+                    "net_points": net_points,
+                })
+            
+            # Сортируем по net_points по убыванию
+            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            
+            leaderboard: list[dict] = []
+            for index, entry in enumerate(leaderboard_with_net_points, start=1):
+                squad = entry["squad"]
+                squad_tour = entry["squad_tour"]
+                
                 # Формат, соответствующий ожиданиям фронтенда (см. LeaderboardEntry в tele-mini-sparkle)
                 leaderboard.append({
                     "place": index,
@@ -863,7 +890,8 @@ class SquadService(BaseService):
                     "user_id": squad.user.id,
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
-                    "total_points": int(total_points.get(squad.id, 0) or 0),
+                    "total_points": entry["total_points"],
+                    "penalty_points": entry["penalty_points"],
                 })
 
             return leaderboard
@@ -983,8 +1011,8 @@ class SquadService(BaseService):
                     penalty = paid_transfers * 4  # 4 очка за каждый платный трансфер
                     
                     squad.replacements = 0
-                    # Вычитаем штраф из общего количества очков (может уйти в минус)
-                    squad.points -= penalty
+                    # Накапливаем штрафы в отдельном поле
+                    squad.penalty_points += penalty
 
             await session.execute(
                 delete(squad_players_association).where(
@@ -1119,6 +1147,7 @@ class SquadService(BaseService):
                         main_players=list(squad.current_main_players),
                         bench_players=list(squad.current_bench_players),
                         points=0,
+                        penalty_points=0,
                         used_boost=None,
                     )
                     session.add(new_squad_tour)
@@ -1213,6 +1242,7 @@ class SquadService(BaseService):
                     "tour_id": squad_tour.tour_id,
                     "tour_number": squad_tour.tour.number,
                     "points": squad_tour.points,
+                    "penalty_points": squad_tour.penalty_points,
                     "used_boost": squad_tour.used_boost,
                     "captain_id": squad_tour.captain_id,
                     "vice_captain_id": squad_tour.vice_captain_id,
@@ -1251,6 +1281,7 @@ class SquadService(BaseService):
                 select(
                     SquadTour.squad_id,
                     func.sum(SquadTour.points).label("total_points"),
+                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
                 )
                 .join(SquadTour.squad)
                 .where(Squad.fav_team_id == fav_team_id)
@@ -1258,12 +1289,35 @@ class SquadService(BaseService):
             )
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
+            total_penalty_points = {row.squad_id: row.total_penalty_points for row in total_points_result}
 
-            leaderboard: list[dict] = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
+            # Сортируем по чистым очкам (очки - штрафы)
+            leaderboard_with_net_points = []
+            for squad_tour in squad_tours:
                 squad = squad_tour.squad
                 fav_team = getattr(squad, "fav_team", None)
-
+                total_pts = int(total_points.get(squad.id, 0) or 0)
+                total_pen = int(total_penalty_points.get(squad.id, 0) or 0)
+                net_points = total_pts - total_pen
+                
+                leaderboard_with_net_points.append({
+                    "squad_tour": squad_tour,
+                    "squad": squad,
+                    "fav_team": fav_team,
+                    "total_points": total_pts,
+                    "penalty_points": total_pen,
+                    "net_points": net_points,
+                })
+            
+            # Сортируем по net_points по убыванию
+            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            
+            leaderboard: list[dict] = []
+            for index, entry in enumerate(leaderboard_with_net_points, start=1):
+                squad = entry["squad"]
+                squad_tour = entry["squad_tour"]
+                fav_team = entry["fav_team"]
+                
                 leaderboard.append({
                     "place": index,
                     "squad_id": squad.id,
@@ -1271,7 +1325,8 @@ class SquadService(BaseService):
                     "user_id": squad.user.id,
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
-                    "total_points": int(total_points.get(squad.id, 0) or 0),
+                    "total_points": entry["total_points"],
+                    "penalty_points": entry["penalty_points"],
                     "fav_team_id": squad.fav_team_id,
                     "fav_team_name": fav_team.name if fav_team is not None else None,
                 })

@@ -108,18 +108,39 @@ class ClubLeagueService:
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
+                    func.sum(SquadTour.points).label("total_points"),
+                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
                 )
                 .where(SquadTour.squad_id.in_(squad_ids))
                 .group_by(SquadTour.squad_id)
             )
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
+            total_penalty_points = {row.squad_id: row.total_penalty_points for row in total_points_result}
 
-            leaderboard = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
+            # Сортируем по чистым очкам
+            leaderboard_with_net_points = []
+            for squad_tour in squad_tours:
                 squad = squad_tour.squad
-
+                total_pts = int(total_points.get(squad.id, 0) or 0)
+                total_pen = int(total_penalty_points.get(squad.id, 0) or 0)
+                net_points = total_pts - total_pen
+                
+                leaderboard_with_net_points.append({
+                    "squad_tour": squad_tour,
+                    "squad": squad,
+                    "total_points": total_pts,
+                    "penalty_points": total_pen,
+                    "net_points": net_points,
+                })
+            
+            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            
+            leaderboard = []
+            for index, entry in enumerate(leaderboard_with_net_points, start=1):
+                squad = entry["squad"]
+                squad_tour = entry["squad_tour"]
+                
                 leaderboard.append({
                     "place": index,
                     "squad_id": squad.id,
@@ -127,7 +148,8 @@ class ClubLeagueService:
                     "user_id": squad.user.id,
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
+                    "total_points": entry["total_points"],
+                    "penalty_points": entry["penalty_points"],
                 })
 
             return leaderboard
@@ -208,18 +230,39 @@ class ClubLeagueService:
             total_points_stmt = (
                 select(
                     SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points")
+                    func.sum(SquadTour.points).label("total_points"),
+                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
                 )
                 .where(SquadTour.squad_id.in_(squad_ids))
                 .group_by(SquadTour.squad_id)
             )
             total_points_result = await session.execute(total_points_stmt)
             total_points = {row.squad_id: row.total_points for row in total_points_result}
+            total_penalty_points = {row.squad_id: row.total_penalty_points for row in total_points_result}
 
-            leaderboard = []
-            for index, squad_tour in enumerate(squad_tours, start=1):
+            # Сортируем по чистым очкам
+            leaderboard_with_net_points = []
+            for squad_tour in squad_tours:
                 squad = squad_tour.squad
-
+                total_pts = int(total_points.get(squad.id, 0) or 0)
+                total_pen = int(total_penalty_points.get(squad.id, 0) or 0)
+                net_points = total_pts - total_pen
+                
+                leaderboard_with_net_points.append({
+                    "squad_tour": squad_tour,
+                    "squad": squad,
+                    "total_points": total_pts,
+                    "penalty_points": total_pen,
+                    "net_points": net_points,
+                })
+            
+            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            
+            leaderboard = []
+            for index, entry in enumerate(leaderboard_with_net_points, start=1):
+                squad = entry["squad"]
+                squad_tour = entry["squad_tour"]
+                
                 leaderboard.append({
                     "place": index,
                     "squad_id": squad.id,
@@ -227,7 +270,8 @@ class ClubLeagueService:
                     "user_id": squad.user.id,
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
-                    "total_points": total_points.get(squad.id, 0),
+                    "total_points": entry["total_points"],
+                    "penalty_points": entry["penalty_points"],
                 })
 
             return leaderboard

@@ -71,6 +71,7 @@ class Squad(Base):
     replacements: Mapped[int] = mapped_column(default=2)
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
+    penalty_points: Mapped[int] = mapped_column(default=0)
     current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
@@ -203,6 +204,7 @@ class SquadTour(Base):
     is_current: Mapped[bool] = mapped_column(default=False)
     used_boost: Mapped[Optional[str]] = mapped_column(nullable=True)
     points: Mapped[int] = mapped_column(default=0)
+    penalty_points: Mapped[int] = mapped_column(default=0)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("players.id"), nullable=True

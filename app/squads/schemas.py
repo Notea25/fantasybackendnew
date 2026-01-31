@@ -28,6 +28,7 @@ class SquadReadSchema(BaseModel):
     budget: int
     replacements: int
     points: int
+    penalty_points: int
     captain_id: Optional[int]
     vice_captain_id: Optional[int]
     main_players: list[PlayerInSquadSchema]
@@ -100,6 +101,7 @@ class SquadTourHistorySchema(BaseModel):
     tour_id: int
     tour_number: int
     points: int
+    penalty_points: int
     used_boost: Optional[str]
     captain_id: Optional[int]
     vice_captain_id: Optional[int]
@@ -137,6 +139,7 @@ class PublicLeaderboardEntrySchema(BaseModel):
     username: str
     tour_points: int
     total_points: int
+    penalty_points: int
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -155,6 +158,7 @@ class PublicClubLeaderboardEntrySchema(BaseModel):
     username: str
     tour_points: int
     total_points: int
+    penalty_points: int
     fav_team_id: int
     fav_team_name: str | None = None
 
