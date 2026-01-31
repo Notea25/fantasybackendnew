@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from dataclasses import dataclass
 
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload, selectinload
@@ -19,6 +20,18 @@ from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SquadPoints:
+    """All types of points for a squad"""
+    tour_earned: int           # 1. Earned points in tour
+    tour_penalty: int          # 2. Penalty points in tour
+    total_earned: int          # 3. Total earned points across all tours
+    total_penalty: int         # 4. Total penalty points across all tours (excluding next_tour_penalty)
+    total_net: int             # 5. Net total points (total_earned - total_penalty)
+    tour_net: int              # 6. Net tour points (tour_earned - tour_penalty)
+
 
 class SquadService(BaseService):
     model = Squad
@@ -834,6 +847,85 @@ class SquadService(BaseService):
                 raise FailedOperationException(f"Failed to rename squad: {str(e)}")
 
     @classmethod
+    async def calculate_squad_points_bulk(
+        cls,
+        session,
+        squad_ids: list[int],
+        tour_id: Optional[int] = None
+    ) -> dict[int, SquadPoints]:
+        """
+        Calculate all 6 types of points for multiple squads in one efficient query.
+        
+        Args:
+            session: Database session
+            squad_ids: List of squad IDs to calculate points for
+            tour_id: Optional tour ID for current tour points
+            
+        Returns:
+            Dictionary mapping squad_id to SquadPoints
+        """
+        if not squad_ids:
+            return {}
+        
+        # Get total points across all tours for each squad
+        total_stmt = (
+            select(
+                SquadTour.squad_id,
+                func.sum(SquadTour.points).label("total_earned"),
+                func.sum(SquadTour.penalty_points).label("total_penalty")
+            )
+            .where(SquadTour.squad_id.in_(squad_ids))
+            .group_by(SquadTour.squad_id)
+        )
+        total_result = await session.execute(total_stmt)
+        
+        # Build maps for total points
+        total_map: dict[int, tuple[int, int]] = {}
+        for row in total_result:
+            total_map[row.squad_id] = (
+                int(row.total_earned or 0),
+                int(row.total_penalty or 0)
+            )
+        
+        # Get tour-specific points if tour_id provided
+        tour_map: dict[int, tuple[int, int]] = {}
+        if tour_id:
+            tour_stmt = (
+                select(
+                    SquadTour.squad_id,
+                    SquadTour.points,
+                    SquadTour.penalty_points
+                )
+                .where(
+                    SquadTour.squad_id.in_(squad_ids),
+                    SquadTour.tour_id == tour_id
+                )
+            )
+            tour_result = await session.execute(tour_stmt)
+            for row in tour_result:
+                tour_map[row.squad_id] = (
+                    int(row.points or 0),
+                    int(row.penalty_points or 0)
+                )
+        
+        # Build SquadPoints for each squad
+        result: dict[int, SquadPoints] = {}
+        for squad_id in squad_ids:
+            total_earned, total_penalty = total_map.get(squad_id, (0, 0))
+            tour_earned, tour_penalty = tour_map.get(squad_id, (0, 0))
+            
+            result[squad_id] = SquadPoints(
+                tour_earned=tour_earned,
+                tour_penalty=tour_penalty,
+                total_earned=total_earned,
+                total_penalty=total_penalty,
+                total_net=total_earned - total_penalty,
+                tour_net=tour_earned - tour_penalty
+            )
+        
+        return result
+
+    @classmethod
     async def get_leaderboard(cls, tour_id: int) -> list[dict]:
         async with async_session_maker() as session:
             # Проверяем, является ли этот тур текущим
@@ -889,57 +981,35 @@ class SquadService(BaseService):
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
 
-            # Получаем тотальные очки и штрафы из истории SquadTour
-            total_points_stmt = (
-                select(
-                    SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points"),
-                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
-                )
-                .group_by(SquadTour.squad_id)
-            )
-            total_points_result = await session.execute(total_points_stmt)
-            total_points_map = {row.squad_id: row.total_points for row in total_points_result}
-            total_penalty_points_map = {row.squad_id: row.total_penalty_points for row in total_points_result}
+            # Calculate all points using the helper function
+            squad_ids = [squad.id for squad in squads]
+            points_map = await cls.calculate_squad_points_bulk(session, squad_ids, tour_id)
+
+            # For current tour, use Squad.points instead of SquadTour (since tour is ongoing)
+            if is_current_tour:
+                for squad in squads:
+                    if squad.id in points_map:
+                        points_map[squad.id].tour_earned = squad.points
+                        points_map[squad.id].tour_penalty = squad.penalty_points
+                        points_map[squad.id].tour_net = squad.points - squad.penalty_points
 
             # Формируем лидерборд
             leaderboard_with_net_points = []
             for squad in squads:
-                # Для текущего тура берем tour_points и penalty_points из Squad
-                if is_current_tour:
-                    tour_points = squad.points
-                    tour_penalty = squad.penalty_points
-                else:
-                    # Для исторических туров берем из SquadTour
-                    squad_tour_stmt = select(SquadTour).where(
-                        SquadTour.squad_id == squad.id,
-                        SquadTour.tour_id == tour_id
-                    )
-                    squad_tour_result = await session.execute(squad_tour_stmt)
-                    squad_tour = squad_tour_result.scalars().first()
-                    tour_points = squad_tour.points if squad_tour else 0
-                    tour_penalty = squad_tour.penalty_points if squad_tour else 0
-                
-                # Тотальные очки всегда из истории
-                total_pts = int(total_points_map.get(squad.id, 0) or 0)
-                total_pen = int(total_penalty_points_map.get(squad.id, 0) or 0)
-                net_points = total_pts - total_pen
+                points = points_map.get(squad.id, SquadPoints(0, 0, 0, 0, 0, 0))
                 
                 leaderboard_with_net_points.append({
                     "squad": squad,
-                    "tour_points": tour_points,
-                    "tour_penalty": tour_penalty,
-                    "total_points": total_pts,
-                    "total_penalty": total_pen,
-                    "net_points": net_points,
+                    "points": points,
                 })
             
-            # Сортируем по net_points по убыванию
-            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            # Сортируем по total_net (итоговые чистые очки) по убыванию
+            leaderboard_with_net_points.sort(key=lambda x: x["points"].total_net, reverse=True)
             
             leaderboard: list[dict] = []
             for index, entry in enumerate(leaderboard_with_net_points, start=1):
                 squad = entry["squad"]
+                points = entry["points"]
                 
                 # Формат, соответствующий ожиданиям фронтенда
                 leaderboard.append({
@@ -948,12 +1018,12 @@ class SquadService(BaseService):
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": entry["tour_points"],
-                    "total_points": entry["total_points"],
+                    "tour_points": points.tour_earned,
+                    "total_points": points.total_earned,
                     # Return tour penalty for current tour display
-                    "penalty_points": entry["tour_penalty"],
+                    "penalty_points": points.tour_penalty,
                     # Return total penalties for "Всего" column calculation
-                    "total_penalty_points": entry["total_penalty"],
+                    "total_penalty_points": points.total_penalty,
                 })
 
             return leaderboard
@@ -1390,61 +1460,38 @@ class SquadService(BaseService):
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
 
-            # Получаем тотальные очки и штрафы
-            total_points_stmt = (
-                select(
-                    SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points"),
-                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
-                )
-                .join(SquadTour.squad)
-                .where(Squad.fav_team_id == fav_team_id)
-                .group_by(SquadTour.squad_id)
-            )
-            total_points_result = await session.execute(total_points_stmt)
-            total_points_map = {row.squad_id: row.total_points for row in total_points_result}
-            total_penalty_points_map = {row.squad_id: row.total_penalty_points for row in total_points_result}
+            # Calculate all points using the helper function
+            squad_ids = [squad.id for squad in squads]
+            points_map = await cls.calculate_squad_points_bulk(session, squad_ids, tour_id)
+
+            # For current tour, use Squad.points instead of SquadTour
+            if is_current_tour:
+                for squad in squads:
+                    if squad.id in points_map:
+                        points_map[squad.id].tour_earned = squad.points
+                        points_map[squad.id].tour_penalty = squad.penalty_points
+                        points_map[squad.id].tour_net = squad.points - squad.penalty_points
 
             # Формируем лидерборд
             leaderboard_with_net_points = []
             for squad in squads:
-                # Для текущего тура берем данные из Squad
-                if is_current_tour:
-                    tour_points = squad.points
-                    tour_penalty = squad.penalty_points
-                else:
-                    # Для исторических туров берем из SquadTour
-                    squad_tour_stmt = select(SquadTour).where(
-                        SquadTour.squad_id == squad.id,
-                        SquadTour.tour_id == tour_id
-                    )
-                    squad_tour_result = await session.execute(squad_tour_stmt)
-                    squad_tour = squad_tour_result.scalars().first()
-                    tour_points = squad_tour.points if squad_tour else 0
-                    tour_penalty = squad_tour.penalty_points if squad_tour else 0
-                
+                points = points_map.get(squad.id, SquadPoints(0, 0, 0, 0, 0, 0))
                 fav_team = getattr(squad, "fav_team", None)
-                total_pts = int(total_points_map.get(squad.id, 0) or 0)
-                total_pen = int(total_penalty_points_map.get(squad.id, 0) or 0)
-                net_points = total_pts - total_pen
                 
                 leaderboard_with_net_points.append({
                     "squad": squad,
                     "fav_team": fav_team,
-                    "tour_points": tour_points,
-                    "tour_penalty": tour_penalty,
-                    "total_points": total_pts,
-                    "total_penalty": total_pen,
-                    "net_points": net_points,
+                    "points": points,
                 })
             
-            # Сортируем по net_points по убыванию
-            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            # Сортируем по total_net по убыванию
+            leaderboard_with_net_points.sort(key=lambda x: x["points"].total_net, reverse=True)
             
             leaderboard: list[dict] = []
             for index, entry in enumerate(leaderboard_with_net_points, start=1):
                 squad = entry["squad"]
                 fav_team = entry["fav_team"]
+                points = entry["points"]
                 
                 leaderboard.append({
                     "place": index,
@@ -1452,12 +1499,12 @@ class SquadService(BaseService):
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": entry["tour_points"],
-                    "total_points": entry["total_points"],
+                    "tour_points": points.tour_earned,
+                    "total_points": points.total_earned,
                     # Return tour penalty for current tour display
-                    "penalty_points": entry["tour_penalty"],
+                    "penalty_points": points.tour_penalty,
                     # Return total penalties for "Всего" column calculation
-                    "total_penalty_points": entry["total_penalty"],
+                    "total_penalty_points": points.total_penalty,
                     "fav_team_id": squad.fav_team_id,
                     "fav_team_name": fav_team.name if fav_team is not None else None,
                 })

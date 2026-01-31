@@ -81,57 +81,36 @@ class CommercialLeagueService:
                 return []
 
             from app.squads.models import SquadTour, Squad
-            stmt = (
-                select(SquadTour)
-                .where(
-                    SquadTour.squad_id.in_(squad_ids),
-                    SquadTour.tour_id == tour_id
-                )
-                .options(
-                    joinedload(SquadTour.squad).joinedload(Squad.user)
-                )
-                .order_by(desc(SquadTour.points))
+            from app.squads.services import SquadService, SquadPoints
+            
+            # Get squads with user data
+            squads_stmt = (
+                select(Squad)
+                .where(Squad.id.in_(squad_ids))
+                .options(joinedload(Squad.user))
             )
-            result = await session.execute(stmt)
-            squad_tours = result.unique().scalars().all()
-
-            from sqlalchemy import func
-            total_points_stmt = (
-                select(
-                    SquadTour.squad_id,
-                    func.sum(SquadTour.points).label("total_points"),
-                    func.sum(SquadTour.penalty_points).label("total_penalty_points")
-                )
-                .where(SquadTour.squad_id.in_(squad_ids))
-                .group_by(SquadTour.squad_id)
-            )
-            total_points_result = await session.execute(total_points_stmt)
-            total_points = {row.squad_id: row.total_points for row in total_points_result}
-            total_penalty_points = {row.squad_id: row.total_penalty_points for row in total_points_result}
+            squads_result = await session.execute(squads_stmt)
+            squads = squads_result.unique().scalars().all()
+            
+            # Calculate all points using the helper function
+            points_map = await SquadService.calculate_squad_points_bulk(session, squad_ids, tour_id)
 
             # Сортируем по чистым очкам
             leaderboard_with_net_points = []
-            for squad_tour in squad_tours:
-                squad = squad_tour.squad
-                total_pts = int(total_points.get(squad.id, 0) or 0)
-                total_pen = int(total_penalty_points.get(squad.id, 0) or 0)
-                net_points = total_pts - total_pen
+            for squad in squads:
+                points = points_map.get(squad.id, SquadPoints(0, 0, 0, 0, 0, 0))
                 
                 leaderboard_with_net_points.append({
-                    "squad_tour": squad_tour,
                     "squad": squad,
-                    "total_points": total_pts,
-                    "total_penalty": total_pen,
-                    "tour_penalty": squad_tour.penalty_points,
-                    "net_points": net_points,
+                    "points": points,
                 })
             
-            leaderboard_with_net_points.sort(key=lambda x: x["net_points"], reverse=True)
+            leaderboard_with_net_points.sort(key=lambda x: x["points"].total_net, reverse=True)
             
             leaderboard = []
             for index, entry in enumerate(leaderboard_with_net_points, start=1):
                 squad = entry["squad"]
-                squad_tour = entry["squad_tour"]
+                points = entry["points"]
                 
                 leaderboard.append({
                     "place": index,
@@ -139,12 +118,12 @@ class CommercialLeagueService:
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": squad_tour.points,
-                    "total_points": entry["total_points"],
+                    "tour_points": points.tour_net,
+                    "total_points": points.total_earned,
                     # Return tour penalty for current tour display
-                    "penalty_points": entry["tour_penalty"],
+                    "penalty_points": points.tour_penalty,
                     # Return total penalties for "Всего" column calculation
-                    "total_penalty_points": entry["total_penalty"],
+                    "total_penalty_points": points.total_penalty,
                 })
 
             return leaderboard
