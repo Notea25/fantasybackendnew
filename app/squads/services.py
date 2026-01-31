@@ -1367,6 +1367,9 @@ class SquadService(BaseService):
                     "used_boost": squad_tour.used_boost,
                     "captain_id": squad_tour.captain_id,
                     "vice_captain_id": squad_tour.vice_captain_id,
+                    "budget": squad_tour.budget,
+                    "replacements": squad_tour.replacements,
+                    "is_finalized": squad_tour.is_finalized,
                     "main_players": main_players_data,
                     "bench_players": bench_players_data,
                 })
