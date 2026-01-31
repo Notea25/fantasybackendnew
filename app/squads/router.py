@@ -59,7 +59,7 @@ async def create_squad(
 @router.get("/my_squads", response_model=list[SquadReadSchema])
 async def list_users_squads(user: User = Depends(get_current_user)) -> list[SquadReadSchema]:
     """List user's squads (metadata only)."""
-    squads = await SquadService.find_all(user_id=user.id)
+    squads = await SquadService.find_filtered(user_id=user.id)
     for squad in squads:
         await squad.awaitable_attrs.user
         squad.username = squad.user.username if squad.user else ""
