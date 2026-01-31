@@ -366,6 +366,16 @@ class SquadService(BaseService):
     
     @classmethod
     async def find_all_with_relations(cls):
+        """DEPRECATED: Removed in new architecture.
+        
+        Use find_all() for squad metadata only.
+        Use get_squad_tour_history_with_players() for player composition.
+        """
+        raise NotImplementedError(
+            "find_all_with_relations() is deprecated. "
+            "Squad now contains only metadata. "
+            "Use find_all() for metadata, get_squad_tour_history_with_players() for composition."
+        )
         logger.info("Fetching all squads with relations")
         async with async_session_maker() as session:
             stmt = (
@@ -451,6 +461,16 @@ class SquadService(BaseService):
 
     @classmethod
     async def find_filtered_with_relations(cls, **filter_by):
+        """DEPRECATED: Removed in new architecture.
+        
+        Use find_one_or_none() or find_all() for squad metadata only.
+        Use get_squad_tour_history_with_players() for player composition.
+        """
+        raise NotImplementedError(
+            "find_filtered_with_relations() is deprecated. "
+            "Squad now contains only metadata. "
+            "Use find_one_or_none() for metadata, get_squad_tour_history_with_players() for composition."
+        )
         logger.info(f"Fetching squads with relations, filter: {filter_by}")
         async with async_session_maker() as session:
             stmt = (
@@ -544,6 +564,16 @@ class SquadService(BaseService):
             main_player_ids: list[int] = [],
             bench_player_ids: list[int] = []
     ):
+        """DEPRECATED: Removed in new architecture.
+        
+        Use replace_players() to update squad composition.
+        All player data is now stored in SquadTour, not Squad.
+        """
+        raise NotImplementedError(
+            "update_squad_players() is deprecated. "
+            "Squad now contains only metadata. "
+            "Use replace_players() to update players for a tour."
+        )
         logger.info(f"Updating players for squad {squad_id}")
         async with async_session_maker() as session:
             squad = await session.execute(
