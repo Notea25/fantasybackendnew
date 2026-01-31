@@ -155,7 +155,7 @@ class SquadService(BaseService):
                     fav_team_id=fav_team_id,
                     current_tour_id=active_tour_id,
                     budget=budget,
-                    replacements=3,
+                    replacements=2,
                     penalty_points=0,
                     captain_id=captain_id,
                     vice_captain_id=vice_captain_id,
@@ -1068,7 +1068,7 @@ class SquadService(BaseService):
             return {
                 "squad_id": squad.id,
                 "remaining_replacements": squad.replacements,
-                "max_replacements": 3
+                "max_replacements": 2
             }
 
     @classmethod
@@ -1159,7 +1159,7 @@ class SquadService(BaseService):
                 
                 # Сбрасываем замены на новый тур (например, +1 бесплатная замена)
                 # TODO: Добавить логику пополнения замен если нужно
-                # squad.replacements = min(squad.replacements + 1, 3)
+                # squad.replacements = min(squad.replacements + 1, 2)
             
             await session.commit()
             
