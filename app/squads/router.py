@@ -94,27 +94,20 @@ async def get_squad_by_id(squad_id: int) -> SquadReadSchema:
     return squad
 
 
-@router.put("/update_players/{squad_id}", response_model=SquadUpdateResponseSchema)
+@router.put("/update_players/{squad_id}", response_model=SquadUpdateResponseSchema, deprecated=True)
 async def update_squad_players(
     squad_id: int,
     payload: SquadUpdatePlayersSchema,
     user: User = Depends(get_current_user),
 ) -> SquadUpdateResponseSchema:
-    main_player_ids = payload.main_player_ids or []
-    bench_player_ids = payload.bench_player_ids or []
-
-    squad = await SquadService.update_squad_players(
-        squad_id=squad_id,
-        captain_id=payload.captain_id,
-        vice_captain_id=payload.vice_captain_id,
-        main_player_ids=main_player_ids,
-        bench_player_ids=bench_player_ids,
-    )
-    squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
-    return SquadUpdateResponseSchema(
-        status="success",
-        message="Squad players updated",
-        squad=squad_with_relations
+    """DEPRECATED: Use /squads/{squad_id}/replace_players instead.
+    
+    This endpoint is deprecated in new architecture.
+    Squad now contains only metadata, use SquadTour for player composition.
+    """
+    raise HTTPException(
+        status_code=410,  # Gone
+        detail="This endpoint is deprecated. Use POST /squads/{squad_id}/replace_players instead."
     )
 
 @router.post("/{squad_id}/replace_players", response_model=SquadReplacePlayersResponseSchema)
