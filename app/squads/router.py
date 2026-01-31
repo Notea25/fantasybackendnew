@@ -28,10 +28,9 @@ router = APIRouter(prefix="/squads", tags=["Squads"])
 @router.get("/list_squads", response_model=list[SquadReadSchema])
 async def list_squads() -> list[SquadReadSchema]:
     """List all squads (metadata only)."""
-    squads = await SquadService.find_all()
+    squads = await SquadService.find_all_with_user()
     # Add username for response
     for squad in squads:
-        await squad.awaitable_attrs.user
         squad.username = squad.user.username if squad.user else ""
     return squads
 
@@ -51,17 +50,15 @@ async def create_squad(
         main_player_ids=squad_data.main_player_ids,
         bench_player_ids=squad_data.bench_player_ids,
     )
-    squad_with_user = await SquadService.find_one_or_none(id=squad.id)
-    await squad_with_user.awaitable_attrs.user
+    squad_with_user = await SquadService.find_one_with_user(id=squad.id)
     squad_with_user.username = squad_with_user.user.username if squad_with_user.user else ""
     return squad_with_user
 
 @router.get("/my_squads", response_model=list[SquadReadSchema])
 async def list_users_squads(user: User = Depends(get_current_user)) -> list[SquadReadSchema]:
     """List user's squads (metadata only)."""
-    squads = await SquadService.find_filtered(user_id=user.id)
+    squads = await SquadService.find_all_with_user(user_id=user.id)
     for squad in squads:
-        await squad.awaitable_attrs.user
         squad.username = squad.user.username if squad.user else ""
     return squads
 
@@ -72,10 +69,9 @@ async def get_squad(squad_id: int) -> SquadReadSchema:
     Новая архитектура: возвращает только метаданные Squad.
     Для получения состава используйте /squads/{squad_id}/history.
     """
-    squad = await SquadService.find_one_or_none(id=squad_id)
+    squad = await SquadService.find_one_with_user(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
-    await squad.awaitable_attrs.user
     squad.username = squad.user.username if squad.user else ""
     return squad
 
@@ -86,10 +82,9 @@ async def get_squad_by_id(squad_id: int) -> SquadReadSchema:
 
     Новая архитектура: возвращает только метаданные Squad.
     """
-    squad = await SquadService.find_one_or_none(id=squad_id)
+    squad = await SquadService.find_one_with_user(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
-    await squad.awaitable_attrs.user
     squad.username = squad.user.username if squad.user else ""
     return squad
 

@@ -355,6 +355,24 @@ class SquadService(BaseService):
         
         return None
 
+    @classmethod
+    async def find_one_with_user(cls, **filter_by):
+        """Find squad with user relationship loaded."""
+        from sqlalchemy.orm import selectinload
+        async with async_session_maker() as session:
+            stmt = select(cls.model).filter_by(**filter_by).options(selectinload(cls.model.user))
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+    
+    @classmethod
+    async def find_all_with_user(cls, **filter_by):
+        """Find squads with user relationship loaded."""
+        from sqlalchemy.orm import selectinload
+        async with async_session_maker() as session:
+            stmt = select(cls.model).filter_by(**filter_by).options(selectinload(cls.model.user))
+            result = await session.execute(stmt)
+            return result.scalars().all()
+
     # DEPRECATED: Removed - use get_squad_tour_history_with_players for composition data
     # Squad now contains only metadata, use SquadTour for state
 
