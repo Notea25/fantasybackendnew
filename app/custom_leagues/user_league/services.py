@@ -343,8 +343,10 @@ class UserLeagueService:
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
                     "total_points": entry["total_points"],
-                    # Return tour penalty, not total penalty - frontend needs this to calculate tour_points - penalty
+                    # Return tour penalty for current tour display
                     "penalty_points": entry["tour_penalty"],
+                    # Return total penalties for "Всего" column calculation
+                    "total_penalty_points": entry["total_penalty"],
                 })
 
             return leaderboard

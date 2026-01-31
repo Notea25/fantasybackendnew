@@ -131,6 +131,8 @@ class PublicLeaderboardEntrySchema(BaseModel):
     - place: порядковое место в туре
     - tour_points: очки за конкретный тур
     - total_points: суммарные очки за все туры
+    - penalty_points: штраф за текущий тур
+    - total_penalty_points: сумма штрафов за все туры
     """
 
     place: int
@@ -141,12 +143,13 @@ class PublicLeaderboardEntrySchema(BaseModel):
     tour_points: int
     total_points: int
     penalty_points: int
+    total_penalty_points: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class PublicClubLeaderboardEntrySchema(BaseModel):
-    """Лидерборд клубной лиги (по fav_team_id), формат для фронта.
+    """Лидерборд клубной лиги (po fav_team_id), формат для фронта.
 
     Используется для эндпоинта /squads/leaderboard/{tour_id}/by-fav-team/{fav_team_id}
     и соответствует типу CustomLeagueLeaderboardEntry на фронтенде.
@@ -160,6 +163,7 @@ class PublicClubLeaderboardEntrySchema(BaseModel):
     tour_points: int
     total_points: int
     penalty_points: int
+    total_penalty_points: int
     fav_team_id: int
     fav_team_name: str | None = None
 

@@ -950,8 +950,10 @@ class SquadService(BaseService):
                     "username": squad.user.username,
                     "tour_points": entry["tour_points"],
                     "total_points": entry["total_points"],
-                    # Return tour penalty, not total penalty - frontend needs this to calculate tour_points - penalty
+                    # Return tour penalty for current tour display
                     "penalty_points": entry["tour_penalty"],
+                    # Return total penalties for "Всего" column calculation
+                    "total_penalty_points": entry["total_penalty"],
                 })
 
             return leaderboard
@@ -1452,8 +1454,10 @@ class SquadService(BaseService):
                     "username": squad.user.username,
                     "tour_points": entry["tour_points"],
                     "total_points": entry["total_points"],
-                    # Return tour penalty, not total penalty - frontend needs this to calculate tour_points - penalty
+                    # Return tour penalty for current tour display
                     "penalty_points": entry["tour_penalty"],
+                    # Return total penalties for "Всего" column calculation
+                    "total_penalty_points": entry["total_penalty"],
                     "fav_team_id": squad.fav_team_id,
                     "fav_team_name": fav_team.name if fav_team is not None else None,
                 })
