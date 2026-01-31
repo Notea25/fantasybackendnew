@@ -54,8 +54,12 @@ async def list_users_squads(user: User = Depends(get_current_user)) -> list[Squa
     return squads
 
 @router.get("/get_squad_{squad_id}", response_model=SquadReadSchema)
-async def get_squad(squad_id: int, user: User = Depends(get_current_user)) -> SquadReadSchema:
-    squad = await SquadService.find_one_or_none_with_relations(id=squad_id, user_id=user.id)
+async def get_squad(squad_id: int) -> SquadReadSchema:
+    """Публичный эндпоинт для получения сквада по ID.
+    
+    Используется для просмотра любых сквадов (своих и чужих).
+    """
+    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
     return squad
