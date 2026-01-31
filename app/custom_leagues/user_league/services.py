@@ -323,7 +323,8 @@ class UserLeagueService:
                     "squad_tour": squad_tour,
                     "squad": squad,
                     "total_points": total_pts,
-                    "penalty_points": total_pen,
+                    "total_penalty": total_pen,
+                    "tour_penalty": squad_tour.penalty_points,
                     "net_points": net_points,
                 })
             
@@ -342,7 +343,8 @@ class UserLeagueService:
                     "username": squad.user.username,
                     "tour_points": squad_tour.points,
                     "total_points": entry["total_points"],
-                    "penalty_points": entry["penalty_points"],
+                    # Return tour penalty, not total penalty - frontend needs this to calculate tour_points - penalty
+                    "penalty_points": entry["tour_penalty"],
                 })
 
             return leaderboard
