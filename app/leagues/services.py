@@ -81,26 +81,20 @@ class LeagueService(BaseService):
             squads_count_res = await session.execute(squads_count_query)
             league.all_squads_quantity = squads_count_res.scalar()
 
+            # NEW ARCHITECTURE: Squad contains only metadata, no players
             user_squad_query = (
                 sql_select(Squad)
                 .where(Squad.league_id == league_id, Squad.user_id == user_id)
-                .options(
-                    selectinload(Squad.current_main_players),
-                    selectinload(Squad.current_bench_players)
-                )
             )
             user_squad_res = await session.execute(user_squad_query)
             user_squad = user_squad_res.unique().scalar_one_or_none()
 
             if user_squad:
+                # NEW ARCHITECTURE: Squad contains only metadata
+                # For leaderboard, use SquadTour data instead
                 all_squads_query = (
                     sql_select(Squad)
                     .where(Squad.league_id == league_id)
-                    .order_by(Squad.points.desc())
-                    .options(
-                        selectinload(Squad.current_main_players),
-                        selectinload(Squad.current_bench_players)
-                    )
                 )
                 all_squads_res = await session.execute(all_squads_query)
                 all_squads = all_squads_res.unique().scalars().all()
