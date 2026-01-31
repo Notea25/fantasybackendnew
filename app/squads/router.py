@@ -27,7 +27,12 @@ router = APIRouter(prefix="/squads", tags=["Squads"])
 
 @router.get("/list_squads", response_model=list[SquadReadSchema])
 async def list_squads() -> list[SquadReadSchema]:
-    squads = await SquadService.find_all_with_relations()
+    """List all squads (metadata only)."""
+    squads = await SquadService.find_all()
+    # Add username for response
+    for squad in squads:
+        await squad.awaitable_attrs.user
+        squad.username = squad.user.username if squad.user else ""
     return squads
 
 @router.post("/create", response_model=SquadReadSchema)
@@ -35,6 +40,7 @@ async def create_squad(
     squad_data: SquadCreateSchema,
     user: User = Depends(get_current_user),
 ) -> SquadReadSchema:
+    """Create squad (returns metadata only)."""
     squad = await SquadService.create_squad(
         name=squad_data.name,
         user_id=user.id,
@@ -45,23 +51,32 @@ async def create_squad(
         main_player_ids=squad_data.main_player_ids,
         bench_player_ids=squad_data.bench_player_ids,
     )
-    squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
-    return squad_with_relations
+    squad_with_user = await SquadService.find_one_or_none(id=squad.id)
+    await squad_with_user.awaitable_attrs.user
+    squad_with_user.username = squad_with_user.user.username if squad_with_user.user else ""
+    return squad_with_user
 
 @router.get("/my_squads", response_model=list[SquadReadSchema])
 async def list_users_squads(user: User = Depends(get_current_user)) -> list[SquadReadSchema]:
-    squads = await SquadService.find_filtered_with_relations(user_id=user.id)
+    """List user's squads (metadata only)."""
+    squads = await SquadService.find_all(user_id=user.id)
+    for squad in squads:
+        await squad.awaitable_attrs.user
+        squad.username = squad.user.username if squad.user else ""
     return squads
 
 @router.get("/get_squad_{squad_id}", response_model=SquadReadSchema)
 async def get_squad(squad_id: int) -> SquadReadSchema:
     """Публичный эндпоинт для получения сквада по ID.
     
-    Используется для просмотра любых сквадов (своих и чужих).
+    Новая архитектура: возвращает только метаданные Squad.
+    Для получения состава используйте /squads/{squad_id}/history.
     """
-    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
+    squad = await SquadService.find_one_or_none(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
+    await squad.awaitable_attrs.user
+    squad.username = squad.user.username if squad.user else ""
     return squad
 
 
@@ -69,11 +84,13 @@ async def get_squad(squad_id: int) -> SquadReadSchema:
 async def get_squad_by_id(squad_id: int) -> SquadReadSchema:
     """Публичный эндпоинт для получения сквада по ID без проверки пользователя.
 
-    Удобен для отладки и внутренних сервисов (например, BackendTest).
+    Новая архитектура: возвращает только метаданные Squad.
     """
-    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
+    squad = await SquadService.find_one_or_none(id=squad_id)
     if not squad:
         raise ResourceNotFoundException()
+    await squad.awaitable_attrs.user
+    squad.username = squad.user.username if squad.user else ""
     return squad
 
 
@@ -177,20 +194,14 @@ async def rename_squad(squad_id: int, new_name: str, user: User = Depends(get_cu
     squad = await SquadService.rename_squad(squad_id=squad_id, user_id=user.id, new_name=new_name)
     return squad
 
-@router.get("/{squad_id}/history", response_model=list[SquadTourHistorySchema])
-async def get_squad_history(squad_id: int, user: User = Depends(get_current_user)) -> list[SquadTourHistorySchema]:
-    """Получить полную историю туров с составами игроков.
+
+@router.get("/{squad_id}/tours", response_model=list[SquadTourHistorySchema])
+async def get_squad_tours(squad_id: int) -> list[SquadTourHistorySchema]:
+    """Получить все SquadTours для сквада (история).
     
-    Каждый тур отображает snapshot состава, который был зафиксирован
-    на момент дедлайна этого тура.
+    Каждый SquadTour - это snapshot состояния сквада для конкретного тура.
     """
-    squad = await SquadService.find_one_or_none_with_relations(id=squad_id)
-    if not squad:
-        raise ResourceNotFoundException()
-    
-    # Используем новый метод для получения полной истории
-    history = await SquadService.get_squad_tour_history_with_players(squad_id)
-    return history
+    return await SquadService.get_squad_tour_history_with_players(squad_id)
 
 @router.get("/leaderboard/{tour_id}", response_model=list[PublicLeaderboardEntrySchema])
 async def get_leaderboard(tour_id: int) -> list[PublicLeaderboardEntrySchema]:
