@@ -44,9 +44,10 @@ class SquadTourService(BaseService):
             )
             
             if with_players:
+                from app.players.models import Player
                 stmt = stmt.options(
-                    selectinload(SquadTour.main_players),
-                    selectinload(SquadTour.bench_players)
+                    selectinload(SquadTour.main_players).joinedload(Player.team),
+                    selectinload(SquadTour.bench_players).joinedload(Player.team)
                 )
             
             result = await session.execute(stmt)
@@ -73,9 +74,10 @@ class SquadTourService(BaseService):
             stmt = select(SquadTour).where(SquadTour.squad_id == squad_id)
             
             if with_players:
+                from app.players.models import Player
                 stmt = stmt.options(
-                    selectinload(SquadTour.main_players),
-                    selectinload(SquadTour.bench_players)
+                    selectinload(SquadTour.main_players).joinedload(Player.team),
+                    selectinload(SquadTour.bench_players).joinedload(Player.team)
                 )
             
             if order_by_tour:
