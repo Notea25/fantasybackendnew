@@ -843,18 +843,33 @@ class SquadService(BaseService):
             tour_result = await session.execute(tour_stmt)
             tour = tour_result.scalars().first()
             
-            is_current_tour = tour and tour.type == 'current'
+            if not tour:
+                logger.warning(f"Tour {tour_id} not found")
+                return []
             
-            # Получаем все сквады, которые участвуют в этом туре
-            stmt = (
-                select(Squad)
-                .join(SquadTour, Squad.id == SquadTour.squad_id)
-                .where(SquadTour.tour_id == tour_id)
-                .options(
-                    joinedload(Squad.user)
+            is_current_tour = tour.type == 'current'
+            
+            # Для текущего тура получаем все сквады, у которых current_tour_id == tour_id
+            # Для исторических туров - через JOIN с SquadTour
+            if is_current_tour:
+                stmt = (
+                    select(Squad)
+                    .where(Squad.current_tour_id == tour_id)
+                    .options(
+                        joinedload(Squad.user)
+                    )
                 )
-                .distinct()
-            )
+            else:
+                stmt = (
+                    select(Squad)
+                    .join(SquadTour, Squad.id == SquadTour.squad_id)
+                    .where(SquadTour.tour_id == tour_id)
+                    .options(
+                        joinedload(Squad.user)
+                    )
+                    .distinct()
+                )
+            
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
 
@@ -1295,22 +1310,41 @@ class SquadService(BaseService):
             tour_result = await session.execute(tour_stmt)
             tour = tour_result.scalars().first()
             
-            is_current_tour = tour and tour.type == 'current'
+            if not tour:
+                logger.warning(f"Tour {tour_id} not found")
+                return []
             
-            # Получаем сквады с указанной командой
-            stmt = (
-                select(Squad)
-                .join(SquadTour, Squad.id == SquadTour.squad_id)
-                .where(
-                    SquadTour.tour_id == tour_id,
-                    Squad.fav_team_id == fav_team_id,
+            is_current_tour = tour.type == 'current'
+            
+            # Для текущего тура - сквады с current_tour_id и fav_team_id
+            # Для исторических - через JOIN с SquadTour
+            if is_current_tour:
+                stmt = (
+                    select(Squad)
+                    .where(
+                        Squad.current_tour_id == tour_id,
+                        Squad.fav_team_id == fav_team_id,
+                    )
+                    .options(
+                        joinedload(Squad.user),
+                        joinedload(Squad.fav_team),
+                    )
                 )
-                .options(
-                    joinedload(Squad.user),
-                    joinedload(Squad.fav_team),
+            else:
+                stmt = (
+                    select(Squad)
+                    .join(SquadTour, Squad.id == SquadTour.squad_id)
+                    .where(
+                        SquadTour.tour_id == tour_id,
+                        Squad.fav_team_id == fav_team_id,
+                    )
+                    .options(
+                        joinedload(Squad.user),
+                        joinedload(Squad.fav_team),
+                    )
+                    .distinct()
                 )
-                .distinct()
-            )
+            
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
 
