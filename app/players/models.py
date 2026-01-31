@@ -48,15 +48,7 @@ class Player(Base):
         back_populates="player"
     )
 
-    main_squads: Mapped[list["Squad"]] = relationship(
-        secondary="squad_players_association",
-        back_populates="current_main_players",
-    )
-    bench_squads: Mapped[list["Squad"]] = relationship(
-        secondary="squad_bench_players_association",
-        back_populates="current_bench_players",
-    )
-
+    # NEW ARCHITECTURE: Players are linked only to SquadTour, not Squad
     squad_tours: Mapped[list["SquadTour"]] = relationship(
         secondary=player_squad_tours, back_populates="main_players"
     )

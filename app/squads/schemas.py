@@ -1,4 +1,5 @@
 from typing import Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
@@ -53,7 +54,7 @@ class SquadReplacePlayersResponseSchema(BaseModel):
     status: str
     message: str
     remaining_replacements: int
-    squad_tour: SquadTourHistorySchema  # Now returns SquadTour instead of Squad
+    squad_tour: "SquadTourHistorySchema"  # Forward reference - defined below
     # Информация о трансферах
     transfers_applied: Optional[int] = None
     free_transfers_used: Optional[int] = None
