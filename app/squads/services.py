@@ -1018,7 +1018,7 @@ class SquadService(BaseService):
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": points.tour_earned,
+                    "tour_points": points.tour_net,
                     "total_points": points.total_earned,
                     # Return tour penalty for current tour display
                     "penalty_points": points.tour_penalty,
@@ -1499,7 +1499,7 @@ class SquadService(BaseService):
                     "squad_name": squad.name,
                     "user_id": squad.user.id,
                     "username": squad.user.username,
-                    "tour_points": points.tour_earned,
+                    "tour_points": points.tour_net,
                     "total_points": points.total_earned,
                     # Return tour penalty for current tour display
                     "penalty_points": points.tour_penalty,
