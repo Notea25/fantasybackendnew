@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy import delete, func, desc
 from datetime import datetime, timedelta
@@ -838,16 +838,31 @@ class SquadService(BaseService):
         async with async_session_maker() as session:
             # Проверяем, является ли этот тур текущим
             # Для текущего тура берем данные из Squad, для исторических - из SquadTour
-            from app.tours.models import Tour
-            tour_stmt = select(Tour).where(Tour.id == tour_id)
+            from app.tours.models import Tour, TourMatchAssociation
+            from app.matches.models import Match
+            from datetime import datetime, timezone
+            
+            tour_stmt = (
+                select(Tour)
+                .where(Tour.id == tour_id)
+                .options(
+                    selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match)
+                )
+            )
             tour_result = await session.execute(tour_stmt)
-            tour = tour_result.scalars().first()
+            tour = tour_result.unique().scalars().first()
             
             if not tour:
                 logger.warning(f"Tour {tour_id} not found")
                 return []
             
-            is_current_tour = tour.type == 'current'
+            # Определяем, является ли тур текущим по датам матчей
+            is_current_tour = False
+            if tour.start_date and tour.end_date:
+                now = datetime.utcnow().replace(tzinfo=timezone.utc)
+                start_date = tour.start_date if tour.start_date.tzinfo else tour.start_date.replace(tzinfo=timezone.utc)
+                end_date = tour.end_date if tour.end_date.tzinfo else tour.end_date.replace(tzinfo=timezone.utc)
+                is_current_tour = start_date <= now <= end_date
             
             # Для текущего тура получаем все сквады из той же лиги
             # Для исторических туров - через JOIN с SquadTour
@@ -1306,16 +1321,31 @@ class SquadService(BaseService):
         """
         async with async_session_maker() as session:
             # Проверяем, является ли этот тур текущим
-            from app.tours.models import Tour
-            tour_stmt = select(Tour).where(Tour.id == tour_id)
+            from app.tours.models import Tour, TourMatchAssociation
+            from app.matches.models import Match
+            from datetime import datetime, timezone
+            
+            tour_stmt = (
+                select(Tour)
+                .where(Tour.id == tour_id)
+                .options(
+                    selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match)
+                )
+            )
             tour_result = await session.execute(tour_stmt)
-            tour = tour_result.scalars().first()
+            tour = tour_result.unique().scalars().first()
             
             if not tour:
                 logger.warning(f"Tour {tour_id} not found")
                 return []
             
-            is_current_tour = tour.type == 'current'
+            # Определяем, является ли тур текущим по датам матчей
+            is_current_tour = False
+            if tour.start_date and tour.end_date:
+                now = datetime.utcnow().replace(tzinfo=timezone.utc)
+                start_date = tour.start_date if tour.start_date.tzinfo else tour.start_date.replace(tzinfo=timezone.utc)
+                end_date = tour.end_date if tour.end_date.tzinfo else tour.end_date.replace(tzinfo=timezone.utc)
+                is_current_tour = start_date <= now <= end_date
             
             # Для текущего тура - сквады по league_id и fav_team_id
             # Для исторических - через JOIN с SquadTour
