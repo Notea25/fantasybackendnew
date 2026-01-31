@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
-from app.squads.models import Squad, squad_players_association, squad_bench_players_association, SquadTour
+from app.squads.models import Squad, SquadTour
 from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.tours.models import Tour, tour_matches_association
 from app.tours.services import TourService
@@ -355,120 +355,15 @@ class SquadService(BaseService):
         
         return None
 
-    @classmethod
-    async def find_one_or_none_with_relations(cls, **filter_by):
-        logger.info(f"Fetching squad with relations, filter: {filter_by}")
-        async with async_session_maker() as session:
-            stmt = (
-                select(cls.model)
-                .filter_by(**filter_by)
-                .options(
-                    joinedload(cls.model.user),
-                    joinedload(cls.model.league),
-                )
-            )
-            result = await session.execute(stmt)
-            squad = result.scalars().unique().first()
-            if squad:
-                logger.debug(f"Found squad {squad.id} with relations, current_tour_id: {squad.current_tour_id}")
+    # DEPRECATED: Removed - use get_squad_tour_history_with_players for composition data
+    # Squad now contains only metadata, use SquadTour for state
 
-                main_players_stmt = (
-                    select(Player)
-                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
-                    .where(squad_players_association.c.squad_id == squad.id)
-                )
-                main_players_result = await session.execute(main_players_stmt)
-                main_players = main_players_result.scalars().all()
-
-                bench_players_stmt = (
-                    select(Player)
-                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
-                    .where(squad_bench_players_association.c.squad_id == squad.id)
-                )
-                bench_players_result = await session.execute(bench_players_stmt)
-                bench_players = bench_players_result.scalars().all()
-
-                async def get_player_points(player_id: int) -> int:
-                    stmt = (
-                        select(func.sum(PlayerMatchStats.points))
-                        .where(PlayerMatchStats.player_id == player_id)
-                    )
-                    result = await session.execute(stmt)
-                    return result.scalar() or 0
-
-                main_players_stmt_full = (
-                    select(Player)
-                    .join(squad_players_association, Player.id == squad_players_association.c.player_id)
-                    .where(squad_players_association.c.squad_id == squad.id)
-                    .options(joinedload(Player.team))
-                )
-                main_players_result_full = await session.execute(main_players_stmt_full)
-                main_players_full = main_players_result_full.unique().scalars().all()
-
-                # Определяем текущий/последний тур
-                current_or_last_tour_id = await cls._get_current_or_last_tour_id(session, squad.league_id)
-
-                main_players_data = []
-                for player in main_players_full:
-                    total_points = await cls._get_player_total_points(session, player.id)
-                    tour_points = 0
-                    if current_or_last_tour_id:
-                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
-                    
-                    main_players_data.append({
-                        "id": player.id,
-                        "name": player.name,
-                        "position": player.position,
-                        "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
-                        "team_logo": player.team.logo if player.team else None,
-                        "market_value": player.market_value,
-                        "photo": player.photo,
-                        "total_points": total_points,
-                        "tour_points": tour_points,
-                    })
-
-                bench_players_stmt_full = (
-                    select(Player)
-                    .join(squad_bench_players_association, Player.id == squad_bench_players_association.c.player_id)
-                    .where(squad_bench_players_association.c.squad_id == squad.id)
-                    .options(joinedload(Player.team))
-                )
-                bench_players_result_full = await session.execute(bench_players_stmt_full)
-                bench_players_full = bench_players_result_full.unique().scalars().all()
-
-                bench_players_data = []
-                for player in bench_players_full:
-                    total_points = await cls._get_player_total_points(session, player.id)
-                    tour_points = 0
-                    if current_or_last_tour_id:
-                        tour_points = await cls._get_player_tour_points(session, player.id, current_or_last_tour_id)
-                    
-                    bench_players_data.append({
-                        "id": player.id,
-                        "name": player.name,
-                        "position": player.position,
-                        "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
-                        "team_logo": player.team.logo if player.team else None,
-                        "market_value": player.market_value,
-                        "photo": player.photo,
-                        "total_points": total_points,
-                        "tour_points": tour_points,
-                    })
-
-                # Подготавливаем объект сквада под SquadReadSchema
-                # (schema ждет поля username, main_players, bench_players)
-                squad.username = squad.user.username if squad.user else ""
-                squad.main_players = main_players_data
-                squad.bench_players = bench_players_data
-
-                logger.debug(
-                    f"Loaded {len(main_players_data)} main players and {len(bench_players_data)} bench players")
-            else:
-                logger.debug(f"No squad found with filter {filter_by}")
-            return squad
-
+    # DEPRECATED: Removed - Squad contains only metadata now
+    # Use find_all() for metadata, get_squad_tour_history_with_players() for composition
+    
+    # DEPRECATED: Removed - Squad contains only metadata now
+    # Use find_all() for metadata
+    
     @classmethod
     async def find_all_with_relations(cls):
         logger.info("Fetching all squads with relations")
