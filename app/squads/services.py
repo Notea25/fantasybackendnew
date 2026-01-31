@@ -925,56 +925,32 @@ class SquadService(BaseService):
 
     @classmethod
     async def get_leaderboard(cls, tour_id: int) -> list[dict]:
+        """Get leaderboard for a tour.
+        
+        New architecture: All data comes from SquadTour, no Squad.points.
+        Calculates points from SquadTour snapshots only.
+        """
         async with async_session_maker() as session:
-            # Проверяем, является ли этот тур текущим
-            # Для текущего тура берем данные из Squad, для исторических - из SquadTour
-            from app.tours.models import Tour, TourMatchAssociation
-            from app.matches.models import Match
-            from datetime import datetime, timezone
+            from app.tours.models import Tour
             
-            tour_stmt = (
-                select(Tour)
-                .where(Tour.id == tour_id)
-                .options(
-                    selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match)
-                )
+            # Get tour info
+            tour = await session.execute(
+                select(Tour).where(Tour.id == tour_id)
             )
-            tour_result = await session.execute(tour_stmt)
-            tour = tour_result.unique().scalars().first()
+            tour = tour.scalars().first()
             
             if not tour:
                 logger.warning(f"Tour {tour_id} not found")
                 return []
             
-            # Определяем, является ли тур текущим по датам матчей
-            is_current_tour = False
-            if tour.start_date and tour.end_date:
-                now = datetime.utcnow().replace(tzinfo=timezone.utc)
-                start_date = tour.start_date if tour.start_date.tzinfo else tour.start_date.replace(tzinfo=timezone.utc)
-                end_date = tour.end_date if tour.end_date.tzinfo else tour.end_date.replace(tzinfo=timezone.utc)
-                is_current_tour = start_date <= now <= end_date
-            
-            # Для текущего тура получаем все сквады из той же лиги
-            # Для исторических туров - через JOIN с SquadTour
-            if is_current_tour:
-                # Для текущего тура берем все сквады по league_id
-                stmt = (
-                    select(Squad)
-                    .where(Squad.league_id == tour.league_id)
-                    .options(
-                        joinedload(Squad.user)
-                    )
-                )
-            else:
-                stmt = (
-                    select(Squad)
-                    .join(SquadTour, Squad.id == SquadTour.squad_id)
-                    .where(SquadTour.tour_id == tour_id)
-                    .options(
-                        joinedload(Squad.user)
-                    )
-                    .distinct()
-                )
+            # Get all squads that have SquadTour for this tour
+            stmt = (
+                select(Squad)
+                .join(SquadTour, Squad.id == SquadTour.squad_id)
+                .where(SquadTour.tour_id == tour_id)
+                .options(joinedload(Squad.user))
+                .distinct()
+            )
             
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
@@ -983,15 +959,7 @@ class SquadService(BaseService):
             squad_ids = [squad.id for squad in squads]
             points_map = await cls.calculate_squad_points_bulk(session, squad_ids, tour_id)
 
-            # For current tour, use Squad.points instead of SquadTour (since tour is ongoing)
-            if is_current_tour:
-                for squad in squads:
-                    if squad.id in points_map:
-                        points_map[squad.id].tour_earned = squad.points
-                        points_map[squad.id].tour_penalty = squad.penalty_points
-                        points_map[squad.id].tour_net = squad.points - squad.penalty_points
-
-            # Формируем лидерборд
+            # Build leaderboard
             leaderboard_with_net_points = []
             for squad in squads:
                 points = points_map.get(squad.id, SquadPoints(0, 0, 0, 0, 0, 0))
@@ -1001,7 +969,7 @@ class SquadService(BaseService):
                     "points": points,
                 })
             
-            # Сортируем по total_net (итоговые чистые очки) по убыванию
+            # Sort by total_net (cumulative net points) descending
             leaderboard_with_net_points.sort(key=lambda x: x["points"].total_net, reverse=True)
             
             leaderboard: list[dict] = []
@@ -1009,7 +977,6 @@ class SquadService(BaseService):
                 squad = entry["squad"]
                 points = entry["points"]
                 
-                # Формат, соответствующий ожиданиям фронтенда
                 leaderboard.append({
                     "place": index,
                     "squad_id": squad.id,
@@ -1018,9 +985,7 @@ class SquadService(BaseService):
                     "username": squad.user.username,
                     "tour_points": points.tour_net,
                     "total_points": points.total_earned,
-                    # Return tour penalty for current tour display
                     "penalty_points": points.tour_penalty,
-                    # Return total penalties for "Всего" column calculation
                     "total_penalty_points": points.total_penalty,
                 })
 
@@ -1468,67 +1433,36 @@ class SquadService(BaseService):
     @classmethod
     async def get_leaderboard_by_fav_team(cls, tour_id: int, fav_team_id: int) -> list[dict]:
         """Лидерборд по клубной лиге (по fav_team_id).
-
-        Формат соответствует типу CustomLeagueLeaderboardEntry на фронтенде:
-        place, squad_id, squad_name, user_id, username, tour_points, total_points,
-        fav_team_id, fav_team_name.
+        
+        New architecture: All data from SquadTour only.
         """
         async with async_session_maker() as session:
-            # Проверяем, является ли этот тур текущим
-            from app.tours.models import Tour, TourMatchAssociation
-            from app.matches.models import Match
-            from datetime import datetime, timezone
+            from app.tours.models import Tour
             
-            tour_stmt = (
-                select(Tour)
-                .where(Tour.id == tour_id)
-                .options(
-                    selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match)
-                )
+            # Get tour info
+            tour = await session.execute(
+                select(Tour).where(Tour.id == tour_id)
             )
-            tour_result = await session.execute(tour_stmt)
-            tour = tour_result.unique().scalars().first()
+            tour = tour.scalars().first()
             
             if not tour:
                 logger.warning(f"Tour {tour_id} not found")
                 return []
             
-            # Определяем, является ли тур текущим по датам матчей
-            is_current_tour = False
-            if tour.start_date and tour.end_date:
-                now = datetime.utcnow().replace(tzinfo=timezone.utc)
-                start_date = tour.start_date if tour.start_date.tzinfo else tour.start_date.replace(tzinfo=timezone.utc)
-                end_date = tour.end_date if tour.end_date.tzinfo else tour.end_date.replace(tzinfo=timezone.utc)
-                is_current_tour = start_date <= now <= end_date
-            
-            # Для текущего тура - сквады по league_id и fav_team_id
-            # Для исторических - через JOIN с SquadTour
-            if is_current_tour:
-                stmt = (
-                    select(Squad)
-                    .where(
-                        Squad.league_id == tour.league_id,
-                        Squad.fav_team_id == fav_team_id,
-                    )
-                    .options(
-                        joinedload(Squad.user),
-                        joinedload(Squad.fav_team),
-                    )
+            # Get squads with SquadTour for this tour and fav_team_id
+            stmt = (
+                select(Squad)
+                .join(SquadTour, Squad.id == SquadTour.squad_id)
+                .where(
+                    SquadTour.tour_id == tour_id,
+                    Squad.fav_team_id == fav_team_id,
                 )
-            else:
-                stmt = (
-                    select(Squad)
-                    .join(SquadTour, Squad.id == SquadTour.squad_id)
-                    .where(
-                        SquadTour.tour_id == tour_id,
-                        Squad.fav_team_id == fav_team_id,
-                    )
-                    .options(
-                        joinedload(Squad.user),
-                        joinedload(Squad.fav_team),
-                    )
-                    .distinct()
+                .options(
+                    joinedload(Squad.user),
+                    joinedload(Squad.fav_team),
                 )
+                .distinct()
+            )
             
             result = await session.execute(stmt)
             squads = result.unique().scalars().all()
@@ -1537,15 +1471,7 @@ class SquadService(BaseService):
             squad_ids = [squad.id for squad in squads]
             points_map = await cls.calculate_squad_points_bulk(session, squad_ids, tour_id)
 
-            # For current tour, use Squad.points instead of SquadTour
-            if is_current_tour:
-                for squad in squads:
-                    if squad.id in points_map:
-                        points_map[squad.id].tour_earned = squad.points
-                        points_map[squad.id].tour_penalty = squad.penalty_points
-                        points_map[squad.id].tour_net = squad.points - squad.penalty_points
-
-            # Формируем лидерборд
+            # Build leaderboard
             leaderboard_with_net_points = []
             for squad in squads:
                 points = points_map.get(squad.id, SquadPoints(0, 0, 0, 0, 0, 0))
@@ -1557,7 +1483,7 @@ class SquadService(BaseService):
                     "points": points,
                 })
             
-            # Сортируем по total_net по убыванию
+            # Sort by total_net descending
             leaderboard_with_net_points.sort(key=lambda x: x["points"].total_net, reverse=True)
             
             leaderboard: list[dict] = []
@@ -1574,9 +1500,7 @@ class SquadService(BaseService):
                     "username": squad.user.username,
                     "tour_points": points.tour_net,
                     "total_points": points.total_earned,
-                    # Return tour penalty for current tour display
                     "penalty_points": points.tour_penalty,
-                    # Return total penalties for "Всего" column calculation
                     "total_penalty_points": points.total_penalty,
                     "fav_team_id": squad.fav_team_id,
                     "fav_team_name": fav_team.name if fav_team is not None else None,
