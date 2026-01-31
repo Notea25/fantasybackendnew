@@ -162,17 +162,12 @@ class SquadService(BaseService):
                 budget = 100_000 - total_cost
                 logger.debug(f"Calculated budget: {budget}")
 
+                # New architecture: Squad is metadata only
                 squad = cls.model(
                     name=name,
                     user_id=user_id,
                     league_id=league_id,
                     fav_team_id=fav_team_id,
-                    current_tour_id=active_tour_id,
-                    budget=budget,
-                    replacements=2,
-                    penalty_points=0,
-                    captain_id=captain_id,
-                    vice_captain_id=vice_captain_id,
                 )
                 session.add(squad)
                 logger.debug(f"Created squad object: {squad}")
@@ -181,41 +176,44 @@ class SquadService(BaseService):
                 await session.refresh(squad)
                 logger.debug(f"Committed squad with ID: {squad.id}")
 
-                for player_id in main_player_ids:
-                    stmt = squad_players_association.insert().values(
-                        squad_id=squad.id, player_id=player_id
-                    )
-                    await session.execute(stmt)
-                    logger.debug(f"Added main player with ID: {player_id} to squad {squad.id}")
-
-                for player_id in bench_player_ids:
-                    stmt = squad_bench_players_association.insert().values(
-                        squad_id=squad.id, player_id=player_id
-                    )
-                    await session.execute(stmt)
-                    logger.debug(f"Added bench player with ID: {player_id} to squad {squad.id}")
-
-                await session.commit()
-                logger.debug(f"Committed player associations for squad {squad.id}")
-
-                # Создаём SquadTour для следующего тура
+                # Create SquadTour for next tour with all state
                 if active_tour_id:
-                    bench_players = [player_by_id[pid] for pid in bench_player_ids]
+                    from app.squads.models import squad_tour_players, squad_tour_bench_players
                     
                     squad_tour = SquadTour(
                         squad_id=squad.id,
                         tour_id=active_tour_id,
-                        is_current=True,
                         captain_id=captain_id,
                         vice_captain_id=vice_captain_id,
-                        main_players=main_players,
-                        bench_players=bench_players,
+                        budget=budget,
+                        replacements=2,
+                        is_finalized=False,
                         points=0,
                         penalty_points=0,
+                        created_at=datetime.utcnow()
                     )
                     session.add(squad_tour)
+                    await session.flush()
+                    
+                    # Add player associations to SquadTour
+                    for player_id in main_player_ids:
+                        await session.execute(
+                            squad_tour_players.insert().values(
+                                squad_tour_id=squad_tour.id,
+                                player_id=player_id
+                            )
+                        )
+                    
+                    for player_id in bench_player_ids:
+                        await session.execute(
+                            squad_tour_bench_players.insert().values(
+                                squad_tour_id=squad_tour.id,
+                                player_id=player_id
+                            )
+                        )
+                    
                     await session.commit()
-                    logger.info(f"Created SquadTour for squad {squad.id} and next tour {active_tour_id}")
+                    logger.info(f"Created SquadTour for squad {squad.id} and tour {active_tour_id}")
                 else:
                     logger.warning(f"No next tour found for league {league_id}, SquadTour not created")
 
@@ -1220,21 +1218,66 @@ class SquadService(BaseService):
 
     @classmethod
     async def get_replacement_info(cls, squad_id: int) -> dict:
+        """Get replacement info for next available tour.
+        
+        New architecture: Info comes from SquadTour, not Squad.
+        """
         async with async_session_maker() as session:
-            stmt = select(Squad).where(Squad.id == squad_id)
-            result = await session.execute(stmt)
-            squad = result.scalars().first()
-
+            # Get Squad
+            squad = await session.execute(
+                select(Squad).where(Squad.id == squad_id)
+            )
+            squad = squad.scalars().first()
             if not squad:
                 raise HTTPException(
                     status_code=404,
                     detail=f"Squad with id {squad_id} not found"
                 )
-
+            
+            # Find next open tour
+            from datetime import datetime
+            previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(squad.league_id)
+            target_tour = None
+            
+            now = datetime.utcnow()
+            if current_tour and current_tour.deadline > now:
+                target_tour = current_tour
+            elif next_tour and next_tour.deadline > now:
+                target_tour = next_tour
+            
+            if not target_tour:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No open tour available"
+                )
+            
+            # Get or create SquadTour
+            squad_tour = await session.execute(
+                select(SquadTour)
+                .where(SquadTour.squad_id == squad_id)
+                .where(SquadTour.tour_id == target_tour.id)
+                .options(selectinload(SquadTour.main_players))
+                .options(selectinload(SquadTour.bench_players))
+            )
+            squad_tour = squad_tour.scalars().first()
+            
+            if not squad_tour:
+                # Create default SquadTour if doesn't exist
+                squad_tour = SquadTour(
+                    squad_id=squad_id,
+                    tour_id=target_tour.id,
+                    budget=100_000,
+                    replacements=2,
+                    is_finalized=False
+                )
+            
+            current_cost = squad_tour.calculate_players_cost() if squad_tour.main_players else 0
+            
             return {
-                "squad_id": squad.id,
-                "remaining_replacements": squad.replacements,
-                "max_replacements": 2
+                "available_replacements": squad_tour.replacements,
+                "budget": squad_tour.budget,
+                "current_players_cost": current_cost,
+                "tour_id": target_tour.id
             }
 
     @classmethod

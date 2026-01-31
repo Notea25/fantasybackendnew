@@ -108,6 +108,11 @@ async def replace_players(
     payload: SquadUpdatePlayersSchema = None,
     user: User = Depends(get_current_user),
 ) -> SquadReplacePlayersResponseSchema:
+    """Replace players in squad for next available tour.
+    
+    New architecture: All changes are made to SquadTour, not Squad.
+    Returns SquadTour with updated state.
+    """
     payload = payload or SquadUpdatePlayersSchema()
     main_player_ids = payload.main_player_ids or []
     bench_player_ids = payload.bench_player_ids or []
@@ -120,30 +125,44 @@ async def replace_players(
         new_bench_players=bench_player_ids,
     )
     
-    squad = result["squad"]
-    squad_with_relations = await SquadService.find_one_or_none_with_relations(id=squad.id)
+    squad_tour = result["squad_tour"]
     
     # Log the result for debugging
     logger.info(
-        f"Squad {squad_id} transfers completed: "
+        f"Squad {squad_id} tour {squad_tour.tour_id} transfers completed: "
         f"transfers={result['transfers_applied']}, "
         f"free={result['free_transfers_used']}, "
         f"paid={result['paid_transfers']}, "
         f"penalty={result['penalty']}, "
-        f"new_points={squad.points}, "
-        f"remaining_replacements={squad.replacements}"
+        f"remaining_replacements={squad_tour.replacements}"
     )
+    
+    # Convert SquadTour to response format
+    from app.tours.services import TourService
+    tour = await TourService.find_one_or_none(id=squad_tour.tour_id)
     
     return SquadReplacePlayersResponseSchema(
         status="success",
         message="Players replaced successfully",
-        remaining_replacements=squad.replacements,
-        squad=squad_with_relations,
+        remaining_replacements=squad_tour.replacements,
+        squad_tour=SquadTourHistorySchema(
+            tour_id=squad_tour.tour_id,
+            tour_number=tour.tour_number if tour else 0,
+            points=squad_tour.points,
+            penalty_points=squad_tour.penalty_points,
+            used_boost=squad_tour.used_boost,
+            captain_id=squad_tour.captain_id,
+            vice_captain_id=squad_tour.vice_captain_id,
+            budget=squad_tour.budget,
+            replacements=squad_tour.replacements,
+            is_finalized=squad_tour.is_finalized,
+            main_players=[],  # Will be populated by frontend
+            bench_players=[],
+        ),
         transfers_applied=result["transfers_applied"],
         free_transfers_used=result["free_transfers_used"],
         paid_transfers=result["paid_transfers"],
         penalty=result["penalty"],
-        new_total_points=squad.points,
     )
 
 @router.get("/{squad_id}/replacement_info", response_model=ReplacementInfoSchema)
