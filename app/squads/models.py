@@ -72,6 +72,7 @@ class Squad(Base):
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
     points: Mapped[int] = mapped_column(default=0)
     penalty_points: Mapped[int] = mapped_column(default=0)
+    next_tour_penalty_points: Mapped[int] = mapped_column(default=0)
     current_tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
     captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)
     vice_captain_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id"), nullable=True)

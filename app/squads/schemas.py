@@ -29,6 +29,7 @@ class SquadReadSchema(BaseModel):
     replacements: int
     points: int
     penalty_points: int
+    next_tour_penalty_points: int
     captain_id: Optional[int]
     vice_captain_id: Optional[int]
     main_players: list[PlayerInSquadSchema]

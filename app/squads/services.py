@@ -1071,8 +1071,8 @@ class SquadService(BaseService):
                     penalty = paid_transfers * 4  # 4 очка за каждый платный трансфер
                     
                     squad.replacements = 0
-                    # Накапливаем штрафы в отдельном поле
-                    squad.penalty_points += penalty
+                    # Накапливаем штрафы для следующего тура (трансферы делаются для следующего тура)
+                    squad.next_tour_penalty_points += penalty
 
             await session.execute(
                 delete(squad_players_association).where(
@@ -1214,8 +1214,16 @@ class SquadService(BaseService):
                     created_count += 1
                     logger.info(f"Created SquadTour for squad {squad.id}, tour {next_tour_id}")
                 
-                # 3. Обновляем current_tour_id
+                # 3. Обновляем current_tour_id и применяем штрафы для следующего тура
                 squad.current_tour_id = next_tour_id
+                
+                # Применяем штрафы за трансферы, сделанные для этого тура
+                squad.penalty_points = squad.next_tour_penalty_points
+                squad.next_tour_penalty_points = 0
+                
+                logger.info(
+                    f"Squad {squad.id} tour transition: applied penalty={squad.penalty_points} for tour {next_tour_id}"
+                )
                 
                 # Сбрасываем замены на новый тур (например, +1 бесплатная замена)
                 # TODO: Добавить логику пополнения замен если нужно
