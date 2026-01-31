@@ -51,14 +51,15 @@ class SquadService(BaseService):
                     )
                     return existing_squad
 
-                # Определяем актуальный тур для сквада
+                # Определяем следующий тур для сквада
                 previous_tour, current_tour, next_tour = await TourService.get_previous_current_next_tour(league_id)
                 logger.debug(f"Tours for league {league_id}: previous={previous_tour}, current={current_tour}, next={next_tour}")
                 
-                # Правило: если есть текущий тур (матчи идут сейчас) - используем его, иначе - следующий
-                active_tour = current_tour if current_tour else next_tour
+                # Правило: новый сквад всегда создается для следующего тура
+                # (текущий тур уже идет, поэтому создавать для него нельзя)
+                active_tour = next_tour
                 active_tour_id = active_tour.id if active_tour else None
-                logger.debug(f"Active tour for new squad: {active_tour_id}")
+                logger.debug(f"Next tour for new squad: {active_tour_id}")
 
                 all_player_ids = main_player_ids + bench_player_ids
                 players = await session.execute(
@@ -184,7 +185,7 @@ class SquadService(BaseService):
                 await session.commit()
                 logger.debug(f"Committed player associations for squad {squad.id}")
 
-                # Создаём SquadTour для актуального тура
+                # Создаём SquadTour для следующего тура
                 if active_tour_id:
                     bench_players = [player_by_id[pid] for pid in bench_player_ids]
                     
@@ -201,9 +202,9 @@ class SquadService(BaseService):
                     )
                     session.add(squad_tour)
                     await session.commit()
-                    logger.info(f"Created SquadTour for squad {squad.id} and tour {active_tour_id}")
+                    logger.info(f"Created SquadTour for squad {squad.id} and next tour {active_tour_id}")
                 else:
-                    logger.warning(f"No active tour found for league {league_id}, SquadTour not created")
+                    logger.warning(f"No next tour found for league {league_id}, SquadTour not created")
 
                 # Автоматически добавляем сквад создателя во все его пользовательские лиги
                 # для этой основной лиги.
