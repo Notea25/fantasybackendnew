@@ -11,7 +11,8 @@ from datetime import datetime, timedelta
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player, player_bench_squad_tours, player_squad_tours
-from app.squads.models import Squad, SquadTour
+from app.squads.models import Squad
+from app.squad_tours.models import SquadTour
 from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.tours.models import Tour, tour_matches_association
 from app.tours.services import TourService
@@ -178,7 +179,7 @@ class SquadService(BaseService):
 
                 # Create SquadTour for next tour with all state
                 if active_tour_id:
-                    from app.squads.models import squad_tour_players, squad_tour_bench_players
+                    from app.squad_tours.models import squad_tour_players, squad_tour_bench_players
                     
                     squad_tour = SquadTour(
                         squad_id=squad.id,
@@ -1086,7 +1087,7 @@ class SquadService(BaseService):
             squad_tour.budget = new_budget
             
             # Update player associations
-            from app.squads.models import squad_tour_players, squad_tour_bench_players
+            from app.squad_tours.models import squad_tour_players, squad_tour_bench_players
             
             await session.execute(
                 delete(squad_tour_players).where(
@@ -1259,7 +1260,7 @@ class SquadService(BaseService):
                         await session.flush()
                         
                         # Copy player associations
-                        from app.squads.models import squad_tour_players, squad_tour_bench_players
+                        from app.squad_tours.models import squad_tour_players, squad_tour_bench_players
                         
                         for player in squad_tour.main_players:
                             await session.execute(

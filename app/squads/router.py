@@ -6,17 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException
 logger = logging.getLogger(__name__)
 
 from app.squads.schemas import (
+    SquadReadSchema,
+    SquadRenameSchema,
+    SquadUpdateResponseSchema,
+    SquadCreateSchema,
+    SquadUpdatePlayersSchema,
+)
+from app.squad_tours.schemas import (
     LeaderboardEntrySchema,
     PublicLeaderboardEntrySchema,
     PublicClubLeaderboardEntrySchema,
     ReplacementInfoSchema,
-    SquadReadSchema,
-    SquadRenameSchema,
-    SquadReplacePlayersResponseSchema,
+    SquadTourReplacePlayersResponseSchema,
     SquadTourHistorySchema,
-    SquadUpdateResponseSchema,
-    SquadCreateSchema,
-    SquadUpdatePlayersSchema,
 )
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
@@ -105,14 +107,14 @@ async def update_squad_players(
         detail="This endpoint is deprecated. Use POST /squads/{squad_id}/replace_players instead."
     )
 
-@router.post("/{squad_id}/replace_players", response_model=SquadReplacePlayersResponseSchema)
+@router.post("/{squad_id}/replace_players", response_model=SquadTourReplacePlayersResponseSchema)
 async def replace_players(
     squad_id: int,
     captain_id: Optional[int] = None,
     vice_captain_id: Optional[int] = None,
     payload: SquadUpdatePlayersSchema = None,
     user: User = Depends(get_current_user),
-) -> SquadReplacePlayersResponseSchema:
+) -> SquadTourReplacePlayersResponseSchema:
     """Replace players in squad for next available tour.
     
     New architecture: All changes are made to SquadTour, not Squad.
@@ -146,7 +148,7 @@ async def replace_players(
     from app.tours.services import TourService
     tour = await TourService.find_one_or_none(id=squad_tour.tour_id)
     
-    return SquadReplacePlayersResponseSchema(
+    return SquadTourReplacePlayersResponseSchema(
         status="success",
         message="Players replaced successfully",
         remaining_replacements=squad_tour.replacements,

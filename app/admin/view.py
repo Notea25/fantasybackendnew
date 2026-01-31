@@ -19,8 +19,8 @@ from app.leagues.models import League
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
-from app.squads.models import (
-    Squad,
+from app.squads.models import Squad
+from app.squad_tours.models import (
     SquadTour,
     squad_tour_players,
     squad_tour_bench_players,

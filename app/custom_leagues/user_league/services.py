@@ -8,7 +8,8 @@ from app.custom_leagues.user_league.schemas import UserLeagueWithStatsSchema
 from app.database import async_session_maker
 from app.custom_leagues.user_league.models import UserLeague, user_league_squads
 from app.leagues.models import League
-from app.squads.models import Squad, SquadTour
+from app.squads.models import Squad
+from app.squad_tours.models import SquadTour
 from app.tours.models import Tour, user_league_tours
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 

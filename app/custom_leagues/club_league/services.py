@@ -7,7 +7,8 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.custom_leagues.club_league.models import ClubLeague, club_league_squads
 from app.database import async_session_maker
-from app.squads.models import Squad, SquadTour
+from app.squads.models import Squad
+from app.squad_tours.models import SquadTour
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 
 logger = logging.getLogger(__name__)

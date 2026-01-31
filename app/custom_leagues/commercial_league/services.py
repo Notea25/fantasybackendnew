@@ -12,6 +12,8 @@ from app.leagues.models import League
 from app.tours.models import Tour
 from app.utils.exceptions import ResourceNotFoundException, NotAllowedException
 from app.squads.models import Squad
+from app.squad_tours.models import SquadTour
+from app.squads.services import SquadService, SquadPoints
 
 logger = logging.getLogger(__name__)
 
@@ -79,9 +81,6 @@ class CommercialLeagueService:
 
             if not squad_ids:
                 return []
-
-            from app.squads.models import SquadTour, Squad
-            from app.squads.services import SquadService, SquadPoints
             
             # Get squads with user data
             squads_stmt = (

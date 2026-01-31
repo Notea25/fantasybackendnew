@@ -13,7 +13,8 @@ from app.players.models import Player
 from app.database import async_session_maker
 from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema, PlayerFullInfoSchema, \
     PlayerWithTotalPointsSchema
-from app.squads.models import SquadTour, squad_tour_players, squad_tour_bench_players, Squad
+from app.squads.models import Squad
+from app.squad_tours.models import SquadTour, squad_tour_players, squad_tour_bench_players
 from app.teams.models import Team
 from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
 from app.tours.schemas import TourWithMatchesSchema
