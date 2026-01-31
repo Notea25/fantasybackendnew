@@ -849,12 +849,13 @@ class SquadService(BaseService):
             
             is_current_tour = tour.type == 'current'
             
-            # Для текущего тура получаем все сквады, у которых current_tour_id == tour_id
+            # Для текущего тура получаем все сквады из той же лиги
             # Для исторических туров - через JOIN с SquadTour
             if is_current_tour:
+                # Для текущего тура берем все сквады по league_id
                 stmt = (
                     select(Squad)
-                    .where(Squad.current_tour_id == tour_id)
+                    .where(Squad.league_id == tour.league_id)
                     .options(
                         joinedload(Squad.user)
                     )
@@ -1316,13 +1317,13 @@ class SquadService(BaseService):
             
             is_current_tour = tour.type == 'current'
             
-            # Для текущего тура - сквады с current_tour_id и fav_team_id
+            # Для текущего тура - сквады по league_id и fav_team_id
             # Для исторических - через JOIN с SquadTour
             if is_current_tour:
                 stmt = (
                     select(Squad)
                     .where(
-                        Squad.current_tour_id == tour_id,
+                        Squad.league_id == tour.league_id,
                         Squad.fav_team_id == fav_team_id,
                     )
                     .options(
