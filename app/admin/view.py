@@ -22,8 +22,6 @@ from app.players.models import Player
 from app.squads.models import (
     Squad,
     SquadTour,
-    squad_players_association,
-    squad_bench_players_association,
     squad_tour_players,
     squad_tour_bench_players,
 )
@@ -101,15 +99,8 @@ class UserAdmin(ModelView, model=User):
                     .where(club_league_squads.c.squad_id.in_(squad_ids))
                 )
 
-                # 1d) squad <-> players associations (current main & bench)
-                await session.execute(
-                    delete(squad_players_association)
-                    .where(squad_players_association.c.squad_id.in_(squad_ids))
-                )
-                await session.execute(
-                    delete(squad_bench_players_association)
-                    .where(squad_bench_players_association.c.squad_id.in_(squad_ids))
-                )
+                # 1d) squad <-> players associations removed in new architecture
+                # Players are now stored in SquadTour only, cleaned up in step 1f
 
                 # 1e) all boosts for these squads
                 await session.execute(
