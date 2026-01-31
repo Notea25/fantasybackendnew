@@ -1,7 +1,7 @@
 """Add penalty_points to squads and squad_tours
 
 Revision ID: a3f7b8c9d1e2
-Revises: 75882eb987f6
+Revises: fcd9b8e3f2a1
 Create Date: 2026-01-31 08:37:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'a3f7b8c9d1e2'
-down_revision: Union[str, Sequence[str], None] = '75882eb987f6'
+down_revision: Union[str, Sequence[str], None] = 'fcd9b8e3f2a1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
