@@ -433,26 +433,6 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
     column_searchable_list = ["player_id"]
     page_size = 50
     page_size_options = [25, 50, 100, 200]
-    
-    # AJAX поиск для полей с большим количеством записей
-    # Для match оставляем обычный dropdown (записей немного)
-    form_ajax_refs = {
-        "player": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-        "team": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-        "league": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-    }
-    
-    # Исключаем match из AJAX refs, используем обычный select
-    form_excluded_columns = []
 
     def format(self, attr, value):
         if attr == "player_id" and value is not None:
