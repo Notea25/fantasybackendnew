@@ -252,15 +252,15 @@ class SquadAdmin(ModelView, model=Squad):
     
     # AJAX поиск для выбора user, team, league
     form_ajax_refs = {
-        "user_id": {
+        "user": {
             "fields": ("username",),
             "order_by": ("username",),
         },
-        "fav_team_id": {
+        "fav_team": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "league_id": {
+        "league": {
             "fields": ("name",),
             "order_by": ("name",),
         },
@@ -335,23 +335,16 @@ class SquadTourAdmin(ModelView, model=SquadTour):
         "is_finalized": "Finalized",
     }
     
-    # AJAX поиск для выбора squad, tour, игроков
+    # AJAX поиск для выбора squad, tour
+    # captain_id и vice_captain_id — это просто int поля, не relationships
     form_ajax_refs = {
-        "squad_id": {
+        "squad": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "tour_id": {
+        "tour": {
             "fields": ("number",),
             "order_by": ("number",),
-        },
-        "captain_id": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-        "vice_captain_id": {
-            "fields": ("name",),
-            "order_by": ("name",),
         },
     }
 
@@ -382,11 +375,11 @@ class BoostAdmin(ModelView, model=Boost):
     
     # AJAX поиск для выбора squad и tour
     form_ajax_refs = {
-        "squad_id": {
+        "squad": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "tour_id": {
+        "tour": {
             "fields": ("number",),
             "order_by": ("number",),
         },
@@ -441,19 +434,19 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
     
     # AJAX поиск для выбора связанных объектов в формах
     form_ajax_refs = {
-        "player_id": {
+        "player": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "match_id": {
+        "match": {
             "fields": ("id",),
             "order_by": ("date",),
         },
-        "team_id": {
+        "team": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "league_id": {
+        "league": {
             "fields": ("name",),
             "order_by": ("name",),
         },
@@ -527,11 +520,11 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
     
     # AJAX поиск для выбора связанных объектов
     form_ajax_refs = {
-        "league_id": {
+        "league": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "creator_id": {
+        "creator": {
             "fields": ("username",),
             "order_by": ("username",),
         },
@@ -702,11 +695,11 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
     
     # AJAX поиск для выбора league и team
     form_ajax_refs = {
-        "league_id": {
+        "league": {
             "fields": ("name",),
             "order_by": ("name",),
         },
-        "team_id": {
+        "team": {
             "fields": ("name",),
             "order_by": ("name",),
         },
