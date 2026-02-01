@@ -1,10 +1,20 @@
-from fastapi import APIRouter, HTTPException
-from typing import List
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List, Optional
+import logging
 
-from app.squad_tours.schemas import SquadTourHistorySchema
+from app.squad_tours.schemas import (
+    SquadTourHistorySchema,
+    SquadTourUpdatePlayersSchema,
+    SquadTourReplacePlayersResponseSchema,
+    ReplacementInfoSchema,
+)
 from app.squad_tours.services import SquadTourService
 from app.squads.services import SquadService
+from app.users.dependencies import get_current_user
+from app.users.models import User
 from app.utils.exceptions import ResourceNotFoundException
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/squad_tours", tags=["Squad Tours"])
 
@@ -264,3 +274,78 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
             ))
         
         return result
+
+
+@router.post("/squad/{squad_id}/replace_players", response_model=SquadTourReplacePlayersResponseSchema)
+async def replace_players(
+    squad_id: int,
+    captain_id: Optional[int] = None,
+    vice_captain_id: Optional[int] = None,
+    payload: SquadTourUpdatePlayersSchema = None,
+    user: User = Depends(get_current_user),
+) -> SquadTourReplacePlayersResponseSchema:
+    """Replace players in squad for next available tour.
+    
+    New architecture: All changes are made to SquadTour, not Squad.
+    Returns SquadTour with updated state.
+    """
+    payload = payload or SquadTourUpdatePlayersSchema()
+    main_player_ids = payload.main_player_ids or []
+    bench_player_ids = payload.bench_player_ids or []
+
+    result = await SquadService.replace_players(
+        squad_id=squad_id,
+        captain_id=captain_id,
+        vice_captain_id=vice_captain_id,
+        new_main_players=main_player_ids,
+        new_bench_players=bench_player_ids,
+    )
+    
+    squad_tour = result["squad_tour"]
+    
+    # Log the result for debugging
+    logger.info(
+        f"Squad {squad_id} tour {squad_tour.tour_id} transfers completed: "
+        f"transfers={result['transfers_applied']}, "
+        f"free={result['free_transfers_used']}, "
+        f"paid={result['paid_transfers']}, "
+        f"penalty={result['penalty']}, "
+        f"remaining_replacements={squad_tour.replacements}"
+    )
+    
+    # Convert SquadTour to response format
+    from app.tours.services import TourService
+    tour = await TourService.find_one_or_none(id=squad_tour.tour_id)
+    
+    return SquadTourReplacePlayersResponseSchema(
+        status="success",
+        message="Players replaced successfully",
+        remaining_replacements=squad_tour.replacements,
+        squad_tour=SquadTourHistorySchema(
+            tour_id=squad_tour.tour_id,
+            tour_number=tour.tour_number if tour else 0,
+            points=squad_tour.points,
+            penalty_points=squad_tour.penalty_points,
+            used_boost=squad_tour.used_boost,
+            captain_id=squad_tour.captain_id,
+            vice_captain_id=squad_tour.vice_captain_id,
+            budget=squad_tour.budget,
+            replacements=squad_tour.replacements,
+            is_finalized=squad_tour.is_finalized,
+            main_players=[],  # Will be populated by frontend
+            bench_players=[],
+        ),
+        transfers_applied=result["transfers_applied"],
+        free_transfers_used=result["free_transfers_used"],
+        paid_transfers=result["paid_transfers"],
+        penalty=result["penalty"],
+    )
+
+
+@router.get("/squad/{squad_id}/replacement_info", response_model=ReplacementInfoSchema)
+async def get_replacement_info(
+    squad_id: int,
+    user: User = Depends(get_current_user)
+) -> ReplacementInfoSchema:
+    """Get replacement info for squad's current/next open tour."""
+    return await SquadService.get_replacement_info(squad_id)

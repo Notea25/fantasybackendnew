@@ -969,7 +969,8 @@ class SquadService(BaseService):
             target_tour = None
             
             # Determine which tour to edit
-            now = datetime.utcnow()
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
             if current_tour and current_tour.deadline > now:
                 target_tour = current_tour
             elif next_tour and next_tour.deadline > now:
