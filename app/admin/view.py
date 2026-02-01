@@ -249,6 +249,22 @@ class SquadAdmin(ModelView, model=Squad):
         "tour_snapshots",
         "used_boosts",
     ]
+    
+    # AJAX поиск для выбора user, team, league
+    form_ajax_refs = {
+        "user_id": {
+            "fields": ("username",),
+            "order_by": ("username",),
+        },
+        "fav_team_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "league_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
 
     def format(self, attr, value):
         if attr == "user_id" and value is not None:
@@ -318,6 +334,26 @@ class SquadTourAdmin(ModelView, model=SquadTour):
         "penalty_points": "Penalty Points",
         "is_finalized": "Finalized",
     }
+    
+    # AJAX поиск для выбора squad, tour, игроков
+    form_ajax_refs = {
+        "squad_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "tour_id": {
+            "fields": ("number",),
+            "order_by": ("number",),
+        },
+        "captain_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "vice_captain_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
 
     def format(self, attr, value):
         if attr == "squad_id" and value is not None:
@@ -342,6 +378,18 @@ class BoostAdmin(ModelView, model=Boost):
     column_labels = {
         "squad_id": "Squad",
         "tour_id": "Tour",
+    }
+    
+    # AJAX поиск для выбора squad и tour
+    form_ajax_refs = {
+        "squad_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "tour_id": {
+            "fields": ("number",),
+            "order_by": ("number",),
+        },
     }
 
     def format(self, attr, value):
@@ -390,6 +438,26 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
         PlayerMatchStats.points,
     ]
     column_searchable_list = ["player_id"]
+    
+    # AJAX поиск для выбора связанных объектов в формах
+    form_ajax_refs = {
+        "player_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "match_id": {
+            "fields": ("id",),
+            "order_by": ("date",),
+        },
+        "team_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "league_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
 
     def format(self, attr, value):
         if attr == "player_id" and value is not None:
@@ -456,6 +524,26 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
         "tours",
         "squads",
     ]
+    
+    # AJAX поиск для выбора связанных объектов
+    form_ajax_refs = {
+        "league_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "creator_id": {
+            "fields": ("username",),
+            "order_by": ("username",),
+        },
+        "tours": {
+            "fields": ("number",),
+            "order_by": ("number",),
+        },
+        "squads": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
 
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
@@ -611,6 +699,18 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
         "tours",
         "squads",
     ]
+    
+    # AJAX поиск для выбора league и team
+    form_ajax_refs = {
+        "league_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+        "team_id": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
 
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
