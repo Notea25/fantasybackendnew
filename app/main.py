@@ -91,6 +91,7 @@ app.include_router(players_router, prefix="/api")
 app.include_router(squads_router, prefix="/api")
 app.include_router(squad_tours_router, prefix="/api")
 app.include_router(boosts_router, prefix="/api")
+app.include_router(user_leagues_router, prefix="/api")
 app.include_router(commercial_leagues_router, prefix="/api")
 app.include_router(club_leagues_router, prefix="/api")
 
