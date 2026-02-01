@@ -94,9 +94,8 @@ class SquadTour(Base):
         if main_position_counts.get("Attacker", 0) < 1 and main_position_counts.get("Forward", 0) < 1:
             raise ValueError("Main squad must have at least 1 Attacker or Forward")
 
-        total_cost = sum(p.market_value for p in main_players + bench_players)
-        if total_cost > self.budget:
-            raise ValueError("Total players cost exceeds squad budget")
+        # Budget validation removed - handled by frontend
+        # Backend only calculates budget, does not enforce limits
 
         # Get league_id from Squad relationship
         league_id = self.squad.league_id
