@@ -431,26 +431,8 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
         PlayerMatchStats.points,
     ]
     column_searchable_list = ["player_id"]
-    
-    # AJAX поиск для выбора связанных объектов в формах
-    form_ajax_refs = {
-        "player": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-        "match": {
-            "fields": ("id",),
-            "order_by": ("date",),
-        },
-        "team": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-        "league": {
-            "fields": ("name",),
-            "order_by": ("name",),
-        },
-    }
+    page_size = 50
+    page_size_options = [25, 50, 100, 200]
 
     def format(self, attr, value):
         if attr == "player_id" and value is not None:
