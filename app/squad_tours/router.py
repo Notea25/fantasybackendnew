@@ -323,7 +323,7 @@ async def replace_players(
         remaining_replacements=squad_tour.replacements,
         squad_tour=SquadTourHistorySchema(
             tour_id=squad_tour.tour_id,
-            tour_number=tour.tour_number if tour else 0,
+            tour_number=tour.number if tour else 0,
             points=squad_tour.points,
             penalty_points=squad_tour.penalty_points,
             used_boost=squad_tour.used_boost,
