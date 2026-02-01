@@ -810,13 +810,17 @@ class SquadService(BaseService):
             return {}
         
         # Get total points across all tours for each squad
+        # IMPORTANT: Only count finalized tours to exclude penalties from next tour
         total_stmt = (
             select(
                 SquadTour.squad_id,
                 func.sum(SquadTour.points).label("total_earned"),
                 func.sum(SquadTour.penalty_points).label("total_penalty")
             )
-            .where(SquadTour.squad_id.in_(squad_ids))
+            .where(
+                SquadTour.squad_id.in_(squad_ids),
+                SquadTour.is_finalized == True  # Only finalized tours
+            )
             .group_by(SquadTour.squad_id)
         )
         total_result = await session.execute(total_stmt)
