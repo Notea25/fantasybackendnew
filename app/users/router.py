@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.config import settings
 from app.users.dependencies import get_current_user
-from app.users.schemas import UserCreateSchema, UserSchema, UserUpdateSchema
+from app.users.schemas import (
+    UserCreateSchema,
+    UserSchema,
+    UserUpdateSchema,
+    UserReferrerSchema,
+    UserReferralsResponse,
+)
 from app.users.services import UserService
 from app.users.utils import create_access_token, create_refresh_token, verify_token
 from app.utils.exceptions import (
@@ -197,4 +203,60 @@ async def get_user_by_id(
         raise
     except Exception as e:
         logger.error(f"Get user error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}/referrer", response_model=UserReferrerSchema | None)
+async def get_user_referrer(
+    user_id: int,
+    current_user: UserSchema = Depends(get_current_user),
+):
+    """Get the referrer (person who invited) of a user.
+    
+    Returns None if the user has no referrer.
+    Users can only access their own referrer information.
+    """
+    try:
+        if current_user.id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        
+        referrer = await UserService.get_referrer(user_id)
+        if not referrer:
+            return None
+        
+        return UserReferrerSchema.model_validate(referrer)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get referrer error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}/referrals", response_model=UserReferralsResponse)
+async def get_user_referrals(
+    user_id: int,
+    page: int = 1,
+    page_size: int = 10,
+    current_user: UserSchema = Depends(get_current_user),
+):
+    """Get paginated list of users referred by this user.
+    
+    Users can only access their own referrals list.
+    Max page_size is 50.
+    """
+    try:
+        if current_user.id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        
+        # Limit page_size to reasonable maximum
+        page_size = min(page_size, 50)
+        if page < 1:
+            page = 1
+        
+        result = await UserService.get_referrals(user_id, page, page_size)
+        return UserReferralsResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get referrals error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
