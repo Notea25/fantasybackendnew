@@ -69,6 +69,10 @@ class UserService(BaseService):
                     return None
 
                 for key, value in user_data.model_dump(exclude_unset=True).items():
+                    # Only set referrer_id if it's not already set
+                    if key == 'referrer_id' and user.referrer_id is not None:
+                        logger.debug(f"Skipping referrer_id update - already set to {user.referrer_id}")
+                        continue
                     setattr(user, key, value)
 
                 await session.commit()

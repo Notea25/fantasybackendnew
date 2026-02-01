@@ -57,3 +57,4 @@ class UserUpdateSchema(BaseModel):
     tg_username: Optional[str] = None
     photo_url: Optional[str] = None
     birth_date: Optional[date] = None
+    referrer_id: Optional[int] = None
