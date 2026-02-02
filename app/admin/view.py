@@ -3,6 +3,7 @@ import logging
 from sqladmin import ModelView
 from sqlalchemy import update, delete, select
 from sqlalchemy.orm import joinedload
+from wtforms import SelectField
 
 from app.boosts.models import Boost
 from app.custom_leagues.club_league.models import ClubLeague, club_league_squads
@@ -255,15 +256,15 @@ class SquadAdmin(ModelView, model=Squad):
     form_ajax_refs = {
         "user": {
             "fields": ("username",),
-            "order_by": ("username",),
+            "order_by": User.username,
         },
-        "fav_team": {
+        "team": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Team.name,
         },
         "league": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": League.name,
         },
     }
 
@@ -341,11 +342,11 @@ class SquadTourAdmin(ModelView, model=SquadTour):
     form_ajax_refs = {
         "squad": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Squad.name,
         },
         "tour": {
             "fields": ("number",),
-            "order_by": ("number",),
+            "order_by": Tour.number,
         },
     }
 
@@ -378,11 +379,11 @@ class BoostAdmin(ModelView, model=Boost):
     form_ajax_refs = {
         "squad": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Squad.name,
         },
         "tour": {
             "fields": ("number",),
-            "order_by": ("number",),
+            "order_by": Tour.number,
         },
     }
 
@@ -505,19 +506,19 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
     form_ajax_refs = {
         "league": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": League.name,
         },
-        "creator": {
+        "user": {
             "fields": ("username",),
-            "order_by": ("username",),
+            "order_by": User.username,
         },
         "tours": {
             "fields": ("number",),
-            "order_by": ("number",),
+            "order_by": Tour.number,
         },
         "squads": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Squad.name,
         },
     }
 
@@ -601,11 +602,11 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     form_ajax_refs = {
         "tours": {
             "fields": ("number",),
-            "order_by": ("number",),
+            "order_by": Tour.number,
         },
         "squads": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Squad.name,
         },
     }
 
@@ -680,11 +681,11 @@ class ClubLeagueAdmin(ModelView, model=ClubLeague):
     form_ajax_refs = {
         "league": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": League.name,
         },
         "team": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Team.name,
         },
     }
 
@@ -774,13 +775,19 @@ class PlayerStatusAdmin(ModelView, model=PlayerStatus):
         },
     }
     
-    # Dropdown choices for status_type
-    form_choices = {
-        "status_type": [
-            ("red_card", "Red Card"),
-            ("injured", "Injured"),
-            ("left_league", "Left League"),
-        ]
+    # Dropdown choices for status_type using form_overrides
+    form_overrides = {
+        "status_type": SelectField
+    }
+    
+    form_args = {
+        "status_type": {
+            "choices": [
+                ("red_card", "Red Card"),
+                ("injured", "Injured"),
+                ("left_league", "Left League"),
+            ]
+        }
     }
 
     def format(self, attr, value):
