@@ -508,7 +508,7 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
             "fields": ("name",),
             "order_by": League.name,
         },
-        "user": {
+        "creator": {
             "fields": ("username",),
             "order_by": User.username,
         },
