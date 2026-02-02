@@ -47,6 +47,11 @@ class Player(Base):
     match_stats: Mapped[list["PlayerMatchStats"]] = relationship(
         back_populates="player"
     )
+    statuses: Mapped[list["PlayerStatus"]] = relationship(
+        back_populates="player",
+        order_by="PlayerStatus.tour_start.desc()",
+        cascade="all, delete-orphan"
+    )
 
     # NEW ARCHITECTURE: Players are linked only to SquadTour, not Squad
     squad_tours: Mapped[list["SquadTour"]] = relationship(

@@ -1,8 +1,11 @@
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 
 from pydantic import BaseModel, field_validator
 
 from app.tours.schemas import TourWithMatchesSchema
+
+if TYPE_CHECKING:
+    from app.player_statuses.schemas import PlayerStatusSchema
 
 
 class PlayerSchema(BaseModel):
@@ -16,6 +19,8 @@ class PlayerSchema(BaseModel):
     market_value: Optional[int]
     sport: int
     league_id: int
+    current_status: Optional[str] = None  # Computed field for current tour
+    statuses: Optional[List["PlayerStatusSchema"]] = None  # Full status history
 
     class Config:
         from_attributes = True

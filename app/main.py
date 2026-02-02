@@ -35,6 +35,7 @@ from app.leagues.router import router as leagues_router
 from app.matches.router import router as matches_router
 from app.player_match_stats.router import router as player_stats_router
 from app.players.router import router as players_router
+from app.player_statuses.router import router as player_statuses_router
 from app.squads.router import router as squads_router
 from app.squad_tours.router import router as squad_tours_router
 from app.teams.router import router as teams_router
@@ -87,7 +88,7 @@ app.include_router(tours_router, prefix="/api")
 app.include_router(matches_router, prefix="/api")
 app.include_router(players_router, prefix="/api")
 app.include_router(player_stats_router, prefix="/api")
-app.include_router(players_router, prefix="/api")
+app.include_router(player_statuses_router, prefix="/api")
 app.include_router(squads_router, prefix="/api")
 app.include_router(squad_tours_router, prefix="/api")
 app.include_router(boosts_router, prefix="/api")
