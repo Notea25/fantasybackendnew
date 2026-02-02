@@ -2,7 +2,6 @@ import logging
 from typing import Optional, List
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import selectinload
 
 from app.database import async_session_maker
 from app.player_statuses.models import PlayerStatus
@@ -161,7 +160,6 @@ class PlayerStatusService(BaseService):
                         cls.model.tour_end.is_(None)
                     ),
                 )
-                .options(selectinload(cls.model.player))
                 .order_by(cls.model.player_id)
             )
             
