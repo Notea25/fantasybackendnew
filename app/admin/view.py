@@ -770,7 +770,7 @@ class PlayerStatusAdmin(ModelView, model=PlayerStatus):
     form_ajax_refs = {
         "player": {
             "fields": ("name",),
-            "order_by": ("name",),
+            "order_by": Player.name,
         },
     }
     
