@@ -20,12 +20,6 @@ class PlayerStatus(Base):
     status_type: Mapped[str] = mapped_column(nullable=False)  # "red_card", "injured", "left_league"
     tour_start: Mapped[int] = mapped_column(nullable=False)
     tour_end: Mapped[Optional[int]] = mapped_column(nullable=True)  # null = indefinite
-    description: Mapped[Optional[str]] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False
-    )
     
     player: Mapped["Player"] = relationship(back_populates="statuses")
     

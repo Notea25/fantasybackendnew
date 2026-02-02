@@ -18,8 +18,6 @@ class PlayerStatusSchema(BaseModel):
     status_type: str
     tour_start: int
     tour_end: Optional[int] = None
-    description: Optional[str] = None
-    created_at: datetime
     
     class Config:
         from_attributes = True
@@ -30,15 +28,13 @@ class PlayerStatusCreateSchema(BaseModel):
     status_type: str = Field(..., description="Status type: red_card, injured, or left_league")
     tour_start: int = Field(..., ge=1, description="Starting tour number")
     tour_end: Optional[int] = Field(None, ge=1, description="Ending tour number (null for indefinite)")
-    description: Optional[str] = Field(None, max_length=500, description="Optional description")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "status_type": "injured",
                 "tour_start": 5,
-                "tour_end": 7,
-                "description": "Knee injury"
+                "tour_end": 7
             }
         }
 
@@ -48,4 +44,3 @@ class PlayerStatusUpdateSchema(BaseModel):
     status_type: Optional[str] = Field(None, description="Status type: red_card, injured, or left_league")
     tour_start: Optional[int] = Field(None, ge=1, description="Starting tour number")
     tour_end: Optional[int] = Field(None, ge=1, description="Ending tour number (null for indefinite)")
-    description: Optional[str] = Field(None, max_length=500, description="Optional description")

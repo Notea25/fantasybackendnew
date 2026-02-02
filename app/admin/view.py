@@ -748,40 +748,51 @@ class PlayerStatusAdmin(ModelView, model=PlayerStatus):
         PlayerStatus.status_type,
         PlayerStatus.tour_start,
         PlayerStatus.tour_end,
-        PlayerStatus.description,
-        PlayerStatus.created_at,
     ]
-    column_searchable_list = ["status_type", "description"]
+    column_searchable_list = ["status_type"]
     column_sortable_list = [
         PlayerStatus.id,
         PlayerStatus.player_id,
         PlayerStatus.status_type,
         PlayerStatus.tour_start,
         PlayerStatus.tour_end,
-        PlayerStatus.created_at,
     ]
     column_labels = {
         "player_id": "Player",
         "status_type": "Status Type",
         "tour_start": "Start Tour",
-        "tour_end": "End Tour",
-        "description": "Description",
-        "created_at": "Created At",
+        "tour_end": "End Tour (leave empty for indefinite)",
     }
-    column_default_sort = [(PlayerStatus.created_at, True)]  # Sort by newest first
+    column_default_sort = [(PlayerStatus.tour_start, True)]  # Sort by tour_start descending
     page_size = 50
     
-    # AJAX search for player selection
+    # AJAX search for player selection in forms
     form_ajax_refs = {
         "player": {
             "fields": ("name",),
             "order_by": ("name",),
         },
     }
+    
+    # Dropdown choices for status_type
+    form_choices = {
+        "status_type": [
+            ("red_card", "Red Card"),
+            ("injured", "Injured"),
+            ("left_league", "Left League"),
+        ]
+    }
 
     def format(self, attr, value):
         if attr == "player_id" and value is not None:
             return f"{value.name} (ID: {value.id})"
+        if attr == "status_type" and value is not None:
+            status_labels = {
+                "red_card": "Red Card",
+                "injured": "Injured",
+                "left_league": "Left League",
+            }
+            return status_labels.get(value, value)
         if attr == "tour_end" and value is None:
             return "Indefinite"
         return super().format(attr, value)
