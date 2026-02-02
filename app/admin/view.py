@@ -252,13 +252,13 @@ class SquadAdmin(ModelView, model=Squad):
         "used_boosts",
     ]
     
-    # AJAX поиск для выбора user, team, league
+    # AJAX поиск для выбора user, fav_team, league
     form_ajax_refs = {
         "user": {
             "fields": ("username",),
             "order_by": User.username,
         },
-        "team": {
+        "fav_team": {
             "fields": ("name",),
             "order_by": Team.name,
         },
