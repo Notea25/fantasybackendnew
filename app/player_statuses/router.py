@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.player_statuses.schemas import (
     PlayerStatusSchema,
@@ -29,6 +29,25 @@ async def get_status(status_id: int):
 async def get_player_statuses(player_id: int):
     """Get all statuses for a player."""
     statuses = await PlayerStatusService.get_player_statuses(player_id)
+    return statuses
+
+
+@router.get("/tour/{tour_number}", response_model=List[PlayerStatusSchema])
+async def get_all_statuses_for_tour(
+    tour_number: int,
+    status_type: Optional[str] = Query(None, description="Filter by status type")
+):
+    """Get all active player statuses for a specific tour."""
+    # Validate status type if provided
+    if status_type and status_type not in VALID_STATUS_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status type. Must be one of: {', '.join(VALID_STATUS_TYPES)}",
+        )
+    
+    statuses = await PlayerStatusService.get_all_statuses_for_tour(
+        tour_number, status_type
+    )
     return statuses
 
 

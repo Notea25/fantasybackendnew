@@ -142,3 +142,31 @@ class PlayerStatusService(BaseService):
             
             result = await session.execute(query)
             return result.scalars().all()
+
+    @classmethod
+    async def get_all_statuses_for_tour(
+        cls, tour_number: int, status_type: Optional[str] = None
+    ) -> List[PlayerStatus]:
+        """Get all active player statuses for a specific tour."""
+        logger.debug(
+            f"Getting all statuses for tour {tour_number}, status_type: {status_type}"
+        )
+        async with async_session_maker() as session:
+            query = (
+                select(cls.model)
+                .where(
+                    cls.model.tour_start <= tour_number,
+                    or_(
+                        cls.model.tour_end >= tour_number,
+                        cls.model.tour_end.is_(None)
+                    ),
+                )
+                .options(selectinload(cls.model.player))
+                .order_by(cls.model.player_id)
+            )
+            
+            if status_type:
+                query = query.where(cls.model.status_type == status_type)
+            
+            result = await session.execute(query)
+            return result.scalars().all()
