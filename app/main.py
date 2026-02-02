@@ -15,6 +15,7 @@ from app.admin.view import (
     MatchAdmin,
     PlayerAdmin,
     PlayerMatchStatsAdmin,
+    PlayerStatusAdmin,
     SquadAdmin,
     SquadTourAdmin,
     TeamAdmin,
@@ -103,11 +104,12 @@ admin.add_view(UserAdmin)
 admin.add_view(LeagueAdmin)
 admin.add_view(MatchAdmin)
 admin.add_view(PlayerAdmin)
+admin.add_view(PlayerMatchStatsAdmin)
+admin.add_view(PlayerStatusAdmin)
 admin.add_view(SquadAdmin)
 admin.add_view(SquadTourAdmin)
 admin.add_view(BoostAdmin)
 admin.add_view(TeamAdmin)
-admin.add_view(PlayerMatchStatsAdmin)
 admin.add_view(TourAdmin)
 admin.add_view(UserLeagueAdmin)
 admin.add_view(CommercialLeagueAdmin)

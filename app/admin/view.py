@@ -19,6 +19,7 @@ from app.leagues.models import League
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
 from app.players.models import Player
+from app.player_statuses.models import PlayerStatus
 from app.squads.models import Squad
 from app.squad_tours.models import (
     SquadTour,
@@ -738,3 +739,53 @@ class TourMatchesAdmin(ModelView, model=TourMatchAssociation):
         if attr == "match_id" and value is not None:
             return f"Match {value}"
         return super().format(attr, value)
+
+
+class PlayerStatusAdmin(ModelView, model=PlayerStatus):
+    column_list = [
+        PlayerStatus.id,
+        PlayerStatus.player_id,
+        PlayerStatus.status_type,
+        PlayerStatus.tour_start,
+        PlayerStatus.tour_end,
+        PlayerStatus.description,
+        PlayerStatus.created_at,
+    ]
+    column_searchable_list = ["status_type", "description"]
+    column_sortable_list = [
+        PlayerStatus.id,
+        PlayerStatus.player_id,
+        PlayerStatus.status_type,
+        PlayerStatus.tour_start,
+        PlayerStatus.tour_end,
+        PlayerStatus.created_at,
+    ]
+    column_labels = {
+        "player_id": "Player",
+        "status_type": "Status Type",
+        "tour_start": "Start Tour",
+        "tour_end": "End Tour",
+        "description": "Description",
+        "created_at": "Created At",
+    }
+    column_default_sort = [(PlayerStatus.created_at, True)]  # Sort by newest first
+    page_size = 50
+    
+    # AJAX search for player selection
+    form_ajax_refs = {
+        "player": {
+            "fields": ("name",),
+            "order_by": ("name",),
+        },
+    }
+
+    def format(self, attr, value):
+        if attr == "player_id" and value is not None:
+            return f"{value.name} (ID: {value.id})"
+        if attr == "tour_end" and value is None:
+            return "Indefinite"
+        return super().format(attr, value)
+
+    name = "Player Status"
+    name_plural = "Player Statuses"
+    icon = "fa-solid fa-heart-pulse"
