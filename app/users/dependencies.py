@@ -80,8 +80,10 @@ async def get_current_user(request: Request):
         if not user:
             logger.info(f"Creating new user with Telegram ID: {telegram_id}")
             tg_username = user_data.get("username") or ""
+            # Generate unique username from telegram_id if username is empty
+            username = f"user_{telegram_id}"
             user_create_schema = UserCreateSchema(
-                username="",
+                username=username,
                 tg_username=tg_username,
                 photo_url=user_data.get("photo_url", "").replace("\\/", "/"),
             )
