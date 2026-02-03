@@ -41,6 +41,7 @@ class TourService(BaseService):
 
             current_tour = None
             next_tour = None
+            next_tour_start_date = None
 
             for tour, start_date, end_date in tours:
                 if start_date is None or end_date is None:
@@ -54,8 +55,9 @@ class TourService(BaseService):
                 if start_date <= now <= end_date:
                     current_tour = tour
                 elif start_date > now:
-                    if not next_tour or start_date < next_tour.start_date:
+                    if not next_tour or start_date < next_tour_start_date:
                         next_tour = tour
+                        next_tour_start_date = start_date
 
             return current_tour, next_tour
 
