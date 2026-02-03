@@ -2,6 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 import logging
 
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload, selectinload
+
 from app.squad_tours.schemas import (
     SquadTourHistorySchema,
     SquadTourUpdatePlayersSchema,
@@ -175,8 +178,6 @@ async def get_all_squads_for_tour(
         opponent_map = await _get_opponent_map_for_tour(session, tour_id)
         for squad_tour in squad_tours:
             # Load relationships if not loaded
-            from sqlalchemy.orm import selectinload
-            from sqlalchemy import select
             from app.squad_tours.models import SquadTour
             from app.players.models import Player
             
@@ -258,8 +259,6 @@ async def get_all_squads_for_tour(
 async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
     """Get all SquadTours for all squads and all tours."""
     from app.database import async_session_maker
-    from sqlalchemy import select
-    from sqlalchemy.orm import joinedload, selectinload
     from app.squad_tours.models import SquadTour
     from app.players.models import Player
     
