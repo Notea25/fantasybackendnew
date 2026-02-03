@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy import delete, func, desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.matches.models import Match
 from app.player_match_stats.models import PlayerMatchStats
@@ -191,7 +191,7 @@ class SquadService(BaseService):
                         is_finalized=False,
                         points=0,
                         penalty_points=0,
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(timezone.utc)
                     )
                     session.add(squad_tour)
                     await session.flush()
