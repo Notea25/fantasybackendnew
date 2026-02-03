@@ -44,8 +44,8 @@ class SquadService(BaseService):
         user_id: int,
         league_id: int,
         fav_team_id: int,
-        captain_id: int,
-        vice_captain_id: int,
+        captain_id: Optional[int] = None,
+        vice_captain_id: Optional[int] = None,
         main_player_ids: list[int] = [],
         bench_player_ids: list[int] = []
     ):
