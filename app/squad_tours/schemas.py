@@ -16,6 +16,8 @@ class PlayerInSquadSchema(BaseModel):
     photo: Optional[str]
     total_points: int = 0  # Сумма очков за все туры
     tour_points: int = 0   # Очки за последний/текущий тур
+    next_opponent_team_name: Optional[str] = None  # Соперник в этом туре
+    next_opponent_is_home: Optional[bool] = None   # True, если матч домашний
 
     model_config = ConfigDict(from_attributes=True)
 

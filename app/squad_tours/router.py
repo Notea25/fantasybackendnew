@@ -8,6 +8,9 @@ from app.squad_tours.schemas import (
     SquadTourReplacePlayersResponseSchema,
     ReplacementInfoSchema,
 )
+from app.matches.models import Match
+from app.teams.models import Team
+from app.tours.models import Tour, TourMatchAssociation
 from app.squad_tours.services import SquadTourService
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
@@ -17,6 +20,44 @@ from app.utils.exceptions import ResourceNotFoundException
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/squad_tours", tags=["Squad Tours"])
+
+
+async def _get_opponent_map_for_tour(session, tour_id: int) -> dict[int, tuple[str, bool]]:
+    """Вернуть для тура отображение team_id -> (opponent_name, is_home).
+
+    Используется сквад-API, чтобы отдать в ответе реального соперника
+    для каждого игрока в составе (на основе расписания матчей тура).
+    """
+    stmt = (
+        select(Tour)
+        .where(Tour.id == tour_id)
+        .options(
+            joinedload(Tour.matches_association)
+            .joinedload(TourMatchAssociation.match)
+            .joinedload(Match.home_team),
+            joinedload(Tour.matches_association)
+            .joinedload(TourMatchAssociation.match)
+            .joinedload(Match.away_team),
+        )
+    )
+    result = await session.execute(stmt)
+    tour = result.unique().scalars().first()
+    opponent_map: dict[int, tuple[str, bool]] = {}
+
+    if not tour:
+        return opponent_map
+
+    for association in tour.matches_association:
+        match = association.match
+        if not match:
+            continue
+        home_team: Team | None = match.home_team
+        away_team: Team | None = match.away_team
+        if home_team and away_team:
+            opponent_map[home_team.id] = (away_team.name, True)
+            opponent_map[away_team.id] = (home_team.name, False)
+
+    return opponent_map
 
 
 @router.get("/squad/{squad_id}/tour/{tour_id}", response_model=SquadTourHistorySchema)
@@ -45,10 +86,13 @@ async def get_squad_tour(
     # Get player points
     from app.database import async_session_maker
     async with async_session_maker() as session:
+        opponent_map = await _get_opponent_map_for_tour(session, tour_id)
+
         main_players_data = []
         for player in squad_tour.main_players:
             total_points = await SquadService._get_player_total_points(session, player.id)
             tour_points = await SquadService._get_player_tour_points(session, player.id, tour_id)
+            opponent_info = opponent_map.get(player.team_id)
             
             main_players_data.append({
                 "id": player.id,
@@ -61,12 +105,15 @@ async def get_squad_tour(
                 "photo": player.photo,
                 "total_points": total_points,
                 "tour_points": tour_points,
+                "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                "next_opponent_is_home": opponent_info[1] if opponent_info else None,
             })
         
         bench_players_data = []
         for player in squad_tour.bench_players:
             total_points = await SquadService._get_player_total_points(session, player.id)
             tour_points = await SquadService._get_player_tour_points(session, player.id, tour_id)
+            opponent_info = opponent_map.get(player.team_id)
             
             bench_players_data.append({
                 "id": player.id,
@@ -79,6 +126,8 @@ async def get_squad_tour(
                 "photo": player.photo,
                 "total_points": total_points,
                 "tour_points": tour_points,
+                "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                "next_opponent_is_home": opponent_info[1] if opponent_info else None,
             })
     
     return SquadTourHistorySchema(
@@ -123,6 +172,7 @@ async def get_all_squads_for_tour(
     result = []
     from app.database import async_session_maker
     async with async_session_maker() as session:
+        opponent_map = await _get_opponent_map_for_tour(session, tour_id)
         for squad_tour in squad_tours:
             # Load relationships if not loaded
             from sqlalchemy.orm import selectinload
@@ -148,6 +198,7 @@ async def get_all_squads_for_tour(
             for player in loaded_squad_tour.main_players:
                 total_points = await SquadService._get_player_total_points(session, player.id)
                 tour_points = await SquadService._get_player_tour_points(session, player.id, tour_id)
+                opponent_info = opponent_map.get(player.team_id)
                 
                 main_players_data.append({
                     "id": player.id,
@@ -160,14 +211,17 @@ async def get_all_squads_for_tour(
                     "photo": player.photo,
                     "total_points": total_points,
                     "tour_points": tour_points,
+                    "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                    "next_opponent_is_home": opponent_info[1] if opponent_info else None,
                 })
             
-            bench_players_data = []
-            for player in loaded_squad_tour.bench_players:
-                total_points = await SquadService._get_player_total_points(session, player.id)
-                tour_points = await SquadService._get_player_tour_points(session, player.id, tour_id)
-                
-                bench_players_data.append({
+                bench_players_data = []
+                for player in loaded_squad_tour.bench_players:
+                    total_points = await SquadService._get_player_total_points(session, player.id)
+                    tour_points = await SquadService._get_player_tour_points(session, player.id, tour_id)
+                    opponent_info = opponent_map.get(player.team_id)
+                    
+                    bench_players_data.append({
                     "id": player.id,
                     "name": player.name,
                     "position": player.position,
@@ -178,6 +232,8 @@ async def get_all_squads_for_tour(
                     "photo": player.photo,
                     "total_points": total_points,
                     "tour_points": tour_points,
+                    "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                    "next_opponent_is_home": opponent_info[1] if opponent_info else None,
                 })
             
             result.append(SquadTourHistorySchema(
@@ -221,11 +277,18 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
         squad_tours = result_db.unique().scalars().all()
         
         result = []
+        opponent_maps: dict[int, dict[int, tuple[str, bool]]] = {}
         for squad_tour in squad_tours:
+            # Получаем отображение team_id -> (opponent_name, is_home) для этого тура (кешируем по tour_id)
+            if squad_tour.tour_id not in opponent_maps:
+                opponent_maps[squad_tour.tour_id] = await _get_opponent_map_for_tour(session, squad_tour.tour_id)
+            opponent_map = opponent_maps[squad_tour.tour_id]
+
             main_players_data = []
             for player in squad_tour.main_players:
                 total_points = await SquadService._get_player_total_points(session, player.id)
                 tour_points = await SquadService._get_player_tour_points(session, player.id, squad_tour.tour_id)
+                opponent_info = opponent_map.get(player.team_id)
                 
                 main_players_data.append({
                     "id": player.id,
@@ -238,12 +301,15 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
                     "photo": player.photo,
                     "total_points": total_points,
                     "tour_points": tour_points,
+                    "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                    "next_opponent_is_home": opponent_info[1] if opponent_info else None,
                 })
             
             bench_players_data = []
             for player in squad_tour.bench_players:
                 total_points = await SquadService._get_player_total_points(session, player.id)
                 tour_points = await SquadService._get_player_tour_points(session, player.id, squad_tour.tour_id)
+                opponent_info = opponent_map.get(player.team_id)
                 
                 bench_players_data.append({
                     "id": player.id,
@@ -256,6 +322,8 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
                     "photo": player.photo,
                     "total_points": total_points,
                     "tour_points": tour_points,
+                    "next_opponent_team_name": opponent_info[0] if opponent_info else None,
+                    "next_opponent_is_home": opponent_info[1] if opponent_info else None,
                 })
             
             result.append(SquadTourHistorySchema(
