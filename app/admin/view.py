@@ -176,6 +176,7 @@ class MatchAdmin(ModelView, model=Match):
         Match.status,
         Match.duration,
         Match.league_id,
+        Match.tour_id,
         Match.home_team,
         Match.away_team,
         Match.home_team_score,
@@ -189,12 +190,15 @@ class MatchAdmin(ModelView, model=Match):
         "away_team": "Away Team",
         "home_team_penalties": "Home Team Penalties",
         "away_team_penalties": "Away Team Penalties",
+        "tour_id": "Tour",
     }
     page_size = 20
 
     def format(self, attr, value):
         if attr in ("home_team", "away_team") and value is not None:
             return value.name
+        if attr == "tour_id" and value is not None:
+            return f"Tour {value.number}"
         return super().format(attr, value)
 
     name = "Match"
