@@ -141,6 +141,8 @@ class UtilsView(BaseView):
         try:
             result = await PlayerService.sync_players_for_team(int(team_id))
             success_message = f"Синхронизация игроков команды '{result['team_name']}' завершена: добавлено {result['added']}, обновлено {result['updated']}"
+            if result.get('message'):
+                success_message += f". {result['message']}"
             return templates.TemplateResponse(
                 "utils.html", {"request": request, "success": success_message}
             )

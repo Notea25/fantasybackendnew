@@ -115,15 +115,32 @@ class PlayerService(BaseService):
             if not team:
                 raise ResourceNotFoundException(detail=f"Team with id {team_id} not found")
             
-            logger.info(f"Syncing players for team {team_id} ({team.name})")
+            logger.info(f"Syncing players for team {team_id} ({team.name}), league_id={team.league_id}")
             
             total_added = 0
             total_updated = 0
             
             try:
-                # Получаем игроков напрямую для этой команды
+                # Пробуем получить игроков с текущим сезоном
                 players_data = await external_api.fetch_players_for_team(team_id)
-                logger.info(f"Fetched {len(players_data)} players from API for team {team_id}")
+                logger.info(f"Fetched {len(players_data)} players from API for team {team_id} (season={external_api.season})")
+                
+                # Если не нашли игроков, пробуем предыдущий сезон
+                if len(players_data) == 0:
+                    logger.warning(f"No players found for team {team_id} in season {external_api.season}, trying season 2024")
+                    players_data = await external_api.fetch_players_for_team(team_id, season=2024)
+                    logger.info(f"Fetched {len(players_data)} players from API for team {team_id} (season=2024)")
+                
+                # Если всё ещё нет игроков, возвращаем информацию
+                if len(players_data) == 0:
+                    logger.warning(f"No players found for team {team_id} in any season")
+                    await session.commit()
+                    return {
+                        "added": 0, 
+                        "updated": 0, 
+                        "team_name": team.name,
+                        "message": f"API не вернул игроков для этой команды. Возможно, команда играет в другой лиге или данные недоступны."
+                    }
                 
                 for player_response in players_data:
                     try:
