@@ -601,6 +601,14 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
     
     # Используем AJAX для загрузки связанных объектов в формах
     form_ajax_refs = {
+        "league": {
+            "fields": ("name",),
+            "order_by": League.name,
+        },
+        "winner": {
+            "fields": ("name",),
+            "order_by": Squad.name,
+        },
         "tours": {
             "fields": ("number",),
             "order_by": Tour.number,
