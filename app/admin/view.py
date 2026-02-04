@@ -425,26 +425,6 @@ class TeamAdmin(BaseModelView, model=Team):
     column_searchable_list = ["name"]
     can_delete = True
 
-    async def on_model_delete(self, model, request):
-        """Prevent deletion of team if it has players."""
-        from app.database import async_session_maker
-        from fastapi import HTTPException
-        
-        async with async_session_maker() as session:
-            # Check if team has any players
-            result = await session.execute(
-                select(Player.id).where(Player.team_id == model.id).limit(1)
-            )
-            has_players = result.scalar_one_or_none() is not None
-            
-            if has_players:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot delete team '{model.name}' because it has players. Please delete or reassign the players first."
-                )
-        
-        return await super().on_model_delete(model, request)
-
     def format(self, attr, value):
         if attr == "league_id" and value is not None:
             return value.name

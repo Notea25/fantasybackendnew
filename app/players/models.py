@@ -45,7 +45,8 @@ class Player(Base):
     team: Mapped["Team"] = relationship(back_populates="players")
     league: Mapped["League"] = relationship(back_populates="players")
     match_stats: Mapped[list["PlayerMatchStats"]] = relationship(
-        back_populates="player"
+        back_populates="player",
+        cascade="all, delete-orphan"
     )
     statuses: Mapped[list["PlayerStatus"]] = relationship(
         back_populates="player",

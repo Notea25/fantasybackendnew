@@ -9,11 +9,11 @@ class League(Base):
     country: Mapped[str] = mapped_column(nullable=True)
     sport: Mapped[str] = mapped_column(default='football')
 
-    matches: Mapped[list["Match"]] = relationship(back_populates="league")
-    squads: Mapped[list["Squad"]] = relationship(back_populates="league")
-    players: Mapped[list["Player"]] = relationship(back_populates="league")
-    teams: Mapped[list["Team"]] = relationship(back_populates="league")
-    tours: Mapped[list["Tour"]] = relationship(back_populates="league")
+    matches: Mapped[list["Match"]] = relationship(back_populates="league", cascade="all, delete-orphan")
+    squads: Mapped[list["Squad"]] = relationship(back_populates="league", cascade="all, delete-orphan")
+    players: Mapped[list["Player"]] = relationship(back_populates="league", cascade="all, delete-orphan")
+    teams: Mapped[list["Team"]] = relationship(back_populates="league", cascade="all, delete-orphan")
+    tours: Mapped[list["Tour"]] = relationship(back_populates="league", cascade="all, delete-orphan")
 
     user_leagues: Mapped[list["UserLeague"]] = relationship(back_populates="league")
     commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(back_populates="league")
