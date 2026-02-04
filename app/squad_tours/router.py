@@ -13,7 +13,7 @@ from app.squad_tours.schemas import (
 )
 from app.matches.models import Match
 from app.teams.models import Team
-from app.tours.models import Tour, TourMatchAssociation
+from app.tours.models import Tour
 from app.squad_tours.services import SquadTourService
 from app.squads.services import SquadService
 from app.users.dependencies import get_current_user
@@ -35,12 +35,8 @@ async def _get_opponent_map_for_tour(session, tour_id: int) -> dict[int, tuple[s
         select(Tour)
         .where(Tour.id == tour_id)
         .options(
-            joinedload(Tour.matches_association)
-            .joinedload(TourMatchAssociation.match)
-            .joinedload(Match.home_team),
-            joinedload(Tour.matches_association)
-            .joinedload(TourMatchAssociation.match)
-            .joinedload(Match.away_team),
+            joinedload(Tour.matches).joinedload(Match.home_team),
+            joinedload(Tour.matches).joinedload(Match.away_team),
         )
     )
     result = await session.execute(stmt)
@@ -50,8 +46,7 @@ async def _get_opponent_map_for_tour(session, tour_id: int) -> dict[int, tuple[s
     if not tour:
         return opponent_map
 
-    for association in tour.matches_association:
-        match = association.match
+    for match in tour.matches:
         if not match:
             continue
         home_team: Team | None = match.home_team

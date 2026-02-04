@@ -16,7 +16,7 @@ from app.players.schemas import PlayerBaseInfoSchema, PlayerExtendedInfoSchema, 
 from app.squads.models import Squad
 from app.squad_tours.models import SquadTour, squad_tour_players, squad_tour_bench_players
 from app.teams.models import Team
-from app.tours.models import Tour, tour_matches_association, TourMatchAssociation
+from app.tours.models import Tour
 from app.tours.schemas import TourWithMatchesSchema
 from app.utils.external_api import external_api
 from app.utils.base_service import BaseService
@@ -357,8 +357,7 @@ class PlayerService(BaseService):
 
             last_3_tours_stmt = (
                 select(Tour)
-                .join(Tour.matches_association)
-                .join(TourMatchAssociation.match)
+                .join(Match, Match.tour_id == Tour.id)
                 .where(
                     and_(
                         or_(
@@ -371,7 +370,7 @@ class PlayerService(BaseService):
                 .group_by(Tour.id)
                 .order_by(desc(Tour.id))
                 .limit(3)
-                .options(joinedload(Tour.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(Tour.matches))
             )
             last_3_tours_result = await session.execute(last_3_tours_stmt)
             last_3_tours = last_3_tours_result.unique().scalars().all()
@@ -379,8 +378,7 @@ class PlayerService(BaseService):
             tours_with_matches = []
             for tour in last_3_tours:
                 matches_list = []
-                for match_association in tour.matches_association:
-                    match = match_association.match
+                for match in tour.matches:
                     if match.home_team_id == team_id or match.away_team_id == team_id:
                         opponent_team_id = match.away_team_id if match.home_team_id == team_id else match.home_team_id
                         opponent_team_stmt = select(Team).where(Team.id == opponent_team_id)
@@ -430,8 +428,7 @@ class PlayerService(BaseService):
 
             next_3_tours_stmt = (
                 select(Tour)
-                .join(Tour.matches_association)
-                .join(TourMatchAssociation.match)
+                .join(Match, Match.tour_id == Tour.id)
                 .where(
                     and_(
                         or_(
@@ -444,7 +441,7 @@ class PlayerService(BaseService):
                 .group_by(Tour.id)
                 .order_by(Tour.id)
                 .limit(3)
-                .options(joinedload(Tour.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(Tour.matches))
             )
             next_3_tours_result = await session.execute(next_3_tours_stmt)
             next_3_tours = next_3_tours_result.unique().scalars().all()
@@ -452,8 +449,7 @@ class PlayerService(BaseService):
             tours_with_matches = []
             for tour in next_3_tours:
                 matches_list = []
-                for match_association in tour.matches_association:
-                    match = match_association.match
+                for match in tour.matches:
                     if match.home_team_id == team_id or match.away_team_id == team_id:
                         opponent_team_id = match.away_team_id if match.home_team_id == team_id else match.home_team_id
                         opponent_team_stmt = select(Team).where(Team.id == opponent_team_id)

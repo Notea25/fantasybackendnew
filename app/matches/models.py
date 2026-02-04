@@ -11,6 +11,7 @@ class Match(Base):
     status: Mapped[str]
     duration: Mapped[Optional[int]]
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
+    tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)
     home_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
     away_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
     home_team_score: Mapped[Optional[int]]
@@ -20,12 +21,9 @@ class Match(Base):
 
     player_stats: Mapped[list["PlayerMatchStats"]] = relationship(back_populates="match")
     league: Mapped["League"] = relationship(back_populates="matches")
+    tour: Mapped[Optional["Tour"]] = relationship(back_populates="matches")
     home_team: Mapped["Team"] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
     away_team: Mapped["Team"] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
-    tours_association: Mapped[list["TourMatchAssociation"]] = relationship(
-        back_populates="match",
-        cascade="all, delete-orphan",
-    )
 
     def __str__(self):
         return f"{self.id}"

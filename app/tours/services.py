@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
 
 from app.matches.models import Match
-from app.tours.models import Tour, TourMatchAssociation
+from app.tours.models import Tour
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
 from datetime import datetime, timedelta, timezone
@@ -23,8 +23,7 @@ class TourService(BaseService):
                 func.min(Match.date).label("start_date"),
                 func.max(Match.date).label("end_date")
             )
-            .join(TourMatchAssociation, TourMatchAssociation.tour_id == Tour.id)
-            .join(Match, Match.id == TourMatchAssociation.match_id)
+            .join(Match, Match.tour_id == Tour.id)
             .where(Tour.league_id == league_id)
             .group_by(Tour.id)
             .subquery()
@@ -73,8 +72,7 @@ class TourService(BaseService):
 
         tour_start_date = (
             select(func.min(Match.date))
-            .join(TourMatchAssociation, Match.id == TourMatchAssociation.match_id)
-            .where(TourMatchAssociation.tour_id == next_tour.id)
+            .where(Match.tour_id == next_tour.id)
             .scalar_subquery()
         )
 
@@ -99,7 +97,7 @@ class TourService(BaseService):
             stmt = (
                 select(cls.model)
                 .where(cls.model.number == number, cls.model.league_id == league_id)
-                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(cls.model.matches))
             )
             result = await session.execute(stmt)
             return result.unique().scalars().first()
@@ -109,7 +107,7 @@ class TourService(BaseService):
         async with async_session_maker() as session:
             stmt = (
                 select(cls.model)
-                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(cls.model.matches))
             )
             result = await session.execute(stmt)
             return result.unique().scalars().all()
@@ -120,7 +118,7 @@ class TourService(BaseService):
             stmt = (
                 select(cls.model)
                 .where(cls.model.id == tour_id)
-                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(cls.model.matches))
             )
             result = await session.execute(stmt)
             return result.unique().scalars().first()
@@ -131,7 +129,7 @@ class TourService(BaseService):
             stmt = (
                 select(cls.model)
                 .where(cls.model.league_id == league_id)
-                .options(selectinload(cls.model.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(cls.model.matches))
             )
             result = await session.execute(stmt)
             return result.unique().scalars().all()
@@ -145,7 +143,7 @@ class TourService(BaseService):
             stmt = (
                 select(Tour)
                 .where(Tour.league_id == league_id)
-                .options(selectinload(Tour.matches_association).joinedload(TourMatchAssociation.match))
+                .options(selectinload(Tour.matches))
                 .order_by(Tour.number)
             )
             result = await session.execute(stmt)
@@ -156,11 +154,11 @@ class TourService(BaseService):
             next_tours = []
 
             for tour in tours:
-                if not tour.matches_association:
+                if not tour.matches:
                     continue
 
-                start_date = min(association.match.date for association in tour.matches_association)
-                end_date = max(association.match.date for association in tour.matches_association)
+                start_date = min(match.date for match in tour.matches)
+                end_date = max(match.date for match in tour.matches)
 
                 if start_date <= now <= end_date:
                     current_tour = tour

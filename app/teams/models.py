@@ -13,7 +13,6 @@ class Team(Base):
     players: Mapped[list["Player"]] = relationship(back_populates="team")
     home_matches: Mapped[list["Match"]] = relationship(foreign_keys="Match.home_team_id", back_populates="home_team")
     away_matches: Mapped[list["Match"]] = relationship(foreign_keys="Match.away_team_id", back_populates="away_team")
-    club_leagues: Mapped[list["ClubLeague"]] = relationship(back_populates="team")
     squads: Mapped[list["Squad"]] = relationship(back_populates="fav_team")
 
     def __repr__(self):

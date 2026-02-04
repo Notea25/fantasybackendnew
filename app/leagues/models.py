@@ -17,7 +17,6 @@ class League(Base):
 
     user_leagues: Mapped[list["UserLeague"]] = relationship(back_populates="league")
     commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(back_populates="league")
-    club_leagues: Mapped[list["ClubLeague"]] = relationship(back_populates="league")
 
     def __str__(self):
         return self.name

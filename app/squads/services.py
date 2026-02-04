@@ -14,7 +14,7 @@ from app.players.models import Player, player_bench_squad_tours, player_squad_to
 from app.squads.models import Squad
 from app.squad_tours.models import SquadTour
 from app.custom_leagues.user_league.models import UserLeague, user_league_squads
-from app.tours.models import Tour, tour_matches_association
+from app.tours.models import Tour
 from app.tours.services import TourService
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
@@ -259,11 +259,11 @@ class SquadService(BaseService):
 
         tour_start_dates = (
             select(
-                tour_matches_association.c.tour_id,
+                Match.tour_id,
                 func.min(Match.date).label("start_date")
             )
-            .join(Match, Match.id == tour_matches_association.c.match_id)
-            .group_by(tour_matches_association.c.tour_id)
+            .where(Match.tour_id.isnot(None))
+            .group_by(Match.tour_id)
             .subquery()
         )
 
@@ -303,8 +303,7 @@ class SquadService(BaseService):
         # Получаем матчи тура
         matches_stmt = (
             select(Match.id)
-            .join(tour_matches_association, Match.id == tour_matches_association.c.match_id)
-            .where(tour_matches_association.c.tour_id == tour_id)
+            .where(Match.tour_id == tour_id)
         )
         matches_result = await session.execute(matches_stmt)
         match_ids = [row[0] for row in matches_result.all()]
@@ -343,8 +342,8 @@ class SquadService(BaseService):
             from datetime import datetime, timezone
             now = datetime.utcnow().replace(tzinfo=timezone.utc)
             
-            if next_tour.matches_association:
-                start_date = min(association.match.date for association in next_tour.matches_association)
+            if next_tour.matches:
+                start_date = min(match.date for match in next_tour.matches)
                 deadline = start_date - timedelta(hours=2)
                 
                 if now >= deadline:

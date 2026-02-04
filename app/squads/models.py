@@ -19,13 +19,6 @@ commercial_league_squads = Table(
     Column("commercial_league_id", Integer, ForeignKey("commercial_leagues.id"), primary_key=True),
 )
 
-club_league_squads = Table(
-    "club_league_squads",
-    Base.metadata,
-    Column("squad_id", Integer, ForeignKey("squads.id"), primary_key=True),
-    Column("club_league_id", Integer, ForeignKey("club_leagues.id"), primary_key=True),
-)
-
 class Squad(Base):
     __tablename__ = "squads"
 
@@ -48,9 +41,6 @@ class Squad(Base):
     )
     commercial_leagues: Mapped[List["CommercialLeague"]] = relationship(
         secondary=commercial_league_squads, back_populates="squads"
-    )
-    club_leagues: Mapped[List["ClubLeague"]] = relationship(
-        secondary=club_league_squads, back_populates="squads"
     )
 
     def __repr__(self):

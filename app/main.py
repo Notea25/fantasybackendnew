@@ -9,7 +9,7 @@ from app.admin.auth import AdminAuth
 from app.admin.utils_view import UtilsView
 from app.admin.view import (
     BoostAdmin,
-    ClubLeagueAdmin,
+    # ClubLeagueAdmin,
     CommercialLeagueAdmin,
     LeagueAdmin,
     MatchAdmin,
@@ -20,13 +20,13 @@ from app.admin.view import (
     SquadTourAdmin,
     TeamAdmin,
     TourAdmin,
-    TourMatchesAdmin,
+    # TourMatchesAdmin,
     UserAdmin,
     UserLeagueAdmin,
 )
 from app.boosts.router import router as boosts_router
 from app.config import settings
-from app.custom_leagues.club_league.router import router as club_leagues_router
+# club leagues removed
 from app.custom_leagues.commercial_league.router import (
     router as commercial_leagues_router,
 )
@@ -95,7 +95,7 @@ app.include_router(squad_tours_router, prefix="/api")
 app.include_router(boosts_router, prefix="/api")
 app.include_router(user_leagues_router, prefix="/api")
 app.include_router(commercial_leagues_router, prefix="/api")
-app.include_router(club_leagues_router, prefix="/api")
+# app.include_router(club_leagues_router, prefix="/api")  # removed
 
 authentication_backend = AdminAuth()
 admin = Admin(app, engine, authentication_backend=authentication_backend)
@@ -113,6 +113,6 @@ admin.add_view(TeamAdmin)
 admin.add_view(TourAdmin)
 admin.add_view(UserLeagueAdmin)
 admin.add_view(CommercialLeagueAdmin)
-admin.add_view(ClubLeagueAdmin)
+# admin.add_view(ClubLeagueAdmin)  # removed
 admin.add_view(UtilsView)
-admin.add_view(TourMatchesAdmin)
+# admin.add_view(TourMatchesAdmin)  # removed

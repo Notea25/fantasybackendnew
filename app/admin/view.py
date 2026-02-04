@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from wtforms import SelectField
 
 from app.boosts.models import Boost
-from app.custom_leagues.club_league.models import ClubLeague, club_league_squads
+# ClubLeague removed
 from app.custom_leagues.commercial_league.models import (
     CommercialLeague,
     commercial_league_squads,
@@ -28,7 +28,7 @@ from app.squad_tours.models import (
     squad_tour_bench_players,
 )
 from app.teams.models import Team
-from app.tours.models import Tour, TourMatchAssociation
+from app.tours.models import Tour
 from app.users.models import User
 
 
@@ -96,10 +96,7 @@ class UserAdmin(ModelView, model=User):
                     delete(user_league_squads)
                     .where(user_league_squads.c.squad_id.in_(squad_ids))
                 )
-                await session.execute(
-                    delete(club_league_squads)
-                    .where(club_league_squads.c.squad_id.in_(squad_ids))
-                )
+                # club_league_squads removed
 
                 # 1d) squad <-> players associations removed in new architecture
                 # Players are now stored in SquadTour only, cleaned up in step 1f
@@ -652,94 +649,10 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
 
 
 
-class ClubLeagueAdmin(ModelView, model=ClubLeague):
-    async def _get_model_objects(
-        self,
-        session,
-        stmt,
-    ):
-        """Override to add unique() for eager loaded relationships."""
-        result = await session.execute(stmt)
-        return result.unique().scalars().all()
-    column_list = [
-        ClubLeague.id,
-        ClubLeague.name,
-        ClubLeague.league_id,
-        ClubLeague.team_id,
-    ]
-    column_searchable_list = ["name"]
-    column_labels = {
-        "league_id": "League",
-        "team_id": "Team",
-    }
-    column_details_exclude_list = [
-        "tours",
-        "squads",
-    ]
-    
-    # AJAX поиск для выбора league и team
-    form_ajax_refs = {
-        "league": {
-            "fields": ("name",),
-            "order_by": League.name,
-        },
-        "team": {
-            "fields": ("name",),
-            "order_by": Team.name,
-        },
-    }
-
-    def format(self, attr, value):
-        if attr == "league_id" and value is not None:
-            return value.name
-        if attr == "team_id" and value is not None:
-            return value.name
-        return super().format(attr, value)
-
-    name = "Club League"
-    name_plural = "Club Leagues"
-    icon = "fa-solid fa-trophy"
-
-    def get_query(self):
-        return (
-            self.session.query(self.model)
-            .options(
-                joinedload(ClubLeague.league),
-                joinedload(ClubLeague.team),
-                joinedload(ClubLeague.tours),
-                joinedload(ClubLeague.squads)
-            )
-            .execution_options(populate_existing=True)
-        ).unique()
-
-    def get_one(self, ident):
-        return (
-            self.get_query()
-            .filter(self.model.id == ident)
-        ).unique().one()
+# ClubLeagueAdmin removed
 
 
-class TourMatchesAdmin(ModelView, model=TourMatchAssociation):
-    name = "Tour Matches"
-    name_plural = "Tour Matches"
-    icon = "fa-solid fa-link"
-
-    column_list = [
-        TourMatchAssociation.tour_id,
-        TourMatchAssociation.match_id,
-    ]
-
-    column_labels = {
-        "tour_id": "Tour ID",
-        "match_id": "Match ID",
-    }
-
-    def format(self, attr, value):
-        if attr == "tour_id" and value is not None:
-            return f"Tour {value}"
-        if attr == "match_id" and value is not None:
-            return f"Match {value}"
-        return super().format(attr, value)
+# TourMatchesAdmin removed
 
 
 class PlayerStatusAdmin(ModelView, model=PlayerStatus):

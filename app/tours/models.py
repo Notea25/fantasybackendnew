@@ -27,34 +27,6 @@ commercial_league_tours = Table(
 )
 
 
-club_league_tours = Table(
-    "club_league_tours",
-    Base.metadata,
-    Column("tour_id", ForeignKey("tours.id"), primary_key=True),
-    Column("club_league_id", ForeignKey("club_leagues.id"), primary_key=True),
-)
-
-
-tour_matches_association = Table(
-    "tour_matches_association",
-    Base.metadata,
-    Column("tour_id", ForeignKey("tours.id"), primary_key=True),
-    Column("match_id", ForeignKey("matches.id"), primary_key=True),
-    extend_existing=True,
-)
-
-
-class TourMatchAssociation(Base):
-    __table__ = tour_matches_association
-
-    tour: Mapped["Tour"] = relationship(
-        "Tour", back_populates="matches_association"
-    )
-    match: Mapped["Match"] = relationship(
-        "Match", back_populates="tours_association"
-    )
-
-
 class Tour(Base):
     __tablename__ = "tours"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -75,11 +47,8 @@ class Tour(Base):
     commercial_leagues: Mapped[list["CommercialLeague"]] = relationship(
         secondary=commercial_league_tours, back_populates="tours"
     )
-    club_leagues: Mapped[list["ClubLeague"]] = relationship(
-        secondary=club_league_tours, back_populates="tours"
-    )
 
-    matches_association: Mapped[list["TourMatchAssociation"]] = relationship(
+    matches: Mapped[list["Match"]] = relationship(
         back_populates="tour",
         cascade="all, delete-orphan",
     )
@@ -90,20 +59,16 @@ class Tour(Base):
 
     @property
     def start_date(self) -> Optional[datetime]:
-        if not self.matches_association:
+        if not self.matches:
             return None
-        return min(
-            association.match.date for association in self.matches_association
-        )
+        return min(match.date for match in self.matches)
 
     @property
     def end_date(self) -> Optional[datetime]:
-        if not self.matches_association:
+        if not self.matches:
             return None
         return (
-            max(
-                association.match.date for association in self.matches_association
-            )
+            max(match.date for match in self.matches)
             + timedelta(hours=2)
         )
 
