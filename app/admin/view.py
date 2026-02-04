@@ -422,6 +422,7 @@ class TeamAdmin(BaseModelView, model=Team):
         Team.name,
         Team.league_id,
     ]
+    form_columns = [Team.id, Team.name, Team.logo, Team.league]
     column_searchable_list = ["name"]
     can_delete = True
 
