@@ -35,6 +35,8 @@ class UtilsView(BaseView):
                 return await self.add_empty_stats_for_match(request, match_id)
             elif action == "add_empty_stats_for_all_matches":
                 return await self.add_empty_stats_for_all_matches(request)
+            elif action == "sync_all_players":
+                return await self.sync_all_players(request)
 
         return templates.TemplateResponse("utils.html", {"request": request})
 
@@ -114,6 +116,18 @@ class UtilsView(BaseView):
             await PlayerMatchStatsService.add_empty_stats_for_all_matches()
             return RedirectResponse(
                 request.url_for("admin:utils"), status_code=302
+            )
+        except Exception as e:
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "error": str(e)}
+            )
+
+    async def sync_all_players(self, request: Request):
+        try:
+            result = await PlayerService.sync_all_players()
+            success_message = f"Синхронизация завершена: добавлено {result['added']}, обновлено {result['updated']}"
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "success": success_message}
             )
         except Exception as e:
             return templates.TemplateResponse(

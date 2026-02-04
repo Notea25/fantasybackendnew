@@ -29,6 +29,79 @@ class PlayerService(BaseService):
     model = Player
 
     @classmethod
+    async def sync_all_players(cls):
+        """Синхронизирует всех игроков для всех команд из БД"""
+        async with async_session_maker() as session:
+            # Получаем все команды
+            teams_stmt = select(Team)
+            teams_result = await session.execute(teams_stmt)
+            teams = teams_result.scalars().all()
+            
+            logger.info(f"Found {len(teams)} teams in database")
+            
+            total_added = 0
+            total_updated = 0
+            
+            for team in teams:
+                try:
+                    # Получаем игроков для команды
+                    players_data = await external_api.fetch_players_in_league(team.league_id)
+                    
+                    for player_response in players_data:
+                        try:
+                            player_data = player_response["player"]
+                            statistics = player_response.get("statistics", [{}])[0]
+                            team_id = statistics.get("team", {}).get("id")
+                            
+                            if not team_id or team_id != team.id:
+                                continue
+                            
+                            # Проверяем существует ли игрок
+                            stmt = select(Player).where(Player.id == player_data["id"])
+                            result = await session.execute(stmt)
+                            existing_player = result.scalar_one_or_none()
+                            
+                            if existing_player:
+                                # Обновляем существующего игрока
+                                existing_player.name = player_data["name"]
+                                existing_player.age = player_data["age"]
+                                existing_player.number = player_data.get("number")
+                                existing_player.position = statistics.get("games", {}).get("position", "Unknown")
+                                existing_player.photo = player_data.get("photo")
+                                existing_player.team_id = team_id
+                                total_updated += 1
+                                logger.info(f"Updated player {player_data['id']}")
+                            else:
+                                # Добавляем нового игрока
+                                player = cls.model(
+                                    id=player_data["id"],
+                                    name=player_data["name"],
+                                    age=player_data["age"],
+                                    number=player_data.get("number"),
+                                    position=statistics.get("games", {}).get("position", "Unknown"),
+                                    photo=player_data.get("photo"),
+                                    team_id=team_id,
+                                    league_id=team.league_id,
+                                    market_value=randint(5000, 10000),
+                                    sport=1
+                                )
+                                session.add(player)
+                                total_added += 1
+                                logger.info(f"Added player {player_data['id']}")
+                        except Exception as e:
+                            logger.error(f"Failed to process player {player_data.get('id', 'unknown')}: {e}")
+                            continue
+                    
+                    await session.commit()
+                except Exception as e:
+                    logger.error(f"Failed to sync players for team {team.id}: {e}")
+                    await session.rollback()
+                    continue
+            
+            logger.info(f"Sync completed: {total_added} added, {total_updated} updated")
+            return {"added": total_added, "updated": total_updated}
+
+    @classmethod
     async def add_players_for_league(cls, league_id: int):
         try:
             players_data = await external_api.fetch_players_in_league(league_id)
