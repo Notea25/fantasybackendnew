@@ -423,6 +423,12 @@ class TeamAdmin(BaseModelView, model=Team):
         Team.league_id,
     ]
     form_columns = [Team.id, Team.name, Team.logo, Team.league]
+    form_ajax_refs = {
+        "league": {
+            "fields": ("name",),
+            "order_by": League.name,
+        },
+    }
     column_searchable_list = ["name"]
     can_delete = True
 
