@@ -90,5 +90,47 @@ class ExternalAPIClient:
         logger.debug(f"Total unique players fetched: {len(all_players)}")
         return all_players
 
+    async def fetch_players_for_team(self, team_id: int, season: int = None) -> list:
+        """Получить игроков конкретной команды"""
+        all_players = []
+        seen_player_ids = set()
+        page = 1
+        season = season or self.season
+
+        logger.info(f"Fetching players for team {team_id}, season {season}")
+
+        while True:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/players",
+                    params={"team": team_id, "season": season, "page": page},
+                    headers={"x-apisports-key": self.api_key}
+                )
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"API response for team {team_id} players (page {page}): results={data.get('results', 0)}")
+
+                if data.get("errors"):
+                    logger.error(f"API errors for players: {data['errors']}")
+                    break
+
+                if data["results"] == 0:
+                    logger.info(f"No more results for team {team_id} on page {page}")
+                    break
+
+                for player in data["response"]:
+                    player_id = player["player"]["id"]
+                    if player_id not in seen_player_ids:
+                        seen_player_ids.add(player_id)
+                        all_players.append(player)
+                        logger.debug(f"Added player {player_id}: {player['player'].get('name')}")
+
+                if page >= data["paging"]["total"]:
+                    break
+                page += 1
+
+        logger.info(f"Total unique players fetched for team {team_id}: {len(all_players)}")
+        return all_players
+
 
 external_api = ExternalAPIClient()

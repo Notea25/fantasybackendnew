@@ -44,8 +44,9 @@ class PlayerService(BaseService):
             
             for team in teams:
                 try:
-                    # Получаем игроков для команды
-                    players_data = await external_api.fetch_players_in_league(team.league_id)
+                    # Получаем игроков напрямую для команды
+                    players_data = await external_api.fetch_players_for_team(team.id)
+                    logger.info(f"Fetched {len(players_data)} players from API for team {team.id} ({team.name})")
                     
                     for player_response in players_data:
                         try:
@@ -53,7 +54,8 @@ class PlayerService(BaseService):
                             statistics = player_response.get("statistics", [{}])[0]
                             team_id = statistics.get("team", {}).get("id")
                             
-                            if not team_id or team_id != team.id:
+                            if not team_id:
+                                logger.warning(f"No team_id in statistics for player {player_data.get('id')}, skipping")
                                 continue
                             
                             # Проверяем существует ли игрок
@@ -119,8 +121,9 @@ class PlayerService(BaseService):
             total_updated = 0
             
             try:
-                # Получаем игроков для лиги команды
-                players_data = await external_api.fetch_players_in_league(team.league_id)
+                # Получаем игроков напрямую для этой команды
+                players_data = await external_api.fetch_players_for_team(team_id)
+                logger.info(f"Fetched {len(players_data)} players from API for team {team_id}")
                 
                 for player_response in players_data:
                     try:
@@ -128,8 +131,8 @@ class PlayerService(BaseService):
                         statistics = player_response.get("statistics", [{}])[0]
                         player_team_id = statistics.get("team", {}).get("id")
                         
-                        # Фильтруем только игроков этой команды
-                        if not player_team_id or player_team_id != team_id:
+                        if not player_team_id:
+                            logger.warning(f"No team_id in statistics for player {player_data.get('id')}, skipping")
                             continue
                         
                         # Проверяем существует ли игрок
