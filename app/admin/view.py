@@ -35,7 +35,23 @@ from app.users.models import User
 logger = logging.getLogger(__name__)
 
 
-class UserAdmin(ModelView, model=User):
+class BaseModelView(ModelView):
+    """Base ModelView with fixes for common issues."""
+    
+    def _stmt_by_identifier(self, identifier: str):
+        """Override to fix URL parameter parsing issue.
+        
+        sqladmin has a bug where query string parameters like ?pks=379
+        are included in the identifier, causing ValueError when parsing.
+        This strips the query string before parsing.
+        """
+        # Strip query string if present
+        if '?' in identifier:
+            identifier = identifier.split('?')[0]
+        return super()._stmt_by_identifier(identifier)
+
+
+class UserAdmin(BaseModelView, model=User):
     column_list = [
         User.id,
         User.username,
@@ -156,7 +172,7 @@ class UserAdmin(ModelView, model=User):
         return await super().on_model_delete(model, request)
 
 
-class LeagueAdmin(ModelView, model=League):
+class LeagueAdmin(BaseModelView, model=League):
     column_list = [
         League.id,
         League.name,
@@ -169,7 +185,7 @@ class LeagueAdmin(ModelView, model=League):
     icon = "fa-solid fa-trophy"
 
 
-class MatchAdmin(ModelView, model=Match):
+class MatchAdmin(BaseModelView, model=Match):
     column_list = [
         Match.id,
         Match.date,
@@ -206,7 +222,7 @@ class MatchAdmin(ModelView, model=Match):
     icon = "fa-solid fa-futbol"
 
 
-class PlayerAdmin(ModelView, model=Player):
+class PlayerAdmin(BaseModelView, model=Player):
     column_list = [
         Player.id,
         Player.name,
@@ -231,7 +247,7 @@ class PlayerAdmin(ModelView, model=Player):
     icon = "fa-solid fa-person-running"
 
 
-class SquadAdmin(ModelView, model=Squad):
+class SquadAdmin(BaseModelView, model=Squad):
     # NEW ARCHITECTURE: Squad contains only metadata
     # All state (budget, replacements, players, captain, points) is in SquadTour
     column_list = [
@@ -314,7 +330,7 @@ class SquadAdmin(ModelView, model=Squad):
     icon = "fa-solid fa-people-group"
 
 
-class SquadTourAdmin(ModelView, model=SquadTour):
+class SquadTourAdmin(BaseModelView, model=SquadTour):
     # NEW ARCHITECTURE: SquadTour contains all tour-specific state
     column_list = [
         SquadTour.id,
@@ -363,7 +379,7 @@ class SquadTourAdmin(ModelView, model=SquadTour):
     icon = "fa-solid fa-calendar"
 
 
-class BoostAdmin(ModelView, model=Boost):
+class BoostAdmin(BaseModelView, model=Boost):
     column_list = [
         Boost.id,
         Boost.squad_id,
@@ -400,7 +416,7 @@ class BoostAdmin(ModelView, model=Boost):
     icon = "fa-solid fa-bolt"
 
 
-class TeamAdmin(ModelView, model=Team):
+class TeamAdmin(BaseModelView, model=Team):
     column_list = [
         Team.id,
         Team.name,
@@ -418,7 +434,7 @@ class TeamAdmin(ModelView, model=Team):
     icon = "fa-solid fa-people-line"
 
 
-class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
+class PlayerMatchStatsAdmin(BaseModelView, model=PlayerMatchStats):
     column_list = [
         PlayerMatchStats.id,
         PlayerMatchStats.player_id,
@@ -453,7 +469,7 @@ class PlayerMatchStatsAdmin(ModelView, model=PlayerMatchStats):
     icon = "fa-solid fa-chart-simple"
 
 
-class TourAdmin(ModelView, model=Tour):
+class TourAdmin(BaseModelView, model=Tour):
     column_list = [
         Tour.id,
         Tour.number,
@@ -474,7 +490,7 @@ class TourAdmin(ModelView, model=Tour):
     icon = "fa-solid fa-calendar"
 
 
-class UserLeagueAdmin(ModelView, model=UserLeague):
+class UserLeagueAdmin(BaseModelView, model=UserLeague):
     async def _get_model_objects(
         self,
         session,
@@ -557,7 +573,7 @@ class UserLeagueAdmin(ModelView, model=UserLeague):
         ).unique().one()
 
 
-class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
+class CommercialLeagueAdmin(BaseModelView, model=CommercialLeague):
     async def _get_model_objects(
         self,
         session,
@@ -667,7 +683,7 @@ class CommercialLeagueAdmin(ModelView, model=CommercialLeague):
 # TourMatchesAdmin removed
 
 
-class PlayerStatusAdmin(ModelView, model=PlayerStatus):
+class PlayerStatusAdmin(BaseModelView, model=PlayerStatus):
     column_list = [
         PlayerStatus.id,
         PlayerStatus.player_id,
