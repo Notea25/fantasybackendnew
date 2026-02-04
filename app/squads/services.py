@@ -298,7 +298,6 @@ class SquadService(BaseService):
     async def _get_player_tour_points(cls, session, player_id: int, tour_id: int) -> int:
         """Получить очки игрока за конкретный тур."""
         from app.matches.models import Match
-        from app.tours.models import tour_matches_association
         
         # Получаем матчи тура
         matches_stmt = (
