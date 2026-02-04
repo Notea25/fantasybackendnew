@@ -37,6 +37,9 @@ class UtilsView(BaseView):
                 return await self.add_empty_stats_for_all_matches(request)
             elif action == "sync_all_players":
                 return await self.sync_all_players(request)
+            elif action == "sync_players_for_team":
+                team_id = form.get("team_id")
+                return await self.sync_players_for_team(request, team_id)
 
         return templates.TemplateResponse("utils.html", {"request": request})
 
@@ -126,6 +129,18 @@ class UtilsView(BaseView):
         try:
             result = await PlayerService.sync_all_players()
             success_message = f"Синхронизация завершена: добавлено {result['added']}, обновлено {result['updated']}"
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "success": success_message}
+            )
+        except Exception as e:
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "error": str(e)}
+            )
+
+    async def sync_players_for_team(self, request: Request, team_id: str):
+        try:
+            result = await PlayerService.sync_players_for_team(int(team_id))
+            success_message = f"Синхронизация игроков команды '{result['team_name']}' завершена: добавлено {result['added']}, обновлено {result['updated']}"
             return templates.TemplateResponse(
                 "utils.html", {"request": request, "success": success_message}
             )
