@@ -445,9 +445,10 @@ class TeamAdmin(BaseModelView, model=Team):
     column_list = [
         Team.id,
         Team.name,
+        Team.name_rus,
         Team.league_id,
     ]
-    form_columns = [Team.id, Team.name, Team.logo, Team.league]
+    form_columns = [Team.id, Team.name, Team.name_rus, Team.logo, Team.league]
     form_include_pk = True
     form_ajax_refs = {
         "league": {

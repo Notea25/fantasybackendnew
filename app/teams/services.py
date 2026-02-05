@@ -2,6 +2,7 @@ import logging
 
 import httpx
 from sqlalchemy.future import select
+from deep_translator import GoogleTranslator
 
 from app.database import async_session_maker
 from app.teams.models import Team
@@ -81,3 +82,65 @@ class TeamService(BaseService):
                     f"Failed to commit teams for league {league_id}: {e}"
                 )
                 raise FailedOperationException(msg=f"Failed to commit teams: {e}")
+
+    @classmethod
+    async def translate_all_teams_names(cls):
+        """Переводит названия всех команд на русский и сохраняет в name_rus"""
+        translator = GoogleTranslator(source='auto', target='ru')
+        
+        async with async_session_maker() as session:
+            # Получаем все команды
+            stmt = select(Team)
+            result = await session.execute(stmt)
+            teams = result.scalars().all()
+            
+            logger.info(f"Found {len(teams)} teams to translate")
+            
+            translated_count = 0
+            
+            for team in teams:
+                try:
+                    # Переводим название команды
+                    translated_name = translator.translate(team.name)
+                    team.name_rus = translated_name
+                    translated_count += 1
+                    
+                    if translated_count % 10 == 0:
+                        logger.info(f"Translated {translated_count}/{len(teams)} teams")
+                except Exception as e:
+                    logger.error(f"Failed to translate team {team.id} ({team.name}): {e}")
+                    continue
+            
+            await session.commit()
+            logger.info(f"Translation completed: {translated_count} teams translated")
+            return {"translated": translated_count, "total": len(teams)}
+
+    @classmethod
+    async def translate_team_name_by_id(cls, team_id: int):
+        """Переводит название конкретной команды на русский по её ID"""
+        translator = GoogleTranslator(source='auto', target='ru')
+        
+        async with async_session_maker() as session:
+            stmt = select(Team).where(Team.id == team_id)
+            result = await session.execute(stmt)
+            team = result.scalar_one_or_none()
+            
+            if not team:
+                from app.utils.exceptions import ResourceNotFoundException
+                raise ResourceNotFoundException(detail=f"Team with id {team_id} not found")
+            
+            try:
+                translated_name = translator.translate(team.name)
+                team.name_rus = translated_name
+                await session.commit()
+                
+                logger.info(f"Translated team {team_id}: {team.name} -> {translated_name}")
+                return {
+                    "team_id": team_id,
+                    "original_name": team.name,
+                    "translated_name": translated_name
+                }
+            except Exception as e:
+                logger.error(f"Failed to translate team {team_id} ({team.name}): {e}")
+                await session.rollback()
+                raise FailedOperationException(msg=f"Failed to translate team name: {e}")

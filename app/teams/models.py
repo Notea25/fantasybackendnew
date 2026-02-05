@@ -6,6 +6,7 @@ class Team(Base):
     __tablename__ = "teams"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
+    name_rus: Mapped[str] = mapped_column(nullable=True)
     logo: Mapped[str] = mapped_column(nullable=True)
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), nullable=False)
 

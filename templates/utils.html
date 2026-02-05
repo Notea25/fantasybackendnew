@@ -240,6 +240,15 @@
             </form>
         </div>
 
+        <div class="quick-action">
+            <h3>🏟️ Перевод названий всех команд на русский</h3>
+            <p>Автоматически перевести названия всех команд на русский язык и сохранить в поле name_rus.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="translate_all_teams">
+                <button type="submit" class="sync-button">🏟️ Перевести названия всех команд</button>
+            </form>
+        </div>
+
         <div class="cards-grid">
             <div class="card">
                 <h2>👥 Синхронизация команды</h2>
@@ -264,6 +273,19 @@
                         <div class="helper-text">Перевести имя одного игрока на русский</div>
                     </div>
                     <button type="submit">🌐 Перевести имя</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>🏟️ Перевод названия команды</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="translate_team_by_id">
+                    <div class="form-group">
+                        <label for="team_id_translate">ID Команды:</label>
+                        <input type="text" name="team_id_translate" id="team_id_translate" placeholder="например: 530" required>
+                        <div class="helper-text">Перевести название одной команды на русский</div>
+                    </div>
+                    <button type="submit">🏟️ Перевести название</button>
                 </form>
             </div>
             <div class="card">
