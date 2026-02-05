@@ -34,31 +34,47 @@ class ImportButtonMiddleware(BaseHTTPMiddleware):
                 <script>
                 (function() {{
                     function addImportButton() {{
-                        // Try multiple selectors to find Export button
-                        const exportBtn = document.querySelector('a[href*="export"]') || 
-                                         document.querySelector('.btn[href*="export"]') ||
-                                         document.querySelector('button[href*="export"]');
+                        if (document.querySelector('.import-btn-custom')) {{
+                            return; // Already added
+                        }}
                         
-                        console.log('Export button found:', exportBtn);
+                        // Find all elements and log them for debugging
+                        const allDropdowns = document.querySelectorAll('.dropdown');
+                        const allButtons = document.querySelectorAll('.btn');
+                        console.log('Found dropdowns:', allDropdowns.length);
+                        console.log('Found buttons:', allButtons.length);
                         
-                        if (exportBtn && !document.querySelector('.import-btn-custom')) {{
+                        // Try to find the toolbar container (usually contains action buttons)
+                        const toolbar = document.querySelector('.col-auto') || 
+                                       document.querySelector('.d-flex.justify-content-end') ||
+                                       document.querySelector('[class*="toolbar"]');
+                        
+                        console.log('Toolbar found:', toolbar);
+                        
+                        if (toolbar) {{
                             // Create Import button
                             const importBtn = document.createElement('a');
                             importBtn.href = '/admin/{identity}/import';
                             importBtn.className = 'btn btn-primary import-btn-custom';
-                            importBtn.style.marginLeft = '10px';
+                            importBtn.style.marginRight = '10px';
                             importBtn.innerHTML = '<i class="fa fa-upload"></i> Import';
                             
-                            // Insert after Export button
-                            if (exportBtn.nextSibling) {{
-                                exportBtn.parentNode.insertBefore(importBtn, exportBtn.nextSibling);
-                            }} else {{
-                                exportBtn.parentNode.appendChild(importBtn);
-                            }}
+                            // Add as first child of toolbar
+                            toolbar.insertBefore(importBtn, toolbar.firstChild);
+                            console.log('Import button added to toolbar');
+                        }} else if (allDropdowns.length > 0) {{
+                            // Fallback: insert before first dropdown
+                            const dropdown = allDropdowns[0];
+                            const importBtn = document.createElement('a');
+                            importBtn.href = '/admin/{identity}/import';
+                            importBtn.className = 'btn btn-primary import-btn-custom';
+                            importBtn.style.marginRight = '10px';
+                            importBtn.innerHTML = '<i class="fa fa-upload"></i> Import';
                             
-                            console.log('Import button added successfully');
-                        }} else if (!exportBtn) {{
-                            console.log('Export button not found, retrying...');
+                            dropdown.parentNode.insertBefore(importBtn, dropdown);
+                            console.log('Import button added before dropdown');
+                        }} else {{
+                            console.log('No suitable container found, retrying...');
                             setTimeout(addImportButton, 200);
                         }}
                     }}
