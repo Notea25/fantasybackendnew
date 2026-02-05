@@ -32,10 +32,15 @@ class ImportButtonMiddleware(BaseHTTPMiddleware):
                 # Inject Import button JavaScript
                 import_js = f"""
                 <script>
-                document.addEventListener('DOMContentLoaded', function() {{
-                    setTimeout(function() {{
-                        // Find the Export button
-                        const exportBtn = document.querySelector('a.btn[href*="export"]');
+                (function() {{
+                    function addImportButton() {{
+                        // Try multiple selectors to find Export button
+                        const exportBtn = document.querySelector('a[href*="export"]') || 
+                                         document.querySelector('.btn[href*="export"]') ||
+                                         document.querySelector('button[href*="export"]');
+                        
+                        console.log('Export button found:', exportBtn);
+                        
                         if (exportBtn && !document.querySelector('.import-btn-custom')) {{
                             // Create Import button
                             const importBtn = document.createElement('a');
@@ -45,10 +50,25 @@ class ImportButtonMiddleware(BaseHTTPMiddleware):
                             importBtn.innerHTML = '<i class="fa fa-upload"></i> Import';
                             
                             // Insert after Export button
-                            exportBtn.parentNode.insertBefore(importBtn, exportBtn.nextSibling);
+                            if (exportBtn.nextSibling) {{
+                                exportBtn.parentNode.insertBefore(importBtn, exportBtn.nextSibling);
+                            }} else {{
+                                exportBtn.parentNode.appendChild(importBtn);
+                            }}
+                            
+                            console.log('Import button added successfully');
+                        }} else if (!exportBtn) {{
+                            console.log('Export button not found, retrying...');
+                            setTimeout(addImportButton, 200);
                         }}
-                    }}, 100);
-                }});
+                    }}
+                    
+                    if (document.readyState === 'loading') {{
+                        document.addEventListener('DOMContentLoaded', addImportButton);
+                    }} else {{
+                        addImportButton();
+                    }}
+                }})();
                 </script>
                 """
                 
