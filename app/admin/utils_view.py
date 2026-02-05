@@ -40,6 +40,11 @@ class UtilsView(BaseView):
             elif action == "sync_players_for_team":
                 team_id = form.get("team_id")
                 return await self.sync_players_for_team(request, team_id)
+            elif action == "translate_all_players":
+                return await self.translate_all_players(request)
+            elif action == "translate_player_by_id":
+                player_id = form.get("player_id")
+                return await self.translate_player_by_id(request, player_id)
 
         return templates.TemplateResponse("utils.html", {"request": request})
 
@@ -143,6 +148,30 @@ class UtilsView(BaseView):
             success_message = f"Синхронизация игроков команды '{result['team_name']}' завершена: добавлено {result['added']}, обновлено {result['updated']}"
             if result.get('message'):
                 success_message += f". {result['message']}"
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "success": success_message}
+            )
+        except Exception as e:
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "error": str(e)}
+            )
+
+    async def translate_all_players(self, request: Request):
+        try:
+            result = await PlayerService.translate_all_players_names()
+            success_message = f"Перевод имен всех игроков завершен: переведено {result['translated']} из {result['total']}"
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "success": success_message}
+            )
+        except Exception as e:
+            return templates.TemplateResponse(
+                "utils.html", {"request": request, "error": str(e)}
+            )
+
+    async def translate_player_by_id(self, request: Request, player_id: str):
+        try:
+            result = await PlayerService.translate_player_name_by_id(int(player_id))
+            success_message = f"Имя игрока переведено: {result['original_name']} -> {result['translated_name']}"
             return templates.TemplateResponse(
                 "utils.html", {"request": request, "success": success_message}
             )

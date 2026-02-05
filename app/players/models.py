@@ -33,6 +33,7 @@ class Player(Base):
     __tablename__ = "players"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
+    name_rus: Mapped[str] = mapped_column(nullable=True)
     age: Mapped[int] = mapped_column(nullable=True)
     number: Mapped[int] = mapped_column(nullable=True)
     position: Mapped[str] = mapped_column(nullable=True)

@@ -226,6 +226,7 @@ class PlayerAdmin(BaseModelView, model=Player):
     column_list = [
         Player.id,
         Player.name,
+        Player.name_rus,
         Player.age,
         Player.number,
         Player.position,
@@ -238,6 +239,7 @@ class PlayerAdmin(BaseModelView, model=Player):
     form_columns = [
         Player.id,
         Player.name,
+        Player.name_rus,
         Player.age,
         Player.number,
         Player.position,

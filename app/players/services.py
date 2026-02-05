@@ -5,6 +5,7 @@ from random import randint
 from sqlalchemy import func, desc, case, distinct, cast, Numeric, and_, or_
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
+from deep_translator import GoogleTranslator
 
 from app.matches.models import Match
 from app.matches.schemas import MatchInTourSchema
@@ -676,3 +677,64 @@ class PlayerService(BaseService):
         )
 
         return player_full_info
+
+    @classmethod
+    async def translate_all_players_names(cls):
+        """Переводит имена всех игроков на русский и сохраняет в name_rus"""
+        translator = GoogleTranslator(source='auto', target='ru')
+        
+        async with async_session_maker() as session:
+            # Получаем всех игроков
+            stmt = select(Player)
+            result = await session.execute(stmt)
+            players = result.scalars().all()
+            
+            logger.info(f"Found {len(players)} players to translate")
+            
+            translated_count = 0
+            
+            for player in players:
+                try:
+                    # Переводим имя игрока
+                    translated_name = translator.translate(player.name)
+                    player.name_rus = translated_name
+                    translated_count += 1
+                    
+                    if translated_count % 10 == 0:
+                        logger.info(f"Translated {translated_count}/{len(players)} players")
+                except Exception as e:
+                    logger.error(f"Failed to translate player {player.id} ({player.name}): {e}")
+                    continue
+            
+            await session.commit()
+            logger.info(f"Translation completed: {translated_count} players translated")
+            return {"translated": translated_count, "total": len(players)}
+
+    @classmethod
+    async def translate_player_name_by_id(cls, player_id: int):
+        """Переводит имя конкретного игрока на русский по его ID"""
+        translator = GoogleTranslator(source='auto', target='ru')
+        
+        async with async_session_maker() as session:
+            stmt = select(Player).where(Player.id == player_id)
+            result = await session.execute(stmt)
+            player = result.scalar_one_or_none()
+            
+            if not player:
+                raise ResourceNotFoundException(detail=f"Player with id {player_id} not found")
+            
+            try:
+                translated_name = translator.translate(player.name)
+                player.name_rus = translated_name
+                await session.commit()
+                
+                logger.info(f"Translated player {player_id}: {player.name} -> {translated_name}")
+                return {
+                    "player_id": player_id,
+                    "original_name": player.name,
+                    "translated_name": translated_name
+                }
+            except Exception as e:
+                logger.error(f"Failed to translate player {player_id} ({player.name}): {e}")
+                await session.rollback()
+                raise FailedOperationException(msg=f"Failed to translate player name: {e}")
