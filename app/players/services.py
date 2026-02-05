@@ -275,6 +275,7 @@ class PlayerService(BaseService):
                     Player,
                     total_points_subq.c.total_points,
                     Team.name.label("team_name"),
+                    Team.name_rus.label("team_name_rus"),
                     Team.logo.label("team_logo")
                 )
                 .join(Team, Player.team_id == Team.id)
@@ -286,12 +287,14 @@ class PlayerService(BaseService):
             players_with_points = result.unique().all()
 
             players = []
-            for player, total_points, team_name, team_logo in players_with_points:
+            for player, total_points, team_name, team_name_rus, team_logo in players_with_points:
                 player_schema = PlayerWithTotalPointsSchema(
                     id=player.id,
                     name=player.name,
+                    name_rus=player.name_rus,
                     team_id=player.team_id,
                     team_name=team_name,
+                    team_name_rus=team_name_rus,
                     team_logo=team_logo,
                     position=player.position,
                     market_value=player.market_value,
@@ -319,9 +322,11 @@ class PlayerService(BaseService):
             player_base_info = PlayerBaseInfoSchema(
                 id=player.id,
                 name=player.name,
+                name_rus=player.name_rus,
                 photo=player.photo,
                 team_id=player.team_id,
                 team_name=player.team.name if player.team else "Unknown",
+                team_name_rus=player.team.name_rus if player.team else None,
                 team_logo=player.team.logo if player.team else None,
                 position=player.position
             )

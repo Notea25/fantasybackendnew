@@ -27,6 +27,7 @@ class PlayerWithTotalPointsSchema(BaseModel):
     name_rus: Optional[str] = None
     team_id: int
     team_name: str
+    team_name_rus: Optional[str] = None
     team_logo: Optional[str]
     position: Optional[str]
     market_value: Optional[int]
@@ -46,6 +47,7 @@ class PlayerBaseInfoSchema(BaseModel):
     photo: Optional[str]
     team_id: int
     team_name: str
+    team_name_rus: Optional[str] = None
     team_logo: Optional[str]
     position: Optional[str]
 
