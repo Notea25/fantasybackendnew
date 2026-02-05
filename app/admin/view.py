@@ -235,6 +235,29 @@ class PlayerAdmin(BaseModelView, model=Player):
         Player.sport,
         Player.league_id,
     ]
+    form_columns = [
+        Player.id,
+        Player.name,
+        Player.age,
+        Player.number,
+        Player.position,
+        Player.photo,
+        Player.team,
+        Player.market_value,
+        Player.sport,
+        Player.league,
+    ]
+    form_include_pk = True
+    form_ajax_refs = {
+        "team": {
+            "fields": ("name",),
+            "order_by": Team.name,
+        },
+        "league": {
+            "fields": ("name",),
+            "order_by": League.name,
+        },
+    }
     column_searchable_list = ["name", "position"]
 
     def format(self, attr, value):
