@@ -352,6 +352,35 @@
     </div>
 
     <script>
+        // Check URL parameters for success/error messages
+        const urlParams = new URLSearchParams(window.location.search);
+        const successMsg = urlParams.get('success');
+        const errorMsg = urlParams.get('error');
+        
+        if (successMsg) {
+            const container = document.querySelector('.container');
+            const header = document.querySelector('.header');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message success';
+            msgDiv.innerHTML = '<strong>✅ Успех:</strong> ' + decodeURIComponent(successMsg);
+            container.insertBefore(msgDiv, header.nextSibling);
+            
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        if (errorMsg) {
+            const container = document.querySelector('.container');
+            const header = document.querySelector('.header');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message error';
+            msgDiv.innerHTML = '<strong>⚠️ Ошибка:</strong> ' + decodeURIComponent(errorMsg);
+            container.insertBefore(msgDiv, header.nextSibling);
+            
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
         // Автоматическое скрытие сообщений через 5 секунд
         const messages = document.querySelectorAll('.message');
         messages.forEach(message => {

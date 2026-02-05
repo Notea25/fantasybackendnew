@@ -44,7 +44,6 @@ class BaseModelView(ModelView):
     """Base ModelView with fixes for common issues and import functionality."""
     
     can_import = True  # Enable import for all models by default
-    
     def _stmt_by_identifier(self, identifier: str):
         """Override to fix URL parameter parsing issue.
         

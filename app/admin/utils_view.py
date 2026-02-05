@@ -165,48 +165,57 @@ class UtilsView(BaseView):
         try:
             result = await PlayerService.translate_all_players_names()
             success_message = f"Перевод имен всех игроков завершен: переведено {result['translated']} из {result['total']}"
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "success": success_message}
+            # Use redirect to prevent duplicate submissions on page refresh
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?success={success_message}",
+                status_code=303
             )
         except Exception as e:
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "error": str(e)}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                status_code=303
             )
 
     async def translate_player_by_id(self, request: Request, player_id: str):
         try:
             result = await PlayerService.translate_player_name_by_id(int(player_id))
             success_message = f"Имя игрока переведено: {result['original_name']} -> {result['translated_name']}"
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "success": success_message}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?success={success_message}",
+                status_code=303
             )
         except Exception as e:
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "error": str(e)}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                status_code=303
             )
 
     async def translate_all_teams(self, request: Request):
         try:
             result = await TeamService.translate_all_teams_names()
             success_message = f"Перевод названий всех команд завершен: переведено {result['translated']} из {result['total']}"
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "success": success_message}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?success={success_message}",
+                status_code=303
             )
         except Exception as e:
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "error": str(e)}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                status_code=303
             )
 
     async def translate_team_by_id(self, request: Request, team_id: str):
         try:
             result = await TeamService.translate_team_name_by_id(int(team_id))
             success_message = f"Название команды переведено: {result['original_name']} -> {result['translated_name']}"
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "success": success_message}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?success={success_message}",
+                status_code=303
             )
         except Exception as e:
-            return templates.TemplateResponse(
-                "utils.html", {"request": request, "error": str(e)}
+            return RedirectResponse(
+                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                status_code=303
             )
 
     def is_visible(self, request: Request) -> bool:

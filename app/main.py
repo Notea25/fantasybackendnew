@@ -6,6 +6,7 @@ from sqladmin import Admin
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.admin.auth import AdminAuth
+from app.admin.import_button_middleware import ImportButtonMiddleware
 from app.admin.utils_view import UtilsView
 from app.admin.view import (
     BoostAdmin,
@@ -80,6 +81,7 @@ app = FastAPI()
 #         return await call_next(request)
 
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(ImportButtonMiddleware)
 
 app.include_router(utils_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
@@ -101,8 +103,7 @@ authentication_backend = AdminAuth()
 admin = Admin(
     app, 
     engine, 
-    authentication_backend=authentication_backend,
-    templates_dir="templates/sqladmin"
+    authentication_backend=authentication_backend
 )
 
 admin.add_view(UserAdmin)
