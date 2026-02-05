@@ -92,9 +92,12 @@ class BaseModelView(ModelView):
                             data = {}
                             for column in mapper.columns:
                                 col_name = column.name
-                                if col_name in row and row[col_name]:
-                                    # Convert empty strings to None for nullable fields
-                                    value = row[col_name] if row[col_name] != '' else None
+                                if col_name in row:
+                                    value = row[col_name]
+                                    
+                                    # Convert empty strings, 'None', 'NULL', etc. to None
+                                    if value in ('', 'None', 'NULL', 'null', 'none'):
+                                        value = None
                                     
                                     # Type conversion
                                     if value is not None:
