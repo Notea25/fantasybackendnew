@@ -98,7 +98,12 @@ app.include_router(commercial_leagues_router, prefix="/api")
 # app.include_router(club_leagues_router, prefix="/api")  # removed
 
 authentication_backend = AdminAuth()
-admin = Admin(app, engine, authentication_backend=authentication_backend)
+admin = Admin(
+    app, 
+    engine, 
+    authentication_backend=authentication_backend,
+    templates_dir="templates/sqladmin"
+)
 
 admin.add_view(UserAdmin)
 admin.add_view(LeagueAdmin)

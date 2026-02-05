@@ -1,9 +1,14 @@
 import logging
+import csv
+import io
+from typing import Any
 
-from sqladmin import ModelView
-from sqlalchemy import update, delete, select
+from sqladmin import ModelView, expose
+from sqlalchemy import update, delete, select, inspect
 from sqlalchemy.orm import joinedload
 from wtforms import SelectField
+from starlette.responses import Response
+from starlette.requests import Request
 
 from app.boosts.models import Boost
 # ClubLeague removed
@@ -36,7 +41,9 @@ logger = logging.getLogger(__name__)
 
 
 class BaseModelView(ModelView):
-    """Base ModelView with fixes for common issues."""
+    """Base ModelView with fixes for common issues and import functionality."""
+    
+    can_import = True  # Enable import for all models by default
     
     def _stmt_by_identifier(self, identifier: str):
         """Override to fix URL parameter parsing issue.
@@ -49,6 +56,156 @@ class BaseModelView(ModelView):
         if '?' in identifier:
             identifier = identifier.split('?')[0]
         return super()._stmt_by_identifier(identifier)
+    
+    @expose("/import", methods=["GET", "POST"])
+    async def import_view(self, request: Request) -> Response:
+        """Handle CSV import for the model."""
+        from app.database import async_session_maker
+        
+        if request.method == "POST":
+            form = await request.form()
+            file = form.get("file")
+            
+            if not file or not hasattr(file, "file"):
+                return Response(
+                    content="No file uploaded",
+                    status_code=400,
+                    media_type="text/html"
+                )
+            
+            try:
+                # Read CSV file
+                content = await file.read()
+                csv_file = io.StringIO(content.decode('utf-8'))
+                reader = csv.DictReader(csv_file)
+                
+                async with async_session_maker() as session:
+                    imported_count = 0
+                    updated_count = 0
+                    errors = []
+                    
+                    for row_num, row in enumerate(reader, start=2):
+                        try:
+                            # Get model's columns
+                            mapper = inspect(self.model)
+                            
+                            # Prepare data for insert/update
+                            data = {}
+                            for column in mapper.columns:
+                                col_name = column.name
+                                if col_name in row and row[col_name]:
+                                    # Convert empty strings to None for nullable fields
+                                    value = row[col_name] if row[col_name] != '' else None
+                                    
+                                    # Type conversion
+                                    if value is not None:
+                                        python_type = column.type.python_type
+                                        if python_type == int:
+                                            value = int(value)
+                                        elif python_type == float:
+                                            value = float(value)
+                                        elif python_type == bool:
+                                            value = value.lower() in ('true', '1', 'yes')
+                                    
+                                    data[col_name] = value
+                            
+                            # Check if record exists (by primary key)
+                            pk_columns = [col.name for col in mapper.primary_key]
+                            if all(pk in data for pk in pk_columns):
+                                # Build filter for primary key
+                                pk_filter = {pk: data[pk] for pk in pk_columns}
+                                stmt = select(self.model).filter_by(**pk_filter)
+                                result = await session.execute(stmt)
+                                existing = result.scalar_one_or_none()
+                                
+                                if existing:
+                                    # Update existing record
+                                    for key, value in data.items():
+                                        if key not in pk_columns:  # Don't update PK
+                                            setattr(existing, key, value)
+                                    updated_count += 1
+                                else:
+                                    # Insert new record
+                                    new_obj = self.model(**data)
+                                    session.add(new_obj)
+                                    imported_count += 1
+                            else:
+                                # Insert new record without PK
+                                new_obj = self.model(**data)
+                                session.add(new_obj)
+                                imported_count += 1
+                        
+                        except Exception as e:
+                            errors.append(f"Row {row_num}: {str(e)}")
+                            logger.error(f"Error importing row {row_num}: {e}")
+                            continue
+                    
+                    if not errors:
+                        await session.commit()
+                        message = f"Successfully imported {imported_count} new records and updated {updated_count} existing records."
+                        status = "success"
+                    else:
+                        await session.rollback()
+                        message = f"Import failed with {len(errors)} errors: {'; '.join(errors[:5])}"
+                        status = "error"
+                
+                # Redirect back to list view with message
+                return Response(
+                    content=f'<html><body><script>alert("{message}"); window.location.href="{request.url_for("admin:list", identity=self.identity)}";</script></body></html>',
+                    media_type="text/html"
+                )
+            
+            except Exception as e:
+                logger.error(f"Import error: {e}")
+                return Response(
+                    content=f'<html><body><script>alert("Import failed: {str(e)}"); window.location.href="{request.url_for("admin:list", identity=self.identity)}";</script></body></html>',
+                    media_type="text/html"
+                )
+        
+        # GET request - show import form
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Import {self.name}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                .container {{ max-width: 600px; margin: 0 auto; }}
+                h1 {{ color: #333; }}
+                .form-group {{ margin: 20px 0; }}
+                label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+                input[type="file"] {{ width: 100%; padding: 10px; }}
+                button {{ background: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; font-size: 16px; }}
+                button:hover {{ background: #45a049; }}
+                .info {{ background: #e7f3fe; padding: 15px; margin: 20px 0; border-left: 4px solid #2196F3; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Import {self.name}</h1>
+                <div class="info">
+                    <p><strong>Instructions:</strong></p>
+                    <ul>
+                        <li>Export current data first to get the correct CSV format</li>
+                        <li>Modify the CSV file with your changes</li>
+                        <li>Upload the modified file here</li>
+                        <li>Records with existing IDs will be updated</li>
+                        <li>Records without IDs will be inserted as new</li>
+                    </ul>
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Choose CSV file:</label>
+                        <input type="file" id="file" name="file" accept=".csv" required>
+                    </div>
+                    <button type="submit">Import</button>
+                    <a href="{request.url_for('admin:list', identity=self.identity)}" style="margin-left: 10px;">Cancel</a>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+        return Response(content=html, media_type="text/html")
 
 
 class UserAdmin(BaseModelView, model=User):
