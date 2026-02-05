@@ -58,10 +58,14 @@ class ImportButtonMiddleware(BaseHTTPMiddleware):
                     body = body_str.encode("utf-8")
                 
                 # Create new response with modified body
+                # Update Content-Length header
+                headers = dict(response.headers)
+                headers['content-length'] = str(len(body))
+                
                 return Response(
                     content=body,
                     status_code=response.status_code,
-                    headers=dict(response.headers),
+                    headers=headers,
                     media_type=response.media_type
                 )
         
