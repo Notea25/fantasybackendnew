@@ -8,6 +8,7 @@ from app.tours.schemas import TourWithMatchesSchema
 class PlayerSchema(BaseModel):
     id: int
     name: str
+    name_rus: str
     age: Optional[int]
     number: Optional[int]
     position: Optional[str]
@@ -23,6 +24,7 @@ class PlayerSchema(BaseModel):
 class PlayerWithTotalPointsSchema(BaseModel):
     id: int
     name: str
+    name_rus: str
     team_id: int
     team_name: str
     team_logo: Optional[str]
@@ -40,6 +42,7 @@ class PlayerWithTotalPointsSchema(BaseModel):
 class PlayerBaseInfoSchema(BaseModel):
     id: int
     name: str
+    name_rus: str
     photo: Optional[str]
     team_id: int
     team_name: str
