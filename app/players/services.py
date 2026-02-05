@@ -4,7 +4,7 @@ from random import randint
 
 from sqlalchemy import func, desc, case, distinct, cast, Numeric, and_, or_
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from deep_translator import GoogleTranslator
 
 from app.matches.models import Match
