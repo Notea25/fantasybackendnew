@@ -167,12 +167,12 @@ class UtilsView(BaseView):
             success_message = f"Перевод имен всех игроков завершен: переведено {result['translated']} из {result['total']}"
             # Use redirect to prevent duplicate submissions on page refresh
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?success={success_message}",
+                url=str(request.url_for("admin:utils")) + f"?success={success_message}",
                 status_code=303
             )
         except Exception as e:
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                url=str(request.url_for("admin:utils")) + f"?error={str(e)}",
                 status_code=303
             )
 
@@ -181,12 +181,12 @@ class UtilsView(BaseView):
             result = await PlayerService.translate_player_name_by_id(int(player_id))
             success_message = f"Имя игрока переведено: {result['original_name']} -> {result['translated_name']}"
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?success={success_message}",
+                url=str(request.url_for("admin:utils")) + f"?success={success_message}",
                 status_code=303
             )
         except Exception as e:
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                url=str(request.url_for("admin:utils")) + f"?error={str(e)}",
                 status_code=303
             )
 
@@ -195,12 +195,12 @@ class UtilsView(BaseView):
             result = await TeamService.translate_all_teams_names()
             success_message = f"Перевод названий всех команд завершен: переведено {result['translated']} из {result['total']}"
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?success={success_message}",
+                url=str(request.url_for("admin:utils")) + f"?success={success_message}",
                 status_code=303
             )
         except Exception as e:
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                url=str(request.url_for("admin:utils")) + f"?error={str(e)}",
                 status_code=303
             )
 
@@ -209,12 +209,12 @@ class UtilsView(BaseView):
             result = await TeamService.translate_team_name_by_id(int(team_id))
             success_message = f"Название команды переведено: {result['original_name']} -> {result['translated_name']}"
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?success={success_message}",
+                url=str(request.url_for("admin:utils")) + f"?success={success_message}",
                 status_code=303
             )
         except Exception as e:
             return RedirectResponse(
-                url=request.url_for("admin:utils") + f"?error={str(e)}",
+                url=str(request.url_for("admin:utils")) + f"?error={str(e)}",
                 status_code=303
             )
 
