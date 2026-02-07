@@ -1061,6 +1061,10 @@ class SquadService(BaseService):
             removed_players = (current_main_ids | current_bench_ids) - (new_main_ids_set | new_bench_ids_set)
             transfer_count = len(removed_players)
             
+            # Check if this is before the first tour deadline
+            # If there's no previous and no current tour, transfers are free
+            is_before_first_deadline = (previous_tour is None and current_tour is None)
+            
             # Calculate penalties
             free_transfers_used = 0
             paid_transfers = 0
@@ -1068,11 +1072,16 @@ class SquadService(BaseService):
             
             logger.info(
                 f"Squad {squad_id} tour {target_tour.id} transfers: "
-                f"count={transfer_count}, available={squad_tour.replacements}"
+                f"count={transfer_count}, available={squad_tour.replacements}, "
+                f"is_before_first_deadline={is_before_first_deadline}"
             )
             
             if transfer_count > 0:
-                if squad_tour.replacements >= transfer_count:
+                if is_before_first_deadline:
+                    # All transfers are free before first tour deadline
+                    free_transfers_used = transfer_count
+                    logger.info(f"Transfers are free before first tour deadline")
+                elif squad_tour.replacements >= transfer_count:
                     free_transfers_used = transfer_count
                     squad_tour.replacements -= transfer_count
                 else:
