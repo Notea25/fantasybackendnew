@@ -348,7 +348,8 @@ class MatchAdmin(BaseModelView, model=Match):
     column_list = [
         Match.id,
         Match.date,
-        Match.status,
+        Match.is_finished,
+        Match.finished_at,
         Match.duration,
         Match.league_id,
         Match.tour_id,

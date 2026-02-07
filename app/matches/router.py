@@ -1,7 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.matches.schemas import MatchSchema
 from app.matches.services import MatchService
+from app.users.dependencies import get_current_user
+from app.users.models import User
 from app.utils.exceptions import ResourceNotFoundException
 
 router = APIRouter(prefix="/matches", tags=["Matches"])
@@ -31,3 +33,42 @@ async def get_matches_by_team(team_id: int) -> list[MatchSchema]:
     if not res:
         raise ResourceNotFoundException
     return res
+
+@router.post("/finalize/{match_id}")
+async def finalize_match(
+    match_id: int,
+    user: User = Depends(get_current_user)
+) -> dict:
+    """Финализировать матч и начислить очки всем SquadTour.
+    
+    Этот эндпоинт вызывается администратором после завершения матча.
+    При финализации:
+    1. Матч помечается как завершённый (is_finished=True)
+    2. Для каждого игрока в PlayerMatchStats находятся все SquadTour,
+       где этот игрок в основном составе
+    3. Очки игрока за матч прибавляются к очкам SquadTour
+    
+    TODO: Добавить проверку прав доступа (только для админов)
+    
+    Args:
+        match_id: ID завершённого матча
+    
+    Returns:
+        Информация о количестве обновлённых SquadTour и начисленных очков
+    """
+    # TODO: Добавить проверку: if not user.is_admin: raise HTTPException(403)
+    
+    try:
+        result = await MatchService.finalize_match(match_id=match_id)
+        return {
+            "status": "success",
+            "message": f"Match {match_id} finalized successfully",
+            **result
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to finalize match: {str(e)}"
+        )

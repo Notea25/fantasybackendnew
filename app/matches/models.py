@@ -8,7 +8,8 @@ class Match(Base):
     __tablename__ = "matches"
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str]
+    is_finished: Mapped[bool] = mapped_column(default=False, server_default="false")
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     duration: Mapped[Optional[int]]
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
     tour_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tours.id"), nullable=True)

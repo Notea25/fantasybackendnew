@@ -1,7 +1,9 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
 import httpx
+from fastapi import HTTPException
 from sqlalchemy import exc, or_, select
 from sqlalchemy.orm import selectinload
 
@@ -116,3 +118,114 @@ class MatchService(BaseService):
             query = select(cls.model).filter_by(**filter_by)
             result = await session.execute(query)
             return result.scalars().all()
+
+    @classmethod
+    async def finalize_match(cls, match_id: int) -> dict:
+        """Finalize match and add points to all SquadTours.
+        
+        This method:
+        1. Marks match as finished (is_finished=True, finished_at=now)
+        2. Gets all PlayerMatchStats for this match
+        3. For each player that played in the match:
+           - Finds all SquadTours of this tour where player is in main_players
+           - Adds player's points to squad_tour.points
+        
+        Args:
+            match_id: ID of match to finalize
+        
+        Returns:
+            dict with counts of updated SquadTours and total points added
+        """
+        from app.player_match_stats.models import PlayerMatchStats
+        from app.squad_tours.models import SquadTour, squad_tour_players
+        
+        async with async_session_maker() as session:
+            # 1. Get match and validate
+            match = await session.execute(
+                select(Match).where(Match.id == match_id)
+            )
+            match = match.scalars().first()
+            
+            if not match:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Match {match_id} not found"
+                )
+            
+            if match.is_finished:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Match {match_id} is already finished"
+                )
+            
+            if not match.tour_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Match {match_id} has no tour_id assigned"
+                )
+            
+            # 2. Mark match as finished
+            match.is_finished = True
+            match.finished_at = datetime.now(timezone.utc)
+            
+            # 3. Get all PlayerMatchStats for this match
+            player_stats = await session.execute(
+                select(PlayerMatchStats)
+                .where(PlayerMatchStats.match_id == match_id)
+            )
+            player_stats = player_stats.scalars().all()
+            
+            if not player_stats:
+                logger.warning(f"No PlayerMatchStats found for match {match_id}")
+                await session.commit()
+                return {
+                    "match_id": match_id,
+                    "updated_squad_tours": 0,
+                    "total_points_added": 0,
+                }
+            
+            # 4. For each player, find SquadTours and add points
+            updated_squad_tours = set()
+            total_points_added = 0
+            
+            for player_stat in player_stats:
+                player_id = player_stat.player_id
+                points = player_stat.points or 0
+                
+                if points == 0:
+                    continue
+                
+                # Find all SquadTours where this player is in main_players
+                squad_tours_stmt = (
+                    select(SquadTour)
+                    .join(squad_tour_players)
+                    .where(squad_tour_players.c.player_id == player_id)
+                    .where(SquadTour.tour_id == match.tour_id)
+                )
+                result = await session.execute(squad_tours_stmt)
+                squad_tours = result.scalars().all()
+                
+                for squad_tour in squad_tours:
+                    # Add points to squad_tour
+                    squad_tour.points = (squad_tour.points or 0) + points
+                    updated_squad_tours.add(squad_tour.id)
+                    total_points_added += points
+                    
+                    logger.info(
+                        f"Added {points} points to SquadTour {squad_tour.id} "
+                        f"from player {player_id} in match {match_id}"
+                    )
+            
+            await session.commit()
+            
+            logger.info(
+                f"Match {match_id} finalized. "
+                f"Updated {len(updated_squad_tours)} SquadTours, "
+                f"added {total_points_added} total points"
+            )
+            
+            return {
+                "match_id": match_id,
+                "updated_squad_tours": len(updated_squad_tours),
+                "total_points_added": total_points_added,
+            }
