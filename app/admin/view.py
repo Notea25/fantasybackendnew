@@ -665,6 +665,9 @@ class TourAdmin(BaseModelView, model=Tour):
         Tour.id,
         Tour.number,
         Tour.league_id,
+        Tour.deadline,
+        Tour.is_started,
+        Tour.is_finalized,
     ]
     column_searchable_list = ["number"]
     column_labels = {

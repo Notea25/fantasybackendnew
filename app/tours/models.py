@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -35,6 +35,7 @@ class Tour(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     number: Mapped[int]
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
+    deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_started: Mapped[bool] = mapped_column(default=False, server_default="false")
     is_finalized: Mapped[bool] = mapped_column(default=False, server_default="false")
 
@@ -81,13 +82,6 @@ class Tour(Base):
         if end.tzinfo is None:
             end = end.replace(tzinfo=timezone.utc)
         return end.astimezone(MOSCOW_TZ)
-
-    @property
-    def deadline(self) -> Optional[datetime]:
-        if not self.start_date:
-            return None
-        # start_date is already in Moscow time
-        return self.start_date - timedelta(hours=2)
 
     def __repr__(self):
         return f"Tour {self.number}"
