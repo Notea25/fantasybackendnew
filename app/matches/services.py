@@ -123,12 +123,16 @@ class MatchService(BaseService):
     async def finalize_match(cls, match_id: int) -> dict:
         """Finalize match and add points to all SquadTours.
         
-        This method:
+        Full implementation with captains and boosts:
         1. Marks match as finished (is_finished=True, finished_at=now)
         2. Gets all PlayerMatchStats for this match
-        3. For each player that played in the match:
-           - Finds all SquadTours of this tour where player is in main_players
-           - Adds player's points to squad_tour.points
+        3. For each SquadTour in this tour:
+           - For each player in main_players (or bench_players if bench_boost):
+             * Get player's points from PlayerMatchStats
+             * Apply multipliers:
+               - Captain: × 2 (or × 3 if triple_captain)
+               - Vice-captain: × 2 if captain got 0 points
+             * Add to squad_tour.points
         
         Args:
             match_id: ID of match to finalize
@@ -137,7 +141,7 @@ class MatchService(BaseService):
             dict with counts of updated SquadTours and total points added
         """
         from app.player_match_stats.models import PlayerMatchStats
-        from app.squad_tours.models import SquadTour, squad_tour_players
+        from app.squad_tours.models import SquadTour, squad_tour_players, squad_tour_bench_players
         
         async with async_session_maker() as session:
             # 1. Get match and validate
@@ -168,14 +172,15 @@ class MatchService(BaseService):
             match.is_finished = True
             match.finished_at = datetime.now(timezone.utc)
             
-            # 3. Get all PlayerMatchStats for this match
-            player_stats = await session.execute(
+            # 3. Get all PlayerMatchStats for this match as dict
+            player_stats_result = await session.execute(
                 select(PlayerMatchStats)
                 .where(PlayerMatchStats.match_id == match_id)
             )
-            player_stats = player_stats.scalars().all()
+            player_stats_list = player_stats_result.scalars().all()
+            player_points = {ps.player_id: (ps.points or 0) for ps in player_stats_list}
             
-            if not player_stats:
+            if not player_points:
                 logger.warning(f"No PlayerMatchStats found for match {match_id}")
                 await session.commit()
                 return {
@@ -184,36 +189,87 @@ class MatchService(BaseService):
                     "total_points_added": 0,
                 }
             
-            # 4. For each player, find SquadTours and add points
+            # 4. Get all SquadTours for this tour with players loaded
+            squad_tours_stmt = (
+                select(SquadTour)
+                .where(SquadTour.tour_id == match.tour_id)
+                .options(
+                    selectinload(SquadTour.main_players),
+                    selectinload(SquadTour.bench_players)
+                )
+            )
+            result = await session.execute(squad_tours_stmt)
+            squad_tours = result.scalars().all()
+            
             updated_squad_tours = set()
             total_points_added = 0
             
-            for player_stat in player_stats:
-                player_id = player_stat.player_id
-                points = player_stat.points or 0
+            # 5. For each SquadTour, calculate and add points
+            for squad_tour in squad_tours:
+                squad_points = 0
+                captain_points = 0
+                vice_captain_points = 0
                 
-                if points == 0:
-                    continue
+                # Determine if bench boost is active
+                is_bench_boost = squad_tour.used_boost == "bench_boost"
+                is_triple_captain = squad_tour.used_boost == "triple_captain"
                 
-                # Find all SquadTours where this player is in main_players
-                squad_tours_stmt = (
-                    select(SquadTour)
-                    .join(squad_tour_players)
-                    .where(squad_tour_players.c.player_id == player_id)
-                    .where(SquadTour.tour_id == match.tour_id)
-                )
-                result = await session.execute(squad_tours_stmt)
-                squad_tours = result.scalars().all()
+                # Get captain and vice-captain points
+                if squad_tour.captain_id:
+                    captain_points = player_points.get(squad_tour.captain_id, 0)
+                if squad_tour.vice_captain_id:
+                    vice_captain_points = player_points.get(squad_tour.vice_captain_id, 0)
                 
-                for squad_tour in squad_tours:
-                    # Add points to squad_tour
-                    squad_tour.points = (squad_tour.points or 0) + points
+                # Process main players
+                for player in squad_tour.main_players:
+                    player_id = player.id
+                    base_points = player_points.get(player_id, 0)
+                    
+                    if base_points == 0:
+                        continue
+                    
+                    # Apply multipliers
+                    if player_id == squad_tour.captain_id:
+                        if is_triple_captain:
+                            points_to_add = base_points * 3
+                            logger.info(
+                                f"SquadTour {squad_tour.id}: Captain {player_id} × 3 (Triple Captain) = {points_to_add}"
+                            )
+                        else:
+                            points_to_add = base_points * 2
+                            logger.info(
+                                f"SquadTour {squad_tour.id}: Captain {player_id} × 2 = {points_to_add}"
+                            )
+                    elif player_id == squad_tour.vice_captain_id and captain_points == 0:
+                        points_to_add = base_points * 2
+                        logger.info(
+                            f"SquadTour {squad_tour.id}: Vice-captain {player_id} × 2 (captain got 0) = {points_to_add}"
+                        )
+                    else:
+                        points_to_add = base_points
+                    
+                    squad_points += points_to_add
+                
+                # Process bench players if bench boost is active
+                if is_bench_boost:
+                    for player in squad_tour.bench_players:
+                        player_id = player.id
+                        base_points = player_points.get(player_id, 0)
+                        
+                        if base_points > 0:
+                            squad_points += base_points
+                            logger.info(
+                                f"SquadTour {squad_tour.id}: Bench player {player_id} = {base_points} (Bench Boost)"
+                            )
+                
+                # Add points to squad_tour if any points were earned
+                if squad_points > 0:
+                    squad_tour.points = (squad_tour.points or 0) + squad_points
                     updated_squad_tours.add(squad_tour.id)
-                    total_points_added += points
+                    total_points_added += squad_points
                     
                     logger.info(
-                        f"Added {points} points to SquadTour {squad_tour.id} "
-                        f"from player {player_id} in match {match_id}"
+                        f"SquadTour {squad_tour.id}: Added {squad_points} points from match {match_id}"
                     )
             
             await session.commit()
