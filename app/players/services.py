@@ -67,8 +67,6 @@ class PlayerService(BaseService):
                             if existing_player:
                                 # Обновляем существующего игрока
                                 existing_player.name = player_data["name"]
-                                existing_player.age = player_data["age"]
-                                existing_player.number = player_data.get("number")
                                 existing_player.position = statistics.get("games", {}).get("position", "Unknown")
                                 existing_player.photo = player_data.get("photo")
                                 existing_player.team_id = team_id
@@ -79,8 +77,6 @@ class PlayerService(BaseService):
                                 player = cls.model(
                                     id=player_data["id"],
                                     name=player_data["name"],
-                                    age=player_data["age"],
-                                    number=player_data.get("number"),
                                     position=statistics.get("games", {}).get("position", "Unknown"),
                                     photo=player_data.get("photo"),
                                     team_id=team_id,
@@ -161,8 +157,6 @@ class PlayerService(BaseService):
                         if existing_player:
                             # Обновляем существующего игрока
                             existing_player.name = player_data["name"]
-                            existing_player.age = player_data["age"]
-                            existing_player.number = player_data.get("number")
                             existing_player.position = statistics.get("games", {}).get("position", "Unknown")
                             existing_player.photo = player_data.get("photo")
                             existing_player.team_id = player_team_id
@@ -173,8 +167,6 @@ class PlayerService(BaseService):
                             player = cls.model(
                                 id=player_data["id"],
                                 name=player_data["name"],
-                                age=player_data["age"],
-                                number=player_data.get("number"),
                                 position=statistics.get("games", {}).get("position", "Unknown"),
                                 photo=player_data.get("photo"),
                                 team_id=player_team_id,
@@ -235,8 +227,6 @@ class PlayerService(BaseService):
                     player = cls.model(
                         id=player_data["id"],
                         name=player_data["name"],
-                        age=player_data["age"],
-                        number=player_data.get("number"),
                         position=statistics.get("games", {}).get("position", "Unknown"),
                         photo=player_data.get("photo"),
                         team_id=team_id,

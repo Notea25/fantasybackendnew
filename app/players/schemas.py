@@ -9,8 +9,6 @@ class PlayerSchema(BaseModel):
     id: int
     name: str
     name_rus: Optional[str] = None
-    age: Optional[int]
-    number: Optional[int]
     position: Optional[str]
     photo: Optional[str]
     team_id: int
