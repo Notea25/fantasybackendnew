@@ -569,7 +569,7 @@ class PlayerService(BaseService):
                             match_id=match.id,
                             is_home=match.home_team_id == team_id,
                             opponent_team_id=opponent_team_id,
-                            opponent_team_name=opponent_team.name if opponent_team else "Unknown",
+                            opponent_team_name=(opponent_team.name_rus or opponent_team.name) if opponent_team else "Unknown",
                             opponent_team_logo=opponent_team.logo if opponent_team else None,
                             player_points=player_points
                         )
@@ -630,7 +630,7 @@ class PlayerService(BaseService):
                             match_id=match.id,
                             is_home=match.home_team_id == team_id,
                             opponent_team_id=opponent_team_id,
-                            opponent_team_name=opponent_team.name if opponent_team else "Unknown",
+                            opponent_team_name=(opponent_team.name_rus or opponent_team.name) if opponent_team else "Unknown",
                             opponent_team_logo=opponent_team.logo if opponent_team else None
                         )
                         matches_list.append(match_schema)
