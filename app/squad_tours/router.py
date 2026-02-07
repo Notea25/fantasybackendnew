@@ -52,8 +52,8 @@ async def _get_opponent_map_for_tour(session, tour_id: int) -> dict[int, tuple[s
         home_team: Team | None = match.home_team
         away_team: Team | None = match.away_team
         if home_team and away_team:
-            opponent_map[home_team.id] = (away_team.name, True)
-            opponent_map[away_team.id] = (home_team.name, False)
+            opponent_map[home_team.id] = ((away_team.name_rus or away_team.name), True)
+            opponent_map[away_team.id] = ((home_team.name_rus or home_team.name), False)
 
     return opponent_map
 
@@ -94,10 +94,10 @@ async def get_squad_tour(
             
             main_players_data.append({
                 "id": player.id,
-                "name": player.name,
+                "name": player.name_rus or player.name,
                 "position": player.position,
                 "team_id": player.team_id,
-                "team_name": player.team.name if player.team else "",
+                "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                 "team_logo": player.team.logo if player.team else None,
                 "market_value": player.market_value,
                 "photo": player.photo,
@@ -115,10 +115,10 @@ async def get_squad_tour(
             
             bench_players_data.append({
                 "id": player.id,
-                "name": player.name,
+                "name": player.name_rus or player.name,
                 "position": player.position,
                 "team_id": player.team_id,
-                "team_name": player.team.name if player.team else "",
+                "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                 "team_logo": player.team.logo if player.team else None,
                 "market_value": player.market_value,
                 "photo": player.photo,
@@ -198,10 +198,10 @@ async def get_all_squads_for_tour(
                 
                 main_players_data.append({
                     "id": player.id,
-                    "name": player.name,
+                    "name": player.name_rus or player.name,
                     "position": player.position,
                     "team_id": player.team_id,
-                    "team_name": player.team.name if player.team else "",
+                    "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                     "team_logo": player.team.logo if player.team else None,
                     "market_value": player.market_value,
                     "photo": player.photo,
@@ -219,10 +219,10 @@ async def get_all_squads_for_tour(
                     
                     bench_players_data.append({
                     "id": player.id,
-                    "name": player.name,
+                    "name": player.name_rus or player.name,
                     "position": player.position,
                     "team_id": player.team_id,
-                    "team_name": player.team.name if player.team else "",
+                    "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                     "team_logo": player.team.logo if player.team else None,
                     "market_value": player.market_value,
                     "photo": player.photo,
@@ -286,10 +286,10 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
                 
                 main_players_data.append({
                     "id": player.id,
-                    "name": player.name,
+                    "name": player.name_rus or player.name,
                     "position": player.position,
                     "team_id": player.team_id,
-                    "team_name": player.team.name if player.team else "",
+                    "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                     "team_logo": player.team.logo if player.team else None,
                     "market_value": player.market_value,
                     "photo": player.photo,
@@ -307,10 +307,10 @@ async def get_all_squad_tours() -> List[SquadTourHistorySchema]:
                 
                 bench_players_data.append({
                     "id": player.id,
-                    "name": player.name,
+                    "name": player.name_rus or player.name,
                     "position": player.position,
                     "team_id": player.team_id,
-                    "team_name": player.team.name if player.team else "",
+                    "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                     "team_logo": player.team.logo if player.team else None,
                     "market_value": player.market_value,
                     "photo": player.photo,
