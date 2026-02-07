@@ -534,7 +534,7 @@ class PlayerService(BaseService):
                             Match.home_team_id == team_id,
                             Match.away_team_id == team_id
                         ),
-                        Match.date < now_msk()
+                        Match.is_finished == True
                     )
                 )
                 .group_by(Tour.id)
@@ -605,7 +605,7 @@ class PlayerService(BaseService):
                             Match.home_team_id == team_id,
                             Match.away_team_id == team_id
                         ),
-                        Match.date >= now_msk()
+                        Match.is_finished == False
                     )
                 )
                 .group_by(Tour.id)
