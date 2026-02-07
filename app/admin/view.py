@@ -1,6 +1,7 @@
 import logging
 import csv
 import io
+from datetime import datetime
 from typing import Any
 
 from sqladmin import ModelView, expose
@@ -9,6 +10,9 @@ from sqlalchemy.orm import joinedload
 from wtforms import SelectField
 from starlette.responses import Response
 from starlette.requests import Request
+
+from app.utils.timezone import MOSCOW_TZ, to_msk, now_msk
+from datetime import timezone
 
 from app.boosts.models import Boost
 # ClubLeague removed
@@ -44,6 +48,35 @@ class BaseModelView(ModelView):
     """Base ModelView with fixes for common issues and import functionality."""
     
     can_import = True  # Enable import for all models by default
+    
+    def format(self, attr, value):
+        """Override to convert datetime fields to Moscow timezone for display."""
+        if isinstance(value, datetime):
+            # Convert to Moscow timezone for display
+            msk_time = to_msk(value)
+            return msk_time.strftime("%Y-%m-%d %H:%M:%S MSK")
+        return super().format(attr, value)
+    
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
+        """Convert datetime fields from MSK to UTC before saving."""
+        # Get datetime columns
+        mapper = inspect(self.model)
+        for column in mapper.columns:
+            if column.name in data:
+                value = data[column.name]
+                # Check if this is a datetime field
+                if isinstance(value, datetime) and hasattr(column.type, 'python_type'):
+                    if column.type.python_type == datetime:
+                        # Value from form is naive (no timezone), treat it as MSK
+                        if value.tzinfo is None:
+                            # Convert MSK to UTC: subtract 3 hours
+                            msk_dt = value.replace(tzinfo=MOSCOW_TZ)
+                            utc_dt = msk_dt.astimezone(timezone.utc)
+                            # Store as naive UTC (SQLAlchemy/PostgreSQL will handle it)
+                            data[column.name] = utc_dt.replace(tzinfo=None)
+        
+        await super().on_model_change(data, model, is_created, request)
+    
     def _stmt_by_identifier(self, identifier: str):
         """Override to fix URL parameter parsing issue.
         
