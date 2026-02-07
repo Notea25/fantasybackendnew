@@ -1,10 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+# Moscow timezone (UTC+3)
+MOSCOW_TZ = timezone(timedelta(hours=3))
 
 
 user_league_tours = Table(
@@ -63,21 +66,27 @@ class Tour(Base):
     def start_date(self) -> Optional[datetime]:
         if not self.matches:
             return None
-        return min(match.date for match in self.matches)
+        start = min(match.date for match in self.matches)
+        # Convert to Moscow time
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        return start.astimezone(MOSCOW_TZ)
 
     @property
     def end_date(self) -> Optional[datetime]:
         if not self.matches:
             return None
-        return (
-            max(match.date for match in self.matches)
-            + timedelta(hours=2)
-        )
+        end = max(match.date for match in self.matches) + timedelta(hours=2)
+        # Convert to Moscow time
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        return end.astimezone(MOSCOW_TZ)
 
     @property
     def deadline(self) -> Optional[datetime]:
         if not self.start_date:
             return None
+        # start_date is already in Moscow time
         return self.start_date - timedelta(hours=2)
 
     def __repr__(self):
