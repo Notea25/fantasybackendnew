@@ -62,7 +62,11 @@ class TourService(BaseService):
 
     @classmethod
     async def get_deadline_for_next_tour(cls, league_id: int) -> Optional[datetime]:
-        current_tour, next_tour = await cls.get_current_and_next_tour(league_id=league_id)
+        """Get deadline for next tour.
+        
+        Now reads deadline directly from Tour.deadline field in DB.
+        """
+        previous_tour, current_tour, next_tour = await cls.get_previous_current_next_tour(league_id=league_id)
 
         if not next_tour:
             raise HTTPException(
@@ -70,26 +74,13 @@ class TourService(BaseService):
                 detail=f"No next tour found for league with ID {league_id}"
             )
 
-        tour_start_date = (
-            select(func.min(Match.date))
-            .where(Match.tour_id == next_tour.id)
-            .scalar_subquery()
-        )
+        if not next_tour.deadline:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Deadline not set for tour {next_tour.id}"
+            )
 
-        async with async_session_maker() as session:
-            result = await session.execute(select(tour_start_date))
-            start_date = result.scalar()
-
-            if start_date is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No matches found for the next tour in league with ID {league_id}"
-                )
-
-            if start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-
-            return start_date - timedelta(hours=2)
+        return next_tour.deadline
 
     @classmethod
     async def find_one_by_number(cls, number: int, league_id: int) -> Optional[Tour]:
