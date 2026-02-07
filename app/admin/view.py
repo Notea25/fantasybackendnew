@@ -833,10 +833,10 @@ class CommercialLeagueAdmin(BaseModelView, model=CommercialLeague):
     
     form_columns = [
         CommercialLeague.name,
-        CommercialLeague.league_id,
+        "league",  # Use relationship name for AJAX ref
         CommercialLeague.prize,
         CommercialLeague.logo,
-        CommercialLeague.winner_id,
+        "winner",  # Use relationship name for AJAX ref
         CommercialLeague.registration_start,
         CommercialLeague.registration_end,
         CommercialLeague.tours,
