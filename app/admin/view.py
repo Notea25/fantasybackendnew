@@ -8,6 +8,7 @@ from sqladmin import ModelView, expose
 from sqlalchemy import update, delete, select, inspect
 from sqlalchemy.orm import joinedload
 from wtforms import SelectField
+from wtforms.validators import DataRequired
 from starlette.responses import Response
 from starlette.requests import Request
 
@@ -841,6 +842,12 @@ class CommercialLeagueAdmin(BaseModelView, model=CommercialLeague):
         CommercialLeague.tours,
         CommercialLeague.squads,
     ]
+    
+    form_args = {
+        "league": {
+            "validators": [DataRequired("League is required")],
+        },
+    }
     
     # Используем AJAX для загрузки связанных объектов в формах
     form_ajax_refs = {
