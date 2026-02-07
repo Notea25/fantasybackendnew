@@ -824,7 +824,9 @@ class CommercialLeagueAdmin(BaseModelView, model=CommercialLeague):
     column_searchable_list = ["name"]
     column_labels = {
         "league_id": "League",
+        "league": "League",
         "winner_id": "Winner Squad",
+        "winner": "Winner Squad",
         "tours": "Tours",
         "squads": "Squads",
         "registration_start": "Registration Start",
@@ -832,15 +834,15 @@ class CommercialLeagueAdmin(BaseModelView, model=CommercialLeague):
     }
     
     form_columns = [
-        CommercialLeague.name,
+        "name",
         "league",  # Use relationship name for AJAX ref
-        CommercialLeague.prize,
-        CommercialLeague.logo,
+        "prize",
+        "logo",
         "winner",  # Use relationship name for AJAX ref
-        CommercialLeague.registration_start,
-        CommercialLeague.registration_end,
-        CommercialLeague.tours,
-        CommercialLeague.squads,
+        "registration_start",
+        "registration_end",
+        "tours",
+        "squads",
     ]
     
     form_args = {
