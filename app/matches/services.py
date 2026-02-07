@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from sqlalchemy import exc, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.utils.timezone import now_msk
+
 from app.database import async_session_maker
 from app.matches.models import Match
 from app.matches.schemas import MatchCreateSchema
@@ -170,7 +172,7 @@ class MatchService(BaseService):
             
             # 2. Mark match as finished
             match.is_finished = True
-            match.finished_at = datetime.now(timezone.utc)
+            match.finished_at = now_msk()
             
             # 3. Get all PlayerMatchStats for this match as dict
             player_stats_result = await session.execute(

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from random import randint
 
+from app.utils.timezone import now_msk
 from sqlalchemy import func, desc, case, distinct, cast, Numeric, and_, or_
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload, selectinload
@@ -533,7 +534,7 @@ class PlayerService(BaseService):
                             Match.home_team_id == team_id,
                             Match.away_team_id == team_id
                         ),
-                        Match.date < datetime.utcnow()
+                        Match.date < now_msk()
                     )
                 )
                 .group_by(Tour.id)
@@ -604,7 +605,7 @@ class PlayerService(BaseService):
                             Match.home_team_id == team_id,
                             Match.away_team_id == team_id
                         ),
-                        Match.date >= datetime.utcnow()
+                        Match.date >= now_msk()
                     )
                 )
                 .group_by(Tour.id)

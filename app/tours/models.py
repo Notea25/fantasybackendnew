@@ -6,9 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
-# Moscow timezone (UTC+3)
-MOSCOW_TZ = timezone(timedelta(hours=3))
-
 
 user_league_tours = Table(
     "user_league_tours",
@@ -62,26 +59,6 @@ class Tour(Base):
     squads: Mapped[list["SquadTour"]] = relationship(
         back_populates="tour", cascade="all, delete-orphan"
     )
-
-    @property
-    def start_date(self) -> Optional[datetime]:
-        if not self.matches:
-            return None
-        start = min(match.date for match in self.matches)
-        # Convert to Moscow time
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
-        return start.astimezone(MOSCOW_TZ)
-
-    @property
-    def end_date(self) -> Optional[datetime]:
-        if not self.matches:
-            return None
-        end = max(match.date for match in self.matches) + timedelta(hours=2)
-        # Convert to Moscow time
-        if end.tzinfo is None:
-            end = end.replace(tzinfo=timezone.utc)
-        return end.astimezone(MOSCOW_TZ)
 
     def __repr__(self):
         return f"Tour {self.number}"

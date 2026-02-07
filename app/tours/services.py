@@ -14,53 +14,6 @@ class TourService(BaseService):
     model = Tour
 
     @classmethod
-    async def get_current_and_next_tour(cls, league_id: int) -> Tuple[Optional[Tour], Optional[Tour]]:
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
-
-        tour_dates = (
-            select(
-                Tour.id,
-                func.min(Match.date).label("start_date"),
-                func.max(Match.date).label("end_date")
-            )
-            .join(Match, Match.tour_id == Tour.id)
-            .where(Tour.league_id == league_id)
-            .group_by(Tour.id)
-            .subquery()
-        )
-
-        stmt = (
-            select(Tour, tour_dates.c.start_date, tour_dates.c.end_date)
-            .join(tour_dates, Tour.id == tour_dates.c.id)
-        )
-
-        async with async_session_maker() as session:
-            result = await session.execute(stmt)
-            tours = result.unique().all()
-
-            current_tour = None
-            next_tour = None
-            next_tour_start_date = None
-
-            for tour, start_date, end_date in tours:
-                if start_date is None or end_date is None:
-                    continue
-
-                if start_date.tzinfo is None:
-                    start_date = start_date.replace(tzinfo=timezone.utc)
-                if end_date.tzinfo is None:
-                    end_date = end_date.replace(tzinfo=timezone.utc)
-
-                if start_date <= now <= end_date:
-                    current_tour = tour
-                elif start_date > now:
-                    if not next_tour or start_date < next_tour_start_date:
-                        next_tour = tour
-                        next_tour_start_date = start_date
-
-            return current_tour, next_tour
-
-    @classmethod
     async def get_deadline_for_next_tour(cls, league_id: int) -> Optional[datetime]:
         """Get deadline for next tour.
         

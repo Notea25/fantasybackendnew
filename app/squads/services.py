@@ -19,6 +19,7 @@ from app.tours.services import TourService
 from app.database import async_session_maker
 from app.utils.base_service import BaseService
 from app.utils.exceptions import ResourceNotFoundException, FailedOperationException
+from app.utils.timezone import now_msk
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ class SquadService(BaseService):
                         is_finalized=False,
                         points=0,
                         penalty_points=0,
-                        created_at=datetime.now(timezone.utc)
+                        created_at=now_msk()
                     )
                     session.add(squad_tour)
                     await session.flush()
@@ -971,8 +972,7 @@ class SquadService(BaseService):
             target_tour = None
             
             # Determine which tour to edit
-            from datetime import timezone
-            now = datetime.now(timezone.utc)
+            now = now_msk()
             if current_tour and current_tour.deadline > now:
                 target_tour = current_tour
             elif next_tour and next_tour.deadline > now:
@@ -1312,7 +1312,7 @@ class SquadService(BaseService):
                     points=0,
                     penalty_points=squad_tour.penalty_points,  # Carry over penalties
                     used_boost=None,  # Reset boost
-                    created_at=datetime.now(timezone.utc)
+                    created_at=now_msk()
                 )
                 session.add(new_squad_tour)
                 await session.flush()

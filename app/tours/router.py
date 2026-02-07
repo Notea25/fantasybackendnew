@@ -60,8 +60,6 @@ def tour_to_dict(tour: Tour) -> dict:
         "id": tour.id,
         "number": tour.number,
         "league_id": tour.league_id,
-        "start_date": tour.start_date,
-        "end_date": tour.end_date,
         "deadline": tour.deadline,
     }
 
