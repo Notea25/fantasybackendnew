@@ -137,8 +137,13 @@ class TourService(BaseService):
     @classmethod
     async def get_previous_current_next_tour(cls, league_id: int) -> tuple[
         Optional["Tour"], Optional["Tour"], Optional["Tour"]]:
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
-
+        """Get previous, current and next tour for a league.
+        
+        New logic:
+        - Previous tour: is_started=True AND is_finalized=True (latest by number)
+        - Current tour: is_started=True AND is_finalized=False
+        - Next tour: is_started=False (earliest by number)
+        """
         async with async_session_maker() as session:
             stmt = (
                 select(Tour)
@@ -150,27 +155,22 @@ class TourService(BaseService):
             tours = result.unique().scalars().all()
 
             current_tour = None
-            previous_tours = []
-            next_tours = []
+            previous_tour = None
+            next_tour = None
 
             for tour in tours:
-                if not tour.matches:
-                    continue
-
-                start_date = min(match.date for match in tour.matches)
-                end_date = max(match.date for match in tour.matches)
-
-                if start_date <= now <= end_date:
+                # Current tour: started but not finalized
+                if tour.is_started and not tour.is_finalized:
                     current_tour = tour
-                elif end_date < now:
-                    previous_tours.append((tour, end_date))
-                elif start_date > now:
-                    next_tours.append((tour, start_date))
-
-            previous_tour = max(previous_tours, key=lambda x: x[1], default=None)
-            previous_tour = previous_tour[0] if previous_tour else None
-
-            next_tour = min(next_tours, key=lambda x: x[1], default=None)
-            next_tour = next_tour[0] if next_tour else None
+                
+                # Previous tour: started and finalized (take the latest)
+                elif tour.is_started and tour.is_finalized:
+                    if not previous_tour or tour.number > previous_tour.number:
+                        previous_tour = tour
+                
+                # Next tour: not started (take the earliest)
+                elif not tour.is_started:
+                    if not next_tour or tour.number < next_tour.number:
+                        next_tour = tour
 
             return previous_tour, current_tour, next_tour

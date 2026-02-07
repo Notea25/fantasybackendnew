@@ -84,6 +84,42 @@ async def get_previous_current_next_tour(league_id: int) -> dict[str, Optional[T
         "next_tour": tour_to_read_with_type(next_tour, "next"),
     }
 
+@router.post("/start_tour/{tour_id}")
+async def start_tour(
+    tour_id: int,
+    user: User = Depends(get_current_user)
+) -> dict:
+    """Начать тур и создать SquadTours для следующего тура.
+    
+    Этот эндпоинт вызывается администратором для начала тура.
+    При начале тура создаются SquadTour для следующего тура,
+    копируя данные из текущего тура.
+    
+    TODO: Добавить проверку прав доступа (только для админов)
+    
+    Args:
+        tour_id: ID тура, который нужно начать
+    
+    Returns:
+        Информация о количестве созданных SquadTour
+    """
+    # TODO: Добавить проверку: if not user.is_admin: raise HTTPException(403)
+    
+    try:
+        result = await SquadService.start_tour_for_all_squads(tour_id=tour_id)
+        return {
+            "status": "success",
+            "message": f"Tour {tour_id} started successfully",
+            **result
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start tour: {str(e)}"
+        )
+
 @router.post("/finalize_tour/{tour_id}")
 async def finalize_tour(
     tour_id: int,

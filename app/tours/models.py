@@ -32,6 +32,8 @@ class Tour(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     number: Mapped[int]
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"))
+    is_started: Mapped[bool] = mapped_column(default=False, server_default="false")
+    is_finalized: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     __table_args__ = (
         UniqueConstraint(

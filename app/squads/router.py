@@ -90,68 +90,10 @@ async def get_squad_by_id(squad_id: int) -> SquadReadSchema:
     squad.username = squad.user.username if squad.user else ""
     return squad
 
-
-@router.put("/update_players/{squad_id}", response_model=SquadUpdateResponseSchema, deprecated=True)
-async def update_squad_players(
-    squad_id: int,
-    payload: SquadUpdatePlayersSchema,
-    user: User = Depends(get_current_user),
-) -> SquadUpdateResponseSchema:
-    """DEPRECATED: Use /squads/{squad_id}/replace_players instead.
-    
-    This endpoint is deprecated in new architecture.
-    Squad now contains only metadata, use SquadTour for player composition.
-    """
-    raise HTTPException(
-        status_code=410,  # Gone
-        detail="This endpoint is deprecated. Use POST /squads/{squad_id}/replace_players instead."
-    )
-
-@router.post("/{squad_id}/replace_players", response_model=SquadTourReplacePlayersResponseSchema, deprecated=True)
-async def replace_players(
-    squad_id: int,
-    captain_id: Optional[int] = None,
-    vice_captain_id: Optional[int] = None,
-    payload: SquadUpdatePlayersSchema = None,
-    user: User = Depends(get_current_user),
-) -> SquadTourReplacePlayersResponseSchema:
-    """DEPRECATED: Use POST /squad_tours/squad/{squad_id}/replace_players instead.
-    
-    This endpoint is deprecated in new architecture.
-    Squad now contains only metadata, use SquadTour for player composition.
-    """
-    raise HTTPException(
-        status_code=410,  # Gone
-        detail="This endpoint is deprecated. Use POST /squad_tours/squad/{squad_id}/replace_players instead."
-    )
-
-@router.get("/{squad_id}/replacement_info", response_model=ReplacementInfoSchema, deprecated=True)
-async def get_replacement_info(
-    squad_id: int,
-    user: User = Depends(get_current_user)
-) -> ReplacementInfoSchema:
-    """DEPRECATED: Use GET /squad_tours/squad/{squad_id}/replacement_info instead."""
-    raise HTTPException(
-        status_code=410,  # Gone
-        detail="This endpoint is deprecated. Use GET /squad_tours/squad/{squad_id}/replacement_info instead."
-    )
-
 @router.patch("/{squad_id}/rename", response_model=SquadRenameSchema)
 async def rename_squad(squad_id: int, new_name: str, user: User = Depends(get_current_user)) -> SquadRenameSchema:
     squad = await SquadService.rename_squad(squad_id=squad_id, user_id=user.id, new_name=new_name)
     return squad
-
-
-@router.get("/{squad_id}/tours", response_model=list[SquadTourHistorySchema], deprecated=True)
-async def get_squad_tours(squad_id: int) -> list[SquadTourHistorySchema]:
-    """DEPRECATED: Use GET /squad_tours/squad/{squad_id} instead.
-    
-    Каждый SquadTour - это snapshot состояния сквада для конкретного тура.
-    """
-    raise HTTPException(
-        status_code=410,  # Gone
-        detail="This endpoint is deprecated. Use GET /squad_tours/squad/{squad_id} instead."
-    )
 
 @router.get("/leaderboard/{tour_id}", response_model=list[PublicLeaderboardEntrySchema])
 async def get_leaderboard(tour_id: int) -> list[PublicLeaderboardEntrySchema]:

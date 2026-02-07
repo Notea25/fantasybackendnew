@@ -1163,7 +1163,7 @@ class SquadService(BaseService):
                     detail="No open tour available"
                 )
             
-            # Get or create SquadTour
+            # Get SquadTour
             squad_tour = await session.execute(
                 select(SquadTour)
                 .where(SquadTour.squad_id == squad_id)
@@ -1174,13 +1174,9 @@ class SquadService(BaseService):
             squad_tour = squad_tour.scalars().first()
             
             if not squad_tour:
-                # Create default SquadTour if doesn't exist
-                squad_tour = SquadTour(
-                    squad_id=squad_id,
-                    tour_id=target_tour.id,
-                    budget=100_000,
-                    replacements=2,
-                    is_finalized=False
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"SquadTour not found for squad {squad_id} and tour {target_tour.id}"
                 )
             
             current_cost = squad_tour.calculate_players_cost() if squad_tour.main_players else 0
@@ -1193,22 +1189,211 @@ class SquadService(BaseService):
             }
 
     @classmethod
+    async def start_tour_for_all_squads(cls, tour_id: int):
+        """Start tour and create SquadTours for next tour.
+        
+        When a tour is started:
+        1. Mark Tour as started (is_started=True)
+        2. Find next tour (by number)
+        3. For each Squad in the league:
+           - Find SquadTour for current tour
+           - Copy data to create SquadTour for next tour
+        
+        Args:
+            tour_id: ID of tour to start
+        
+        Returns:
+            dict with counts of created SquadTours
+        """
+        async with async_session_maker() as session:
+            # 1. Get tour and validate
+            tour = await session.execute(
+                select(Tour).where(Tour.id == tour_id)
+            )
+            tour = tour.scalars().first()
+            
+            if not tour:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Tour {tour_id} not found"
+                )
+            
+            if tour.is_started:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tour {tour_id} is already started"
+                )
+            
+            # 2. Check if previous tour is finalized
+            if tour.number > 1:
+                previous_tour = await session.execute(
+                    select(Tour)
+                    .where(Tour.league_id == tour.league_id)
+                    .where(Tour.number == tour.number - 1)
+                )
+                previous_tour = previous_tour.scalars().first()
+                
+                if previous_tour and not previous_tour.is_finalized:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Previous tour {previous_tour.id} must be finalized before starting tour {tour_id}"
+                    )
+            
+            # 3. Find next tour
+            next_tour = await session.execute(
+                select(Tour)
+                .where(Tour.league_id == tour.league_id)
+                .where(Tour.number == tour.number + 1)
+            )
+            next_tour = next_tour.scalars().first()
+            
+            if not next_tour:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Next tour not found for league {tour.league_id}"
+                )
+            
+            # 4. Get all squads in this league
+            all_squads = await session.execute(
+                select(Squad).where(Squad.league_id == tour.league_id)
+            )
+            all_squads = all_squads.scalars().all()
+            
+            # 5. Get all SquadTours for current tour
+            stmt = (
+                select(SquadTour)
+                .where(SquadTour.tour_id == tour_id)
+                .options(
+                    selectinload(SquadTour.main_players),
+                    selectinload(SquadTour.bench_players)
+                )
+            )
+            result = await session.execute(stmt)
+            squad_tours = result.scalars().all()
+            squad_tours_by_squad_id = {st.squad_id: st for st in squad_tours}
+            
+            created_count = 0
+            skipped_count = 0
+            
+            # 6. For each squad, create SquadTour for next tour
+            for squad in all_squads:
+                squad_tour = squad_tours_by_squad_id.get(squad.id)
+                
+                if not squad_tour:
+                    # Skip squads that don't have SquadTour for current tour
+                    skipped_count += 1
+                    logger.warning(
+                        f"Squad {squad.id} doesn't have SquadTour for tour {tour_id}, skipping"
+                    )
+                    continue
+                
+                # Check if SquadTour for next tour already exists
+                existing_next = await session.execute(
+                    select(SquadTour)
+                    .where(SquadTour.squad_id == squad.id)
+                    .where(SquadTour.tour_id == next_tour.id)
+                )
+                if existing_next.scalars().first():
+                    skipped_count += 1
+                    logger.warning(
+                        f"SquadTour for squad {squad.id} and tour {next_tour.id} already exists, skipping"
+                    )
+                    continue
+                
+                # Create SquadTour for next tour (copy from current tour)
+                new_squad_tour = SquadTour(
+                    squad_id=squad.id,
+                    tour_id=next_tour.id,
+                    captain_id=squad_tour.captain_id,
+                    vice_captain_id=squad_tour.vice_captain_id,
+                    budget=squad_tour.budget,
+                    replacements=2,  # Reset to 2 free transfers
+                    is_finalized=False,
+                    points=0,
+                    penalty_points=squad_tour.penalty_points,  # Carry over penalties
+                    used_boost=None,  # Reset boost
+                    created_at=datetime.now(timezone.utc)
+                )
+                session.add(new_squad_tour)
+                await session.flush()
+                
+                # Copy player associations
+                from app.squad_tours.models import squad_tour_players, squad_tour_bench_players
+                
+                for player in squad_tour.main_players:
+                    await session.execute(
+                        squad_tour_players.insert().values(
+                            squad_tour_id=new_squad_tour.id,
+                            player_id=player.id
+                        )
+                    )
+                
+                for player in squad_tour.bench_players:
+                    await session.execute(
+                        squad_tour_bench_players.insert().values(
+                            squad_tour_id=new_squad_tour.id,
+                            player_id=player.id
+                        )
+                    )
+                
+                created_count += 1
+                logger.info(
+                    f"Created SquadTour for squad {squad.id}, tour {next_tour.id}"
+                )
+            
+            # 7. Mark tour as started
+            tour.is_started = True
+            
+            await session.commit()
+            
+            logger.info(
+                f"Tour {tour_id} started successfully. "
+                f"Created {created_count} SquadTours for tour {next_tour.id}, skipped {skipped_count}"
+            )
+            
+            return {
+                "tour_id": tour_id,
+                "next_tour_id": next_tour.id,
+                "created_squad_tours": created_count,
+                "skipped_squads": skipped_count,
+                "total_squads": len(all_squads),
+            }
+
+    @classmethod
     async def finalize_tour_for_all_squads(cls, tour_id: int, next_tour_id: Optional[int] = None):
-        """Finalize completed tour and create SquadTours for next tour.
+        """Finalize completed tour.
         
         New architecture:
         1. Mark SquadTour as finalized (is_finalized=True)
         2. Calculate and save points for finalized tour
-        3. Create new SquadTour for next tour (copy state from finalized tour)
+        3. Mark Tour as finalized (is_finalized=True)
         
         Args:
             tour_id: ID of completed tour
-            next_tour_id: ID of next tour (optional)
+            next_tour_id: Deprecated, kept for backwards compatibility
         
         Returns:
             dict with counts of processed squads
         """
         async with async_session_maker() as session:
+            # Get tour
+            tour = await session.execute(
+                select(Tour).where(Tour.id == tour_id)
+            )
+            tour = tour.scalars().first()
+            
+            if not tour:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Tour {tour_id} not found"
+                )
+            
+            if tour.is_finalized:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tour {tour_id} is already finalized"
+                )
+            
             # Get all SquadTours for this tour
             stmt = (
                 select(SquadTour)
@@ -1223,10 +1408,9 @@ class SquadService(BaseService):
             squad_tours = result.scalars().all()
             
             finalized_count = 0
-            created_count = 0
             
             for squad_tour in squad_tours:
-                # 1. Calculate and save final points
+                # Calculate and save final points
                 squad_tour.points = await squad_tour.calculate_points(session)
                 squad_tour.is_finalized = True
                 finalized_count += 1
@@ -1235,67 +1419,19 @@ class SquadService(BaseService):
                     f"Finalized SquadTour {squad_tour.id} for squad {squad_tour.squad_id}, "
                     f"tour {tour_id}: points={squad_tour.points}, penalties={squad_tour.penalty_points}"
                 )
-                
-                # 2. Create SquadTour for next tour if specified
-                if next_tour_id:
-                    # Check if next tour already exists
-                    existing_next = await session.execute(
-                        select(SquadTour)
-                        .where(SquadTour.squad_id == squad_tour.squad_id)
-                        .where(SquadTour.tour_id == next_tour_id)
-                    )
-                    if not existing_next.scalars().first():
-                        # Copy state from finalized tour
-                        new_squad_tour = SquadTour(
-                            squad_id=squad_tour.squad_id,
-                            tour_id=next_tour_id,
-                            captain_id=squad_tour.captain_id,
-                            vice_captain_id=squad_tour.vice_captain_id,
-                            budget=squad_tour.budget,
-                            replacements=2,  # Reset to 2 free transfers
-                            is_finalized=False,
-                            points=0,
-                            penalty_points=0,
-                            used_boost=None,
-                            created_at=datetime.utcnow()
-                        )
-                        session.add(new_squad_tour)
-                        await session.flush()
-                        
-                        # Copy player associations
-                        from app.squad_tours.models import squad_tour_players, squad_tour_bench_players
-                        
-                        for player in squad_tour.main_players:
-                            await session.execute(
-                                squad_tour_players.insert().values(
-                                    squad_tour_id=new_squad_tour.id,
-                                    player_id=player.id
-                                )
-                            )
-                        
-                        for player in squad_tour.bench_players:
-                            await session.execute(
-                                squad_tour_bench_players.insert().values(
-                                    squad_tour_id=new_squad_tour.id,
-                                    player_id=player.id
-                                )
-                            )
-                        
-                        created_count += 1
-                        logger.info(
-                            f"Created SquadTour for squad {squad_tour.squad_id}, tour {next_tour_id}"
-                        )
+            
+            # Mark tour as finalized
+            tour.is_finalized = True
             
             await session.commit()
             
             logger.info(
                 f"Tour finalization completed: tour {tour_id}. "
-                f"Finalized: {finalized_count}, Created for next tour: {created_count}"
+                f"Finalized: {finalized_count} SquadTours"
             )
             
             return {
                 "finalized_tours": finalized_count,
-                "created_tours": created_count,
                 "total_squads_processed": len(squad_tours),
             }
 
