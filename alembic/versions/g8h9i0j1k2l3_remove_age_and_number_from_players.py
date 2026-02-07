@@ -1,8 +1,8 @@
 """remove age and number from players
 
-Revision ID: a1b2c3d4e5f7
+Revision ID: g8h9i0j1k2l3
 Revises: fcd9b8e3f2a1
-Create Date: 2026-02-07 09:51:00.000000
+Create Date: 2026-02-07 10:05:00.000000
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a1b2c3d4e5f7'
+revision: str = 'g8h9i0j1k2l3'
 down_revision: Union[str, Sequence[str], None] = 'fcd9b8e3f2a1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
