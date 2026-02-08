@@ -121,7 +121,7 @@ async def start_tour(
 @router.post("/finalize_tour/{tour_id}")
 async def finalize_tour(
     tour_id: int,
-    next_tour_id: int,
+    next_tour_id: Optional[int] = None,
     user: User = Depends(get_current_user)
 ) -> dict:
     """Финализировать тур и создать snapshots для следующего тура.
@@ -133,7 +133,7 @@ async def finalize_tour(
     
     Args:
         tour_id: ID завершенного тура
-        next_tour_id: ID следующего тура
+        next_tour_id: ID следующего тура (опционально, определяется автоматически)
     
     Returns:
         Информация о количестве обработанных сквадов
@@ -141,6 +141,26 @@ async def finalize_tour(
     # TODO: Добавить проверку: if not user.is_admin: raise HTTPException(403)
     
     try:
+        # If next_tour_id is not provided, find it automatically
+        if next_tour_id is None:
+            from app.tours.services import TourService
+            tour = await TourService.find_one(tour_id)
+            if not tour:
+                raise HTTPException(status_code=404, detail="Tour not found")
+            
+            # Find the next tour by league and number
+            tours = await TourService.find_all_by_league(tour.league_id)
+            sorted_tours = sorted(tours, key=lambda t: t.number)
+            
+            current_index = next((i for i, t in enumerate(sorted_tours) if t.id == tour_id), None)
+            if current_index is None:
+                raise HTTPException(status_code=404, detail="Current tour not found in league")
+            
+            if current_index + 1 < len(sorted_tours):
+                next_tour_id = sorted_tours[current_index + 1].id
+            else:
+                raise HTTPException(status_code=400, detail="No next tour available")
+        
         result = await SquadService.finalize_tour_for_all_squads(
             tour_id=tour_id,
             next_tour_id=next_tour_id
