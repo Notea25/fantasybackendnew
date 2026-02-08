@@ -143,8 +143,7 @@ async def finalize_tour(
     try:
         # If next_tour_id is not provided, find it automatically
         if next_tour_id is None:
-            from app.tours.services import TourService
-            tour = await TourService.find_one(tour_id)
+            tour = await TourService.find_one_or_none_with_relations(tour_id)
             if not tour:
                 raise HTTPException(status_code=404, detail="Tour not found")
             
