@@ -1479,10 +1479,10 @@ class SquadService(BaseService):
                     
                     main_players_data.append({
                         "id": player.id,
-                        "name": player.name,
+                        "name": player.name_rus or player.name,
                         "position": player.position,
                         "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
+                        "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
@@ -1497,10 +1497,10 @@ class SquadService(BaseService):
                     
                     bench_players_data.append({
                         "id": player.id,
-                        "name": player.name,
+                        "name": player.name_rus or player.name,
                         "position": player.position,
                         "team_id": player.team_id,
-                        "team_name": player.team.name if player.team else "",
+                        "team_name": (player.team.name_rus or player.team.name) if player.team else "",
                         "team_logo": player.team.logo if player.team else None,
                         "market_value": player.market_value,
                         "photo": player.photo,
