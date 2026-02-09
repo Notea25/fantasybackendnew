@@ -26,9 +26,14 @@ from app.custom_leagues.club_league.models import ClubLeague
 
 config = context.config
 
+# Railway provides postgresql:// but we need postgresql+asyncpg://
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 config.set_main_option(
     "sqlalchemy.url",
-    f"{settings.DATABASE_URL}?async_fallback=True"
+    f"{_db_url}?async_fallback=True"
 )
 
 target_metadata = Base.metadata
