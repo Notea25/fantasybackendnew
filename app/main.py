@@ -53,32 +53,15 @@ logging.basicConfig(
 
 app = FastAPI()
 
-# if settings.MODE == "DEVFRONT":
-#     app.add_middleware(
-#         CORSMiddleware,
-#         allow_origins=[
-#             "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com",
-#               "https://tele-mini-sparkle.vercel.app"
-#         ],
-#         allow_credentials=True,
-#         allow_methods=["*"],
-#         allow_headers=["*"],
-#     )
-#
-#     @app.middleware("http")
-#     async def check_origin(request: Request, call_next):
-#         allowed_origin = (
-#             "https://014afc12-930d-4917-a39f-0e32b2583b24.lovableproject.com",
-#             "https://tele-mini-sparkle.vercel.app"
-#         )
-#         if (request.url.path.startswith("/api") or
-#                 request.url.path == "/docs") and \
-#                 request.headers.get("origin") != allowed_origin:
-#             raise HTTPException(
-#                 status_code=403,
-#                 detail="Forbidden: Access only from React app"
-#             )
-#         return await call_next(request)
+# CORS — allow frontend to call backend directly
+allowed_origins = [o.strip() for o in settings.FRONTEND_URL.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 app.add_middleware(ImportButtonMiddleware)
