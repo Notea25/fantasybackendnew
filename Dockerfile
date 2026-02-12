@@ -30,4 +30,4 @@ COPY . .
 
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic stamp base 2>&1; alembic upgrade head 2>&1 && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} 2>&1"]
